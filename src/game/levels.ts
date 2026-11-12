@@ -385,23 +385,27 @@ const FLOCK: LevelDef[] = [
   },
 ];
 
+export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
+
 export interface Chapter {
   name: string;
+  /** Shown beside the name on the level list, so the whole range can be read at a glance. */
+  difficulty: Difficulty;
   /** One line under the chapter's name on the level list. */
   blurb: string;
   levels: Level[];
 }
 
-const BOOK: { name: string; blurb: string; levels: LevelDef[] }[] = [
-  { name: "Tutorial", blurb: "The rules, one at a time.", levels: TUTORIAL },
-  { name: "Bent out of shape", blurb: "Hatches with corners, and less room to turn them.", levels: SHAPES },
-  { name: "Cold snap", blurb: "Frozen hatches thaw only when enough chickens have dropped.", levels: ICE },
-  { name: "Lock-up", blurb: "Padlocked hatches wait for the key.", levels: LOCKS },
-  { name: "The whole flock", blurb: "Everything at once, and eggs that keep their colour secret.", levels: FLOCK },
+const BOOK: { name: string; difficulty: Difficulty; blurb: string; levels: LevelDef[] }[] = [
+  { name: "Tutorial", difficulty: "Easy", blurb: "The rules, one at a time.", levels: TUTORIAL },
+  { name: "Bent out of shape", difficulty: "Medium", blurb: "Hatches with corners, and less room to turn them.", levels: SHAPES },
+  { name: "Cold snap", difficulty: "Medium", blurb: "Frozen hatches thaw only when enough chickens have dropped.", levels: ICE },
+  { name: "Lock-up", difficulty: "Medium", blurb: "Padlocked hatches wait for the key.", levels: LOCKS },
+  { name: "The whole flock", difficulty: "Hard", blurb: "Everything at once, and eggs that keep their colour secret.", levels: FLOCK },
 ];
 
 let count = 0;
-export const CHAPTERS: Chapter[] = BOOK.map((c) => ({ name: c.name, blurb: c.blurb, levels: c.levels.map((d) => parseLevel(d, count++, c.name)) }));
+export const CHAPTERS: Chapter[] = BOOK.map((c) => ({ name: c.name, difficulty: c.difficulty, blurb: c.blurb, levels: c.levels.map((d) => parseLevel(d, count++, c.name)) }));
 
 /** Every level in order. */
 export const LEVELS: Level[] = CHAPTERS.flatMap((c) => c.levels);
