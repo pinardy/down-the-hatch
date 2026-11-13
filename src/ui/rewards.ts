@@ -6,8 +6,8 @@
 
 import { createContext, useContext } from "react";
 
-export type BoardTheme = "barn" | "meadow" | "snowfall" | "moonlight" | "harvest" | "sunset";
-export type Hat = "none" | "bow" | "straw" | "shades" | "crown" | "flower" | "party";
+export type BoardTheme = "barn" | "meadow" | "snowfall" | "moonlight" | "harvest" | "sunset" | "oak";
+export type Hat = "none" | "bow" | "straw" | "shades" | "crown" | "flower" | "party" | "chef";
 
 /** What a reward is paid for with. */
 export type Currency = "eggs" | "stars" | "days";
@@ -38,6 +38,8 @@ export const REWARDS: Reward[] = [
   { kind: "hat", id: "shades", name: "Shades", by: "eggs", need: 275 },
   { kind: "board", id: "moonlight", name: "Moonlight", by: "eggs", need: 350 },
   { kind: "hat", id: "crown", name: "Crown", by: "eggs", need: 425 },
+  { kind: "hat", id: "chef", name: "Chef’s hat", by: "eggs", need: 500 },
+  { kind: "board", id: "oak", name: "Dark oak", by: "eggs", need: 575 },
   { kind: "hat", id: "flower", name: "Daisy", by: "stars", need: 20 },
   { kind: "board", id: "harvest", name: "Harvest", by: "stars", need: 60 },
   { kind: "hat", id: "party", name: "Party hat", by: "days", need: 5 },

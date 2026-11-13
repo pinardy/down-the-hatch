@@ -30,10 +30,35 @@ export interface BumpFx {
   dir: Dir;
   why: Blocker;
 }
-/** A hand showing the first move: from one square to another (of the hatch's first square). */
+/** A hand showing the first move: the squares the hatch's first square passes through, start included. */
 export interface DemoFx {
-  from: { x: number; y: number };
-  to: { x: number; y: number };
+  path: { x: number; y: number }[];
+}
+
+/**
+ * The hand: it presses on the hatch, follows the path square by square (turning corners as the
+ * move does), lifts, and goes round again.
+ */
+function DemoHand({ demo }: { demo: DemoFx }) {
+  const [at, setAt] = useState(-1);
+  useEffect(() => {
+    let i = -1;
+    let id = 0;
+    const tick = () => {
+      i = i + 1 > demo.path.length + 1 ? -1 : i + 1;
+      setAt(i);
+      id = window.setTimeout(tick, i === -1 ? 700 : i === 0 ? 500 : 360);
+    };
+    id = window.setTimeout(tick, 900);
+    return () => window.clearTimeout(id);
+  }, [demo]);
+  const p = demo.path[Math.max(0, Math.min(at, demo.path.length - 1))];
+  const shown = at >= 0 && at <= demo.path.length;
+  return (
+    <span className={shown ? "demo-hand demo-hand--on" : "demo-hand"} style={{ transform: `translate(calc(var(--cell) * ${p.x + 0.4}), calc(var(--cell) * ${p.y + 0.45})) scale(${at === 0 ? 1 : 0.9})` }} aria-hidden="true">
+      <HandArt />
+    </span>
+  );
 }
 
 interface Props {
@@ -212,8 +237,27 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" ? wobble.y * level.w + wobble.x : -1;
   const open = gatesOpen(level, game.hatches);
 
+  // What a screen reader hears about the board, square by square: everything but the hatches,
+  // which are buttons with labels of their own.
+  const where = (x: number, y: number) => `row ${y + 1}, column ${x + 1}`;
+  const about: string[] = [];
+  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${PAINT[c.color].name} chicken`} at ${where(c.x, c.y)}`);
+  level.bales.forEach((bale, k) => {
+    const x = k % level.w;
+    const y = Math.floor(k / level.w);
+    if (bale) about.push(`hay at ${where(x, y)}`);
+    if (level.cracks[k]) about.push(`${game.broken.includes(k) ? "a hole" : "a cracked board"} at ${where(x, y)}`);
+    if (level.paint[k]) about.push(`${PAINT[level.paint[k]!].name} paint at ${where(x, y)}`);
+    if (level.plates[k]) about.push(`a pressure plate at ${where(x, y)}`);
+    if (level.gates[k]) about.push(`a gate at ${where(x, y)}`);
+    if (level.arrows[k]) about.push(`a one-way square, ${level.arrows[k]}, at ${where(x, y)}`);
+  });
+  if (level.key && !game.keyTaken) about.push(`the key at ${where(level.key.x, level.key.y)}`);
+  const summary = `A board ${level.w} wide and ${level.h} high. ${about.length ? `On it: ${about.join("; ")}.` : ""}${level.gates.some(Boolean) ? ` The gates are ${open ? "open" : "shut"}.` : ""}`;
+
   return (
     <div className="board" style={{ "--cell": `${cell}px` } as CSSProperties}>
+      <p className="sr-only">{summary}</p>
       <div className="board__field" ref={fieldRef} style={{ width: cell * level.w, height: cell * level.h }}>
         <div className="board__floor" style={{ gridTemplateColumns: `repeat(${level.w}, var(--cell))` }} aria-hidden="true">
           {level.bales.map((bale, k) => (
@@ -304,15 +348,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
           );
         })}
 
-        {demo && (
-          <span
-            className="demo-hand"
-            style={{ "--fx": demo.from.x, "--fy": demo.from.y, "--tx": demo.to.x, "--ty": demo.to.y } as CSSProperties}
-            aria-hidden="true"
-          >
-            <HandArt />
-          </span>
-        )}
+        {demo && <DemoHand demo={demo} />}
 
         {drops.map(({ key: k, chicken }) => (
           <span key={`drop-${k}`} className="chicken chicken--drop" style={place(chicken.x, chicken.y)}>

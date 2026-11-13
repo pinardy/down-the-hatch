@@ -82,6 +82,8 @@ export interface LevelDef {
   par: number;
   /** One line shown under the board the first time a new idea appears. */
   tip?: string;
+  /** Show a hand making the first move, until the player has cleared the level once. */
+  demo?: boolean;
 }
 
 export interface Level {
@@ -110,6 +112,7 @@ export interface Level {
   hatches: Hatch[];
   par: number;
   tip?: string;
+  demo?: boolean;
 }
 
 export interface GameState {

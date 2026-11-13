@@ -87,6 +87,16 @@ export function HatArt({ hat }: { hat: Hat }) {
           <circle cx="68" cy="4" r="4" fill="#e8577c" />
         </g>
       );
+    case "chef":
+      return (
+        <g>
+          <rect x="54" y="20" width="28" height="10" rx="2" fill="#fffdf5" stroke="#e2cfa8" strokeWidth="1.5" />
+          <circle cx="58" cy="14" r="8" fill="#fffdf5" />
+          <circle cx="68" cy="10" r="9" fill="#fffdf5" />
+          <circle cx="78" cy="14" r="8" fill="#fffdf5" />
+          <path d="M56 22 h24" stroke="#e2cfa8" strokeWidth="1.5" />
+        </g>
+      );
     case "crown":
       return (
         <g>
