@@ -80,3 +80,15 @@ export function untilText(ms: number): string {
   const h = Math.floor(minutes / 60);
   return h ? `${h}h ${minutes % 60}m` : `${minutes}m`;
 }
+
+/** The longest run of consecutive days among these YYYY-MM-DD keys. */
+export function longestStreak(days: string[]): number {
+  const numbers = [...new Set(days.map((k) => dayNumber(dayFromKey(k))))].sort((a, b) => a - b);
+  let best = 0;
+  let run = 0;
+  numbers.forEach((n, i) => {
+    run = i > 0 && n === numbers[i - 1] + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+  });
+  return best;
+}

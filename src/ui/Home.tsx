@@ -6,12 +6,24 @@ import type { Chapter } from "../game/levels";
 import type { Level } from "../game/types";
 import { unlockAudio } from "../sfx";
 import { useUpdateReady } from "../update";
-import { ClockArt, EggArt, GearArt, SoloArt, TitleArt } from "./art";
+import { ClockArt, EggArt, GearArt, HardArt, SoloArt, TitleArt } from "./art";
+import { achievements } from "./achievements";
+import { ENDLESS } from "./endless";
+import type { EndlessLevel } from "./endless";
 import { Guide } from "./Guide";
 import type { Tally } from "./rewards";
 import { rewardsAhead } from "./Settings";
 import { decodeProgress, encodeProgress, inPlayIds, mergeProgress } from "./storage";
-import type { Progress } from "./storage";
+import type { EndlessCount, Progress } from "./storage";
+
+/** Which levels the list shows: all of them, or only those with something left to win. */
+type Filter = "all" | "uncleared" | "eggs" | "star";
+const FILTERS: [Filter, string][] = [
+  ["all", "All"],
+  ["uncleared", "Not cleared"],
+  ["eggs", "Under 3 eggs"],
+  ["star", "No star"],
+];
 
 /** How many missed daily coops can still be caught up on. */
 const CATCH_UP_DAYS = 6;
@@ -35,11 +47,26 @@ interface Props {
   /** Replace all saved progress (after restoring a backup, or erasing). */
   onProgress: (p: Progress) => void;
   onEditor: () => void;
+  /** Clears of grown coops at each difficulty. */
+  endless: EndlessCount;
+  /** Grow a coop at this difficulty and play it. */
+  onEndless: (level: EndlessLevel) => void;
+  onStats: () => void;
   /** Open a home-made coop from a pasted code or link. False if it isn't one. */
   onCode: (text: string) => boolean;
 }
 
-export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
+export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, endless, onEndless, onStats, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const shows = (l: Level) => {
+    const r = progress[l.id];
+    if (filter === "uncleared") return !r;
+    if (filter === "eggs") return !r || eggsFor(r.moves, l.par) < 3;
+    if (filter === "star") return !r?.solo;
+    return true;
+  };
+  const goals = achievements(chapters, progress, endless);
+  const goalsDone = goals.filter((g) => g.have >= g.need).length;
   const levels = chapters.flatMap((c) => c.levels);
   const eggsOn = (l: Level) => (progress[l.id] ? eggsFor(progress[l.id].moves, l.par) : 0);
   const next = levels.find((l) => !progress[l.id]);
@@ -179,12 +206,37 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
         </div>
       )}
 
+      <section className="endless" aria-labelledby="endless-title">
+        <h2 id="endless-title">Endless coop</h2>
+        <p className="keeping__about">Fresh puzzles grown on the spot, as many as you like.</p>
+        <div className="endless__choices">
+          {(Object.keys(ENDLESS) as EndlessLevel[]).map((which) => (
+            <button key={which} type="button" className="endless__choice" onClick={() => onEndless(which)}>
+              <span className="endless__name">{ENDLESS[which].name}</span>
+              <span className="endless__about">{ENDLESS[which].about}</span>
+              <span className="endless__count">{endless[which] ? `${endless[which]} cleared` : "Grow one"}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="filters" role="group" aria-label="Show levels">
+        {FILTERS.map(([value, label]) => (
+          <button key={value} type="button" className={filter === value ? "chip chip--on" : "chip"} aria-pressed={filter === value} onClick={() => setFilter(value)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {filter !== "all" && !levels.some(shows) && <p className="filters__none">Nothing left here. Every level has {filter === "uncleared" ? "been cleared" : filter === "eggs" ? "all three eggs" : "a star"}.</p>}
+
       <div className="chapters">
         {chapters.map((chapter, c) => {
           const done = chapter.levels.filter((l) => progress[l.id]).length;
           const all = done === chapter.levels.length;
           const won = chapter.levels.reduce((n, l) => n + eggsOn(l), 0);
-          const isOpen = open.has(chapter.name);
+          // Filtering opens every chapter with a match and hides the rest.
+          if (filter !== "all" && !chapter.levels.some(shows)) return null;
+          const isOpen = filter !== "all" || open.has(chapter.name);
           return (
             // A finished chapter folds down to a thin row, so the list is mostly what is left to play.
             <section key={chapter.name} className={all ? "chapter chapter--done" : "chapter"}>
@@ -221,6 +273,7 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
                   <p className="chapter__blurb">{chapter.blurb}</p>
                   <ol className="level-grid">
                     {chapter.levels.map((l, i) => {
+                      if (!shows(l)) return null;
                       const best = progress[l.id];
                       const earned = eggsOn(l);
                       return (
@@ -230,10 +283,11 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
                             ref={l.index === lastPlayed ? cameFrom : undefined}
                             className={best ? "level level--done" : l === next ? "level level--next" : "level"}
                             onClick={() => play(l.index)}
-                            aria-label={`${chapter.name} ${i + 1}, ${l.name}${best ? `, cleared with ${earned} of 3 eggs${best.solo ? ", without hints" : ""}${best.clock ? ", beat the clock" : ""}` : unfinished.has(l.id) ? ", started" : ""}`}
+                            aria-label={`${chapter.name} ${i + 1}, ${l.name}${best ? `, cleared with ${earned} of 3 eggs${best.solo ? ", without hints" : ""}${best.clock ? ", beat the clock" : ""}${best.hard ? ", in hard mode" : ""}` : unfinished.has(l.id) ? ", started" : ""}`}
                           >
-                            {(best?.solo || best?.clock) && (
+                            {(best?.solo || best?.clock || best?.hard) && (
                               <span className="level__badges">
+                                {best.hard && <HardArt />}
                                 {best.clock && <ClockArt />}
                                 {best.solo && <SoloArt />}
                               </span>
@@ -290,6 +344,19 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
           </button>
         </form>
         {badCode && <p className="keeping__said keeping__said--warn">That isn’t a coop this game can read. Check that all of it was copied.</p>}
+      </section>
+
+      <section className="home__more" aria-labelledby="stats-title">
+        <h2 id="stats-title">Stats and achievements</h2>
+        <p className="keeping__about">
+          {goalsDone} of {goals.length} achievements.{" "}
+          {goals.find((g) => g.have < g.need) ? `Next up: ${goals.find((g) => g.have < g.need)!.name}, ${goals.find((g) => g.have < g.need)!.about.toLowerCase()}` : "Every one of them. Well done."}
+        </p>
+        <div className="keeping__actions">
+          <button type="button" className="btn" onClick={onStats}>
+            See your stats
+          </button>
+        </div>
       </section>
 
       <section className="home__more" aria-labelledby="more-title">

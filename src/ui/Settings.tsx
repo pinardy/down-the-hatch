@@ -56,6 +56,34 @@ export function SettingsSheet({ settings, tally, onSettings, onClose }: { settin
             </span>
           </label>
           <label className="toggle">
+            <input type="checkbox" checked={settings.hard} onChange={(e) => onSettings({ ...settings, hard: e.target.checked })} />
+            <span>
+              Hard mode
+              <small>No undo, no hints, no rewind. Only starting over. Clears earn a flame.</small>
+            </span>
+          </label>
+          <label className="toggle">
+            <input type="checkbox" checked={settings.contrast} onChange={(e) => onSettings({ ...settings, contrast: e.target.checked })} />
+            <span>
+              High contrast
+              <small>Bolder outlines and marks, so pieces stand apart.</small>
+            </span>
+          </label>
+          <label className="toggle">
+            <input type="checkbox" checked={settings.calm} onChange={(e) => onSettings({ ...settings, calm: e.target.checked })} />
+            <span>
+              Reduce motion
+              <small>Fewer and shorter animations.</small>
+            </span>
+          </label>
+          <label className="toggle">
+            <input type="checkbox" checked={settings.vibrate} onChange={(e) => onSettings({ ...settings, vibrate: e.target.checked })} />
+            <span>
+              Vibration
+              <small>A short buzz when chickens drop, on phones that can.</small>
+            </span>
+          </label>
+          <label className="toggle">
             <input type="checkbox" checked={settings.bigText} onChange={(e) => onSettings({ ...settings, bigText: e.target.checked })} />
             <span>
               Larger text

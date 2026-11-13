@@ -2226,3 +2226,321 @@ ol {
   white-space: nowrap;
   border: 0;
 }
+
+/* ── Reduce motion (the setting): the same as the device asking for it ── */
+
+html.calm .title-art__chicken,
+html.calm .hatch__count,
+html.calm .sheet,
+html.calm .sheet__card,
+html.calm .hint-ghost,
+html.calm .sheet__egg--earned,
+html.calm .sheet__milestone,
+html.calm .chicken--wanted .chicken__art,
+html.calm .hatch__body,
+html.calm .hatch__label,
+html.calm .chicken--wobble .chicken__art,
+html.calm .tile--wobble > svg,
+html.calm .growing__egg {
+  animation: none;
+}
+html.calm .burst,
+html.calm .demo-hand {
+  display: none;
+}
+html.calm .hint-runner,
+html.calm .hatch,
+html.calm .hatch--held,
+html.calm .hatch--turning,
+html.calm .gate-art__bars {
+  transition: none;
+}
+html.calm .chicken--drop .chicken__art,
+html.calm .hatch--shut {
+  animation-duration: 160ms;
+}
+
+/* ── High contrast: bolder outlines on everything that matters, darker soft text ── */
+
+html.contrast {
+  --text-soft: var(--text);
+  --line: rgba(43, 26, 18, 0.55);
+}
+/* One outline round the whole hatch, not each square, so joined squares show no seam. */
+html.contrast .hatch__body {
+  filter: drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000);
+}
+html.contrast .chicken__art,
+html.contrast .floor-art,
+html.contrast .key__art {
+  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);
+}
+html.contrast .tile--alt {
+  background: color-mix(in srgb, var(--floor-alt) 80%, #000);
+}
+html.contrast .hatch__label {
+  text-shadow: 0 0 3px #000, 0 0 2px #000;
+}
+html.contrast .hatch__mark {
+  filter: drop-shadow(0 0 1px #000);
+}
+
+/* ── Hard mode ── */
+
+.hard-badge {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+.play__bar--hard {
+  grid-template-columns: 1fr 2fr;
+  align-items: center;
+}
+.play__hard {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+/* ── Endless coop ── */
+
+.endless {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.endless h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.endless__choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.endless__choice {
+  font: inherit;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.6rem 0.4rem;
+  text-align: center;
+  background: var(--tile);
+  border: 0;
+  border-radius: 1rem;
+  box-shadow: 0 4px 0 var(--line);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.endless__choice:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.endless__name {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.endless__about {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-soft);
+}
+.endless__count {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--straw);
+  border-radius: 999px;
+  padding: 0.1em 0.7em;
+}
+
+/* While a coop grows: an egg that rocks. */
+.growing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.growing__egg {
+  width: 3rem;
+  height: 3.6rem;
+  margin-bottom: 0.6rem;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: var(--cream);
+  box-shadow: inset -6px -4px 0 var(--cream-deep), 0 0 0 3px var(--ink);
+  animation: rock 900ms ease-in-out infinite alternate;
+  transform-origin: 50% 90%;
+}
+@keyframes rock {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(12deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .growing__egg {
+    animation: none;
+  }
+}
+
+/* ── Level list filters ── */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: -1.2rem;
+}
+.filters__none {
+  color: var(--text-soft);
+  text-align: center;
+}
+
+/* ── Stats ── */
+
+.stats-page {
+  overflow-y: auto;
+  padding: 1rem 1.1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+.stats-page__top {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.stats-page__top h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--title);
+}
+.stats-page h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.stats-page__count {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+.stats-tile {
+  padding: 0.6rem 0.5rem;
+  border-radius: 0.9rem;
+  background: var(--tile);
+  text-align: center;
+}
+.stats-tile dd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stats-tile dt {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  line-height: 1.2;
+}
+.stats-tile .egg {
+  width: 0.9rem;
+  height: 1.1rem;
+}
+.stats-chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.stats-chapters li {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+.stats-chapters__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-chapters__bar,
+.goal__bar {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.stats-chapters__bar span,
+.goal__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--straw-deep);
+}
+.stats-chapters__eggs {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.goal {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.9rem;
+  background: var(--tile);
+}
+.goal__mark {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.goal--done .goal__mark {
+  background: var(--straw);
+  box-shadow: none;
+}
+.goal__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.goal__name {
+  font-weight: 600;
+}
+.goal__about {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+.goal__bar {
+  margin-top: 0.25rem;
+}

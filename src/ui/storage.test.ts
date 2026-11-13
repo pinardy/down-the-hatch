@@ -4,7 +4,7 @@ import type { Progress } from "./storage";
 
 describe("record flags", () => {
   it("carry the clock and late flags through a backup code", () => {
-    const progress: Progress = { a: { moves: 3, clock: true }, "daily-2026-11-10": { moves: 9, late: true, solo: true } };
+    const progress: Progress = { a: { moves: 3, clock: true }, b: { moves: 5, hard: true, solo: true }, "daily-2026-11-10": { moves: 9, late: true, solo: true } };
     expect(decodeProgress(encodeProgress(progress))).toEqual(progress);
   });
   it("still read old codes, where 1 meant solo", () => {

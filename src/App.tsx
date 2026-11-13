@@ -1,24 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dailyLevel, dayFromKey, dayKey } from "./game/daily";
 import { eggsFor } from "./game/engine";
 import { CHAPTERS, LEVELS } from "./game/levels";
 import { decodeLevel, encodeLevel, findCode } from "./game/share";
 import type { SharedLevel } from "./game/share";
-import { setSoundEnabled } from "./sfx";
+import { setSoundEnabled, setVibrationEnabled } from "./sfx";
+import { ENDLESS, nextCoop, prepareCoop } from "./ui/endless";
+import type { EndlessLevel } from "./ui/endless";
+import { Stats } from "./ui/Stats";
 import { Editor, loadDraft } from "./ui/Editor";
 import { Home } from "./ui/Home";
 import { Play } from "./ui/Play";
 import { HatContext, wearing } from "./ui/rewards";
 import type { Reward, Tally } from "./ui/rewards";
 import { SettingsSheet } from "./ui/Settings";
-import { better, loadProgress, loadSettings, saveProgress, saveSettings } from "./ui/storage";
+import { better, loadEndless, loadProgress, loadSettings, saveEndless, saveProgress, saveSettings } from "./ui/storage";
 import type { Cleared, Progress, Settings } from "./ui/storage";
 
 /**
  * What is on screen. Each kind but the list gets its own entry in the browser's history, so the
  * phone's back button steps back through them instead of leaving the game.
  */
-export type Screen = { kind: "list" } | { kind: "level"; index: number } | { kind: "daily"; /** A past day's board, YYYY-MM-DD; today's when absent. */ day?: string } | { kind: "shared"; code: string; /** Opened from the editor to test it. */ test?: boolean } | { kind: "editor" };
+export type Screen = { kind: "list" } | { kind: "level"; index: number } | { kind: "daily"; /** A past day's board, YYYY-MM-DD; today's when absent. */ day?: string } | { kind: "shared"; code: string; /** Opened from the editor to test it. */ test?: boolean } | { kind: "editor" } | { kind: "stats" } | { kind: "endless"; level: EndlessLevel; code: string };
 /** What a level list button asks for: a numbered level, today's daily coop, or an earlier day's (YYYY-MM-DD). */
 export type Playing = number | "daily" | { day: string };
 
@@ -31,7 +34,8 @@ function screenInHistory(): Screen {
     if (!s) return LIST;
     if (s.kind === "level" && LEVELS[s.index]) return s;
     if (s.kind === "daily" && (s.day === undefined || /^\d{4}-\d{2}-\d{2}$/.test(s.day))) return s;
-    if (s.kind === "editor") return s;
+    if (s.kind === "editor" || s.kind === "stats") return s;
+    if (s.kind === "endless" && s.level in ENDLESS && typeof s.code === "string") return s;
     if (s.kind === "shared" && typeof s.code === "string") return s;
   } catch {
     /* fall through */
@@ -92,13 +96,21 @@ export default function App() {
   }, [today]);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
+  useEffect(() => setVibrationEnabled(settings.vibrate), [settings.vibrate]);
   // The stylesheet reads these off the root element.
   useEffect(() => {
     const root = document.documentElement;
     if (settings.theme === "system") delete root.dataset.theme;
     else root.dataset.theme = settings.theme;
     root.classList.toggle("big-text", settings.bigText);
-  }, [settings.theme, settings.bigText]);
+    root.classList.toggle("contrast", settings.contrast);
+    root.classList.toggle("calm", settings.calm);
+  }, [settings.theme, settings.bigText, settings.contrast, settings.calm]);
+
+  // Endless mode: clears at each difficulty, and the coop being grown while the player waits.
+  const [endless, setEndless] = useState(loadEndless);
+  const [growing, setGrowing] = useState<EndlessLevel | null>(null);
+  const growTicket = useRef(0);
 
   const tally = tallyOf(progress);
   const board = wearing("board", settings.board, tally, "barn");
@@ -174,9 +186,9 @@ export default function App() {
     }, 400);
   };
 
-  const sharedLevel = useMemo(() => (screen.kind === "shared" ? decodeLevel(screen.code) : null), [screen]);
+  const sharedLevel = useMemo(() => (screen.kind === "shared" || screen.kind === "endless" ? decodeLevel(screen.code) : null), [screen]);
   useEffect(() => {
-    if (screen.kind === "shared" && !sharedLevel) {
+    if ((screen.kind === "shared" || screen.kind === "endless") && !sharedLevel) {
       try {
         window.history.replaceState({ screen: LIST }, "", location.pathname + location.search);
       } catch {
@@ -192,11 +204,20 @@ export default function App() {
   const pastDaily = useMemo(() => (pastDay ? dailyLevel(dayFromKey(pastDay)) : null), [pastDay]);
   const level = screen.kind === "level" ? LEVELS[screen.index] : screen.kind === "daily" ? (pastDaily ?? daily) : sharedLevel;
   const levelId = screen.kind === "level" || screen.kind === "daily" ? level?.id : undefined;
+  const endlessLevel = screen.kind === "endless" ? screen.level : null;
   const cleared = useCallback(
-    (moves: number, solo: boolean, clock: boolean) => {
+    (moves: number, solo: boolean, clock: boolean, hard: boolean) => {
+      if (endlessLevel) {
+        setEndless((c) => {
+          const next = { ...c, [endlessLevel]: c[endlessLevel] + 1 };
+          saveEndless(next);
+          return next;
+        });
+        return;
+      }
       // Home-made coops are played for fun: they leave no record.
       if (!levelId) return;
-      const record: Cleared = { moves, ...(solo ? { solo } : {}), ...(clock ? { clock } : {}), ...(pastDay ? { late: true } : {}) };
+      const record: Cleared = { moves, ...(solo ? { solo } : {}), ...(clock ? { clock } : {}), ...(pastDay ? { late: true } : {}), ...(hard ? { hard } : {}) };
       setProgress((p) => {
         const was = p[levelId];
         const now = better(was, record);
@@ -206,8 +227,30 @@ export default function App() {
         return next;
       });
     },
-    [levelId, pastDay],
+    [levelId, pastDay, endlessLevel],
   );
+
+  /** Grow a coop at this difficulty and play it. `replace` when going straight on from another. */
+  const playEndless = (which: EndlessLevel, replace = false) => {
+    const ticket = ++growTicket.current;
+    setGrowing(which);
+    nextCoop(which).then(
+      (code) => {
+        if (growTicket.current !== ticket) return; // cancelled
+        setGrowing(null);
+        go({ kind: "endless", level: which, code }, replace);
+      },
+      () => {
+        if (growTicket.current !== ticket) return;
+        setGrowing(null);
+        setNotice("Couldn’t grow a coop this time. Try again.");
+      },
+    );
+  };
+  // Once a grown coop is on screen, start growing the next one.
+  useEffect(() => {
+    if (endlessLevel) prepareCoop(endlessLevel);
+  }, [endlessLevel]);
 
   /** Put on a reward that has just been unlocked. */
   const wear = (r: Reward) => changeSettings(r.kind === "board" ? { ...settings, board: r.id as Settings["board"] } : { ...settings, hat: r.id as Settings["hat"] });
@@ -220,7 +263,9 @@ export default function App() {
   };
 
   let view;
-  if (screen.kind === "editor") {
+  if (screen.kind === "stats") {
+    view = <Stats chapters={CHAPTERS} progress={progress} tally={tally} endless={endless} today={today} onBack={back} />;
+  } else if (screen.kind === "editor") {
     view = <Editor draft={draft} onDraft={setDraft} onBack={back} onPlay={(s: SharedLevel) => go({ kind: "shared", code: encodeLevel(s), test: true })} />;
   } else if (!level) {
     view = (
@@ -232,6 +277,9 @@ export default function App() {
         today={today}
         lastPlayed={lastPlayed}
         notice={notice}
+        endless={endless}
+        onEndless={(which) => playEndless(which)}
+        onStats={() => go({ kind: "stats" })}
         onPlay={play}
         onSettings={() => setSettingsOpen(true)}
         onProgress={changeProgress}
@@ -250,12 +298,12 @@ export default function App() {
     const finishesGame = firstClear && othersDone(LEVELS) ? { levels: LEVELS.length } : null;
     view = (
       <Play
-        key={level.id + (screen.kind === "shared" ? screen.code : "")}
+        key={level.id + (screen.kind === "shared" || screen.kind === "endless" ? screen.code : "")}
         level={level}
-        where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : level.chapter}
+        where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : screen.kind === "endless" ? `Endless coop, ${ENDLESS[screen.level].name.toLowerCase()}` : level.chapter}
         best={levelId ? progress[levelId] : undefined}
         saveId={levelId}
-        shareLink={screen.kind === "shared" && !screen.test ? `${location.origin}${location.pathname}#play=${screen.code}` : undefined}
+        shareLink={(screen.kind === "shared" && !screen.test) || screen.kind === "endless" ? `${location.origin}${location.pathname}#play=${screen.code}` : undefined}
         finishesChapter={finishesChapter}
         finishesGame={finishesGame}
         nextChapter={nextChapter && nextChapter !== chapter ? nextChapter.name : null}
@@ -265,7 +313,8 @@ export default function App() {
         tally={tally}
         backLabel={screen.kind === "shared" && screen.test ? "Editor" : "Levels"}
         onCleared={cleared}
-        onNext={next === null ? null : () => play(next)}
+        onNext={screen.kind === "endless" ? () => playEndless(screen.level, true) : next === null ? null : () => play(next)}
+        nextLabel={screen.kind === "endless" ? "Next coop" : undefined}
         onLevels={back}
         onSettings={() => setSettingsOpen(true)}
         onWear={wear}
@@ -275,6 +324,27 @@ export default function App() {
   return (
     <HatContext.Provider value={hat}>
       {view}
+      {growing && (
+        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="growing-title">
+          <div className="sheet__card growing">
+            <div className="growing__egg" aria-hidden="true" />
+            <h2 id="growing-title">Growing a coop…</h2>
+            <p>A fresh {ENDLESS[growing].name.toLowerCase()} puzzle, checked so it can be cleared. It takes a few seconds.</p>
+            <div className="sheet__actions">
+              <button
+                type="button"
+                className="btn btn--quiet"
+                onClick={() => {
+                  growTicket.current++;
+                  setGrowing(null);
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {settingsOpen && <SettingsSheet settings={settings} tally={tally} onSettings={changeSettings} onClose={() => setSettingsOpen(false)} />}
     </HatContext.Provider>
   );

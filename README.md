@@ -52,11 +52,16 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 ## ✨ More to play for
 
 - 📅 **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday. Keep a 🔥 streak by playing on consecutive days. It opens once the tutorial is done, the last six days can be caught up on (they don't count towards the streak), and you can share your result without giving the board away.
+- ♾️ **Endless coop:** fresh puzzles grown on your phone on the spot, Easy, Medium or Hard, as many as you like. Each is checked so it can be cleared, and can be shared as a link.
 - ⭐ **Stars:** clear a level without a hint and its tile gets a star.
 - 🎬 **Best solution:** finish over par and watch the fewest-moves solution play out.
 - ⏱️ **Race the clock:** an optional countdown; beat it for a clock badge on the level.
+- 🔥 **Hard mode:** no undo, no hints, no rewind. Clear a level that way and it earns a flame.
+- 🏆 **Stats and achievements:** levels, eggs, streaks and endless clears at a glance, and fifteen goals to work towards.
+- 🔍 **Filters:** show only the levels not yet cleared, short of three eggs, or without a star.
 - 🎩 **Rewards:** eggs, stars and daily coops unlock board themes and hats for the chickens. Settings and rewards are a tap away on every screen.
 - 🛠️ **Level editor:** build your own coop. The game checks it can be cleared, sets its par, and gives you a link to send to anyone.
+- ♿ **Accessibility:** larger text, high contrast, reduced motion, vibration on or off, and a spoken description of every board for screen readers.
 - 🔐 **Backups:** progress is saved in your browser. A backup code (under *Your progress* on the level list) carries it to another phone or browser.
 
 ## 🧑‍💻 Development

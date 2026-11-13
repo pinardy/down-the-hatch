@@ -105,7 +105,14 @@ export const sfx = {
   },
 };
 
+let vibrate = true;
+
+export function setVibrationEnabled(on: boolean) {
+  vibrate = on;
+}
+
 export function buzz(ms: number) {
+  if (!vibrate) return;
   try {
     navigator.vibrate?.(ms);
   } catch {

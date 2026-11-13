@@ -14,6 +14,14 @@ export interface Settings {
   /** Looks bought with eggs (see rewards.ts). */
   board: BoardTheme;
   hat: Hat;
+  /** Hard mode: no undo, no hints, no rewind. Clears earn a flame. */
+  hard: boolean;
+  /** Stronger outlines and contrast, for telling pieces apart. */
+  contrast: boolean;
+  /** Fewer and shorter animations, whatever the device says. */
+  calm: boolean;
+  /** Short buzzes when chickens drop and boards break. */
+  vibrate: boolean;
 }
 
 /** What is remembered about a level once it has been cleared. */
@@ -26,11 +34,13 @@ export interface Cleared {
   clock?: boolean;
   /** A daily coop only ever cleared after its own day was over. It doesn't count towards the streak. */
   late?: boolean;
+  /** Cleared at least once in hard mode: no undo, hints or rewind. */
+  hard?: boolean;
 }
 
 /** A record with only the flags that are set, so equal records compare equal. */
-function record(moves: number, solo?: boolean, clock?: boolean, late?: boolean): Cleared {
-  return { moves, ...(solo ? { solo: true } : {}), ...(clock ? { clock: true } : {}), ...(late ? { late: true } : {}) };
+function record(moves: number, solo?: boolean, clock?: boolean, late?: boolean, hard?: boolean): Cleared {
+  return { moves, ...(solo ? { solo: true } : {}), ...(clock ? { clock: true } : {}), ...(late ? { late: true } : {}), ...(hard ? { hard: true } : {}) };
 }
 
 /** Keyed by level id (and by `daily-YYYY-MM-DD` for the daily coop). */
@@ -64,7 +74,7 @@ const isId = (v: string) => /^[a-z0-9-]{1,60}$/.test(v);
 
 export function loadSettings(): Settings {
   const saved = read(SETTINGS_KEY);
-  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", hard: false, contrast: false, calm: false, vibrate: true, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
   if (s.theme !== "light" && s.theme !== "dark") s.theme = "system";
   return s;
 }
@@ -76,7 +86,7 @@ function tidy(raw: unknown): Progress {
   if (!isObject(raw)) return out;
   for (const [id, v] of Object.entries(raw)) {
     if (!isId(id) || !isObject(v) || !isMoves(v.moves)) continue;
-    out[id] = record(v.moves, v.solo === true, v.clock === true, v.late === true);
+    out[id] = record(v.moves, v.solo === true, v.clock === true, v.late === true, v.hard === true);
   }
   return out;
 }
@@ -102,8 +112,8 @@ export const saveProgress = (p: Progress) => write(PROGRESS_KEY, p);
 
 /** The better of two records for the same level: fewest moves, solo or on the clock if either was, late only if both were. */
 export function better(a: Cleared | undefined, b: Cleared): Cleared {
-  if (!a) return record(b.moves, b.solo, b.clock, b.late);
-  return record(Math.min(a.moves, b.moves), a.solo || b.solo, a.clock || b.clock, a.late && b.late);
+  if (!a) return record(b.moves, b.solo, b.clock, b.late, b.hard);
+  return record(Math.min(a.moves, b.moves), a.solo || b.solo, a.clock || b.clock, a.late && b.late, a.hard || b.hard);
 }
 
 /** Combine two sets of progress, keeping the better record for every level. Neither loses anything. */
@@ -116,14 +126,14 @@ export function mergeProgress(mine: Progress, theirs: Progress): Progress {
 // ── Backup codes ──
 // Progress as one line of text that can be copied out of one browser and pasted into another.
 // "DTH1." then base64url of a compact JSON object: { id: moves }, or { id: [moves, flags] } when
-// any flag is set: 1 solo, 2 late, 4 on the clock. Older codes only ever used [moves, 1].
+// any flag is set: 1 solo, 2 late, 4 on the clock, 8 hard mode. Older codes only ever used [moves, 1].
 
 const CODE_PREFIX = "DTH1.";
 
 export function encodeProgress(progress: Progress): string {
   const compact: Record<string, number | [number, number]> = {};
   for (const [id, r] of Object.entries(progress)) {
-    const flags = (r.solo ? 1 : 0) | (r.late ? 2 : 0) | (r.clock ? 4 : 0);
+    const flags = (r.solo ? 1 : 0) | (r.late ? 2 : 0) | (r.clock ? 4 : 0) | (r.hard ? 8 : 0);
     compact[id] = flags ? [r.moves, flags] : r.moves;
   }
   return CODE_PREFIX + btoa(JSON.stringify(compact)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -141,7 +151,7 @@ export function decodeProgress(code: string): Progress | null {
       const moves = Array.isArray(v) ? v[0] : v;
       if (!isId(id) || !isMoves(moves)) return null;
       const flags = Array.isArray(v) && Number.isInteger(v[1]) ? (v[1] as number) : 0;
-      out[id] = record(moves, (flags & 1) !== 0, (flags & 4) !== 0, (flags & 2) !== 0);
+      out[id] = record(moves, (flags & 1) !== 0, (flags & 4) !== 0, (flags & 2) !== 0, (flags & 8) !== 0);
     }
     return out;
   } catch {
@@ -200,3 +210,17 @@ export function inPlayIds(): Set<string> {
   const all = read(IN_PLAY_KEY);
   return new Set(isObject(all) ? Object.keys(all) : []);
 }
+
+// ── Endless mode ──
+// How many grown coops have been cleared at each difficulty. Kept apart from level progress:
+// grown coops have no ids, and backup codes carry only level progress.
+
+const ENDLESS_KEY = "down-the-hatch:endless:v1";
+export type EndlessCount = { easy: number; medium: number; hard: number };
+
+export function loadEndless(): EndlessCount {
+  const saved = read(ENDLESS_KEY);
+  const n = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v >= 0 ? v : 0);
+  return isObject(saved) ? { easy: n(saved.easy), medium: n(saved.medium), hard: n(saved.hard) } : { easy: 0, medium: 0, hard: 0 };
+}
+export const saveEndless = (c: EndlessCount) => write(ENDLESS_KEY, c);
