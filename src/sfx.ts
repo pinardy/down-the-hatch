@@ -1,7 +1,26 @@
-// Tiny synthesized sound effects, generated with the Web Audio API so there is nothing to download.
+// Tiny synthesized sound effects and a little background tune, generated with the Web Audio API
+// so there is nothing to download. Everything goes through one master volume.
 
 let ctx: AudioContext | null = null;
 let enabled = true;
+let master: GainNode | null = null;
+let volume = 0.7;
+
+/** Where every sound goes: the master volume, made on first use. */
+function out(): AudioNode {
+  if (!master) {
+    master = ctx!.createGain();
+    master.gain.value = volume;
+    master.connect(ctx!.destination);
+  }
+  return master;
+}
+
+/** Overall loudness, from 0 to 1, for effects and music alike. */
+export function setVolume(v: number) {
+  volume = Math.max(0, Math.min(1, v));
+  if (ctx && master) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
+}
 
 export function setSoundEnabled(on: boolean) {
   enabled = on;
@@ -14,6 +33,7 @@ export function unlockAudio() {
     if (!Ctor) return;
     ctx ??= new Ctor();
     if (ctx.state === "suspended") void ctx.resume();
+    startMusic();
   } catch {
     ctx = null;
   }
@@ -30,9 +50,110 @@ function tone(wave: OscillatorType, from: number, to: number, dur: number, gain:
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g).connect(ctx.destination);
+  osc.connect(g).connect(out());
   osc.start(t0);
   osc.stop(t0 + dur + 0.03);
+}
+
+// ── Music ──
+// A gentle loop in C major: a bass on the first and third beats, and a plucked tune over the
+// chords C, Am, F, G, one bar each. The tune is two four-bar phrases, made up afresh from a
+// pentatonic scale each time the music starts, so it doesn't wear thin.
+
+const BPM = 96;
+const EIGHTH = 60 / BPM / 2;
+/** Chord roots (MIDI) and their tones, one per bar. */
+const BARS = [
+  { root: 48, tones: [60, 64, 67] }, // C
+  { root: 45, tones: [57, 60, 64] }, // Am
+  { root: 41, tones: [53, 57, 60] }, // F
+  { root: 43, tones: [55, 59, 62] }, // G
+];
+const SCALE = [72, 74, 76, 79, 81, 84]; // C D E G A C, an octave up
+const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+
+let musicOn = false;
+let timer: number | null = null;
+let musicGain: GainNode | null = null;
+let nextTime = 0;
+let stepAt = 0;
+let tune: (number | null)[] = [];
+
+/** Two four-bar phrases of eighth notes: chord tones on strong beats, scale steps between, some rests. */
+function compose(): (number | null)[] {
+  const phrase = () =>
+    BARS.flatMap((bar) =>
+      Array.from({ length: 8 }, (_, i) => {
+        if (Math.random() < (i % 2 ? 0.55 : 0.25)) return null;
+        if (i % 4 === 0) return bar.tones[Math.floor(Math.random() * 3)] + 12;
+        return SCALE[Math.floor(Math.random() * SCALE.length)];
+      }),
+    );
+  const a = phrase();
+  const b = phrase();
+  return [...a, ...b, ...a, ...b.slice(0, 24), ...a.slice(24)];
+}
+
+function pluck(midi: number, at: number, dur: number, wave: OscillatorType, gain: number) {
+  const osc = ctx!.createOscillator();
+  const g = ctx!.createGain();
+  osc.type = wave;
+  osc.frequency.setValueAtTime(hz(midi), at);
+  g.gain.setValueAtTime(0.0001, at);
+  g.gain.exponentialRampToValueAtTime(gain, at + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  osc.connect(g).connect(musicGain!);
+  osc.start(at);
+  osc.stop(at + dur + 0.05);
+}
+
+/** Line up the notes due in the next moment. Runs every 25 ms while the music plays. */
+function schedule() {
+  if (!ctx || !musicGain) return;
+  while (nextTime < ctx.currentTime + 0.15) {
+    const step = stepAt % tune.length;
+    const bar = BARS[Math.floor(step / 8) % BARS.length];
+    if (step % 4 === 0) pluck(bar.root, nextTime, EIGHTH * 3.5, "triangle", 0.16);
+    const note = tune[step];
+    if (note !== null) pluck(note, nextTime, EIGHTH * 1.6, "sine", 0.09);
+    nextTime += EIGHTH;
+    stepAt++;
+  }
+}
+
+function startMusic() {
+  if (!ctx || !musicOn || timer !== null || document.hidden) return;
+  musicGain = ctx.createGain();
+  musicGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  musicGain.gain.exponentialRampToValueAtTime(0.55, ctx.currentTime + 1.5);
+  musicGain.connect(out());
+  tune = compose();
+  nextTime = ctx.currentTime + 0.1;
+  stepAt = 0;
+  timer = window.setInterval(schedule, 25);
+}
+
+function stopMusic() {
+  if (timer !== null) window.clearInterval(timer);
+  timer = null;
+  const fading = musicGain;
+  musicGain = null;
+  if (ctx && fading) {
+    fading.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.15);
+    window.setTimeout(() => fading.disconnect(), 800);
+  }
+}
+
+/** Background music on or off. It starts at the first tap, once the browser allows sound. */
+export function setMusicEnabled(on: boolean) {
+  musicOn = on;
+  if (on) startMusic();
+  else stopMusic();
+}
+
+// No music while the game is out of sight.
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => (document.hidden ? stopMusic() : startMusic()));
 }
 
 let lastSlide = 0;

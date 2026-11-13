@@ -10,10 +10,10 @@ import { Board } from "./Board";
 import type { BumpFx, DemoFx, DropFx, HintFx, ShutFx } from "./Board";
 import { ClockArt, EggArt, GearArt, HardArt, PAINT, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
-import { Guide } from "./Guide";
+import { Guide, specialPieces } from "./Guide";
 import { newlyUnlocked, rewardName } from "./rewards";
 import type { Reward, Tally } from "./rewards";
-import { loadInPlay, saveInPlay } from "./storage";
+import { loadInPlay, loadMet, saveInPlay, saveMet } from "./storage";
 import type { Cleared, InPlay, Settings } from "./storage";
 
 interface Props {
@@ -195,7 +195,27 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const [bump, setBump] = useState<BumpFx | null>(null);
   /** The refusal already shown for this grab, so pushing on against it doesn't repeat it. */
   const bumped = useRef<string | null>(null);
-  const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(() => (resumed ? { text: "Picked up where you left off. Start over for a fresh go.", warn: false } : null));
+  // Pieces on this board the player hasn't met before: the first time, say what they do. A level
+  // with its own tip is already explaining its new piece, so it needs no more.
+  const [newPieces] = useState(() => {
+    const met = loadMet() ?? new Set<string>();
+    return level.tip ? [] : specialPieces(level).filter((p) => !met.has(p.key));
+  });
+  // Once seen, they're met. (Recorded here, not above: working out the state must change nothing.)
+  useEffect(() => {
+    const met = loadMet() ?? new Set<string>();
+    const pieces = specialPieces(level);
+    if (pieces.some((p) => !met.has(p.key))) saveMet(new Set([...met, ...pieces.map((p) => p.key)]));
+  }, [level]);
+  const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(() =>
+    resumed
+      ? { text: "Picked up where you left off. Start over for a fresh go.", warn: false }
+      : newPieces.length === 1
+        ? { text: `New here, ${newPieces[0].name.toLowerCase()}: ${newPieces[0].what}`, warn: false }
+        : newPieces.length > 1
+          ? { text: `New here: ${newPieces.map((p) => p.name.toLowerCase()).join(", ").replace(/, ([^,]*)$/, " and $1")}. Tap ? to see what they do.`, warn: false }
+          : null,
+  );
   /** The level can no longer be won from here: Hint gives way to Rewind. */
   const [stuck, setStuck] = useState(false);
   /** The piece guide is open. */

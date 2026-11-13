@@ -44,9 +44,23 @@ export function SettingsSheet({ settings, tally, onSettings, onClose }: { settin
           <label className="toggle">
             <input type="checkbox" checked={settings.sound} onChange={(e) => onSettings({ ...settings, sound: e.target.checked })} />
             <span>
-              Sound
+              Sound effects
               <small>Clucks, thunks and a fanfare.</small>
             </span>
+          </label>
+          <label className="toggle">
+            <input type="checkbox" checked={settings.music} onChange={(e) => onSettings({ ...settings, music: e.target.checked })} />
+            <span>
+              Music
+              <small>A gentle tune, made up afresh each time it starts.</small>
+            </span>
+          </label>
+          <label className="toggle toggle--slider" htmlFor="volume">
+            <span>
+              Volume
+              <small>{settings.volume === 0 ? "Silent" : `${settings.volume}%`}, for music and effects together.</small>
+            </span>
+            <input id="volume" type="range" min={0} max={100} step={5} value={settings.volume} onChange={(e) => onSettings({ ...settings, volume: Number(e.target.value) })} />
           </label>
           <label className="toggle">
             <input type="checkbox" checked={settings.clock} onChange={(e) => onSettings({ ...settings, clock: e.target.checked })} />

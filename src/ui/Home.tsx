@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { ReactElement } from "react";
 import type { Playing } from "../App";
 import { dailyId, dailyStreak, dayFromKey, dayKey, earlierDays, msUntilTomorrow, untilText } from "../game/daily";
 import { eggsFor } from "../game/engine";
@@ -13,8 +14,53 @@ import type { EndlessLevel } from "./endless";
 import { Guide } from "./Guide";
 import type { Tally } from "./rewards";
 import { rewardsAhead } from "./Settings";
-import { decodeProgress, encodeProgress, inPlayIds, mergeProgress } from "./storage";
-import type { EndlessCount, Progress } from "./storage";
+import { decodeBackup, encodeProgress, inPlayIds, mergeEndless, mergeProgress } from "./storage";
+import type { CurrentCoops, EndlessCount, Progress } from "./storage";
+
+/** The four parts of the main screen, chosen from the bar along the bottom. */
+export type HomeTab = "levels" | "daily" | "endless" | "you";
+
+function LevelsIcon() {
+  return (
+    <svg className="tabs__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="3" width="7.5" height="7.5" rx="2" />
+      <rect x="13.5" y="3" width="7.5" height="7.5" rx="2" />
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="2" />
+      <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2" />
+    </svg>
+  );
+}
+function DailyIcon() {
+  return (
+    <svg className="tabs__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <path d="M3 10 h18" className="tabs__cut" />
+      <rect x="7" y="2.5" width="2.4" height="5" rx="1.2" />
+      <rect x="14.6" y="2.5" width="2.4" height="5" rx="1.2" />
+    </svg>
+  );
+}
+function EndlessIcon() {
+  return (
+    <svg className="tabs__icon tabs__icon--line" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 12 c-2.5 -3.5 -7 -4 -8.5 -1 c-1.2 2.6 1 5 3.5 5 c2 0 3.4 -1.6 5 -4 c1.6 -2.4 3 -4 5 -4 c2.5 0 4.7 2.4 3.5 5 c-1.5 3 -6 2.5 -8.5 -1 z" />
+    </svg>
+  );
+}
+function YouIcon() {
+  return (
+    <svg className="tabs__icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21 c0 -4.5 3.6 -7.5 8 -7.5 s8 3 8 7.5 z" />
+    </svg>
+  );
+}
+const TABS: [HomeTab, string, () => ReactElement][] = [
+  ["levels", "Levels", LevelsIcon],
+  ["daily", "Daily", DailyIcon],
+  ["endless", "Endless", EndlessIcon],
+  ["you", "You", YouIcon],
+];
 
 /** Which levels the list shows: all of them, or only those with something left to win. */
 type Filter = "all" | "uncleared" | "eggs" | "star";
@@ -49,14 +95,21 @@ interface Props {
   onEditor: () => void;
   /** Clears of grown coops at each difficulty. */
   endless: EndlessCount;
-  /** Grow a coop at this difficulty and play it. */
-  onEndless: (level: EndlessLevel) => void;
+  /** Play a coop at this difficulty: the unfinished one, or a `fresh` one. */
+  onEndless: (level: EndlessLevel, fresh: boolean) => void;
+  /** The unfinished coop at each difficulty, if any. */
+  endlessCurrent: CurrentCoops;
+  /** Replace the endless clears (after restoring a backup, or erasing). */
+  onEndlessCount: (c: EndlessCount) => void;
+  /** Which tab is showing, and a way to change it. */
+  tab: HomeTab;
+  onTab: (tab: HomeTab) => void;
   onStats: () => void;
   /** Open a home-made coop from a pasted code or link. False if it isn't one. */
   onCode: (text: string) => boolean;
 }
 
-export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, endless, onEndless, onStats, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
+export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, endless, endlessCurrent, onEndless, onEndlessCount, tab, onTab, onStats, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const shows = (l: Level) => {
     const r = progress[l.id];
@@ -119,11 +172,33 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
   const [pasted, setPasted] = useState("");
   const [badCode, setBadCode] = useState(false);
 
+  // A new tab starts at its top. (Not on the way in: then the list scrolls to the level just played.)
+  const mainRef = useRef<HTMLElement>(null);
+  const shownTab = useRef(tab);
+  useEffect(() => {
+    if (shownTab.current === tab) return;
+    shownTab.current = tab;
+    mainRef.current?.scrollTo(0, 0);
+  }, [tab]);
+
+  const growEndless = (which: EndlessLevel, fresh: boolean) => {
+    unlockAudio();
+    onEndless(which, fresh);
+  };
+
   return (
-    <main className="screen home">
+    <main className="screen home" ref={mainRef}>
       <button type="button" className="btn btn--quiet home__gear" onClick={onSettings} aria-label="Settings and rewards">
         <GearArt />
       </button>
+      {notice && (
+        <p className="home__notice" role="alert">
+          {notice}
+        </p>
+      )}
+
+      {tab === "levels" && (
+        <>
       <header className={returning ? "home__hero home__hero--compact" : "home__hero"}>
         {!returning && <TitleArt />}
         <h1 className="home__title">
@@ -137,89 +212,6 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
           {cleared} of {levels.length} levels cleared, {eggs} of {levels.length * 3} eggs
         </p>
       </header>
-
-      {notice && (
-        <p className="home__notice" role="alert">
-          {notice}
-        </p>
-      )}
-
-      {dailyOpen ? (
-        <section className="daily-box" aria-label="Daily coop">
-          <button type="button" className={dailyBest ? "daily daily--done" : "daily"} onClick={() => play("daily")}>
-            <span className="daily__text">
-              <span className="daily__title">
-                Daily coop
-                <span className="daily__date">{daily.name}</span>
-              </span>
-              <span className="daily__about">
-                {dailyBest ? (
-                  <>
-                    Cleared in {dailyBest.moves} {dailyBest.moves === 1 ? "move" : "moves"}
-                    <span className="level__eggs" role="img" aria-label={`${eggsOn(daily)} of 3 eggs`}>
-                      {[1, 2, 3].map((n) => (
-                        <EggArt key={n} earned={n <= eggsOn(daily)} />
-                      ))}
-                    </span>
-                  </>
-                ) : (
-                  `A new board every day, harder as the week goes on. Par ${daily.par}.`
-                )}
-              </span>
-              {dailyBest && <span className="daily__about">Next board in {untilText(msUntilTomorrow(new Date(now)))}.</span>}
-              {streak > 1 && <span className="daily__streak">{streak} days in a row</span>}
-            </span>
-            <span className="daily__go">{dailyBest ? "Again" : unfinished.has(daily.id) ? "Resume" : "Play"}</span>
-          </button>
-          <div className="catch-up">
-            <span className="catch-up__label">Earlier boards</span>
-            <ol className="catch-up__days">
-              {missed.map((d) => {
-                const rec = progress[d.id];
-                return (
-                  <li key={d.key}>
-                    <button
-                      type="button"
-                      className={rec ? "catch-up__day catch-up__day--done" : "catch-up__day"}
-                      onClick={() => play({ day: d.key })}
-                      aria-label={`${d.date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}${rec ? `, cleared in ${rec.moves} moves${rec.late ? ", late" : ""}` : unfinished.has(d.id) ? ", started" : ", not played"}`}
-                    >
-                      <span className="catch-up__weekday">{d.date.toLocaleDateString(undefined, { weekday: "short" })}</span>
-                      <span className="catch-up__mark" aria-hidden="true">
-                        {rec ? "✓" : unfinished.has(d.id) ? "…" : d.date.getDate()}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-        </section>
-      ) : (
-        <div className="daily daily--locked" role="note">
-          <span className="daily__text">
-            <span className="daily__title">Daily coop</span>
-            <span className="daily__about">
-              A new board every day. It opens once you’ve cleared the tutorial ({taught} of {tutorial.levels.length}).
-            </span>
-          </span>
-        </div>
-      )}
-
-      <section className="endless" aria-labelledby="endless-title">
-        <h2 id="endless-title">Endless coop</h2>
-        <p className="keeping__about">Fresh puzzles grown on the spot, as many as you like.</p>
-        <div className="endless__choices">
-          {(Object.keys(ENDLESS) as EndlessLevel[]).map((which) => (
-            <button key={which} type="button" className="endless__choice" onClick={() => onEndless(which)}>
-              <span className="endless__name">{ENDLESS[which].name}</span>
-              <span className="endless__about">{ENDLESS[which].about}</span>
-              <span className="endless__count">{endless[which] ? `${endless[which]} cleared` : "Grow one"}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
       <div className="filters" role="group" aria-label="Show levels">
         {FILTERS.map(([value, label]) => (
           <button key={value} type="button" className={filter === value ? "chip chip--on" : "chip"} aria-pressed={filter === value} onClick={() => setFilter(value)}>
@@ -311,6 +303,134 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
           );
         })}
       </div>
+        </>
+      )}
+
+      {tab === "daily" && (
+        <>
+          <h1 className="home__tab-title">Daily coop</h1>
+      {dailyOpen ? (
+        <section className="daily-box" aria-label="Daily coop">
+          <button type="button" className={dailyBest ? "daily daily--done" : "daily"} onClick={() => play("daily")}>
+            <span className="daily__text">
+              <span className="daily__title">
+                Today
+                <span className="daily__date">{daily.name}</span>
+              </span>
+              <span className="daily__about">
+                {dailyBest ? (
+                  <>
+                    Cleared in {dailyBest.moves} {dailyBest.moves === 1 ? "move" : "moves"}
+                    <span className="level__eggs" role="img" aria-label={`${eggsOn(daily)} of 3 eggs`}>
+                      {[1, 2, 3].map((n) => (
+                        <EggArt key={n} earned={n <= eggsOn(daily)} />
+                      ))}
+                    </span>
+                  </>
+                ) : (
+                  `A new board every day, harder as the week goes on. Par ${daily.par}.`
+                )}
+              </span>
+              {dailyBest && <span className="daily__about">Next board in {untilText(msUntilTomorrow(new Date(now)))}.</span>}
+              {streak > 1 && <span className="daily__streak">{streak} days in a row</span>}
+            </span>
+            <span className="daily__go">{dailyBest ? "Again" : unfinished.has(daily.id) ? "Resume" : "Play"}</span>
+          </button>
+          <div className="catch-up">
+            <span className="catch-up__label">Earlier boards</span>
+            <ol className="catch-up__days">
+              {missed.map((d) => {
+                const rec = progress[d.id];
+                return (
+                  <li key={d.key}>
+                    <button
+                      type="button"
+                      className={rec ? "catch-up__day catch-up__day--done" : "catch-up__day"}
+                      onClick={() => play({ day: d.key })}
+                      aria-label={`${d.date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}${rec ? `, cleared in ${rec.moves} moves${rec.late ? ", late" : ""}` : unfinished.has(d.id) ? ", started" : ", not played"}`}
+                    >
+                      <span className="catch-up__weekday">{d.date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+                      <span className="catch-up__mark" aria-hidden="true">
+                        {rec ? "✓" : unfinished.has(d.id) ? "…" : d.date.getDate()}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+      ) : (
+        <div className="daily daily--locked" role="note">
+          <span className="daily__text">
+            <span className="daily__title">Not open yet</span>
+            <span className="daily__about">
+              A new board every day. It opens once you’ve cleared the tutorial ({taught} of {tutorial.levels.length}).
+            </span>
+          </span>
+        </div>
+      )}
+        </>
+      )}
+
+      {tab === "endless" && (
+        <>
+          <h1 className="home__tab-title">Endless coop</h1>
+      <section className="endless" aria-label="Endless coop">
+        <p className="keeping__about">Fresh puzzles grown on the spot, as many as you like. Each is checked so it can be cleared.</p>
+        <div className="endless__choices">
+          {(Object.keys(ENDLESS) as EndlessLevel[]).map((which) => (
+            <div key={which} className="endless__choice">
+              <span className="endless__name">{ENDLESS[which].name}</span>
+              <span className="endless__about">{ENDLESS[which].about}</span>
+              <span className="endless__count">{endless[which] ? `${endless[which]} cleared` : "None cleared yet"}</span>
+              <span className="endless__actions">
+                {endlessCurrent[which] && (
+                  <button type="button" className="btn btn--straw" onClick={() => growEndless(which, false)}>
+                    Resume
+                  </button>
+                )}
+                <button type="button" className={endlessCurrent[which] ? "btn btn--quiet" : "btn btn--straw"} onClick={() => growEndless(which, true)}>
+                  {endlessCurrent[which] ? "New coop" : "Grow one"}
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+        </>
+      )}
+
+      {tab === "you" && (
+        <>
+          <h1 className="home__tab-title">You</h1>
+      <section className="home__more" aria-labelledby="stats-title">
+        <h2 id="stats-title">Stats and achievements</h2>
+        <p className="keeping__about">
+          {goalsDone} of {goals.length} achievements.{" "}
+          {goals.find((g) => g.have < g.need) ? `Next up: ${goals.find((g) => g.have < g.need)!.name}, ${goals.find((g) => g.have < g.need)!.about.toLowerCase()}` : "Every one of them. Well done."}
+        </p>
+        <div className="keeping__actions">
+          <button type="button" className="btn" onClick={onStats}>
+            See your stats
+          </button>
+        </div>
+      </section>
+
+      <section className="home__more" aria-labelledby="more-title">
+        <h2 id="more-title">Rewards and settings</h2>
+        <p className="keeping__about">
+          {tally.eggs} eggs, {tally.stars} stars and {tally.days} daily coops so far. {rewardsAhead(tally)[0] ?? "Everything unlocked."}
+        </p>
+        <div className="keeping__actions">
+          <button type="button" className="btn btn--straw" onClick={onSettings}>
+            Rewards and settings
+          </button>
+          <button type="button" className="btn btn--quiet" onClick={() => setGuide(true)}>
+            What the pieces do
+          </button>
+        </div>
+      </section>
 
       <section className="own" aria-labelledby="own-title">
         <h2 id="own-title">Make your own</h2>
@@ -346,38 +466,11 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
         {badCode && <p className="keeping__said keeping__said--warn">That isn’t a coop this game can read. Check that all of it was copied.</p>}
       </section>
 
-      <section className="home__more" aria-labelledby="stats-title">
-        <h2 id="stats-title">Stats and achievements</h2>
-        <p className="keeping__about">
-          {goalsDone} of {goals.length} achievements.{" "}
-          {goals.find((g) => g.have < g.need) ? `Next up: ${goals.find((g) => g.have < g.need)!.name}, ${goals.find((g) => g.have < g.need)!.about.toLowerCase()}` : "Every one of them. Well done."}
-        </p>
-        <div className="keeping__actions">
-          <button type="button" className="btn" onClick={onStats}>
-            See your stats
-          </button>
-        </div>
-      </section>
-
-      <section className="home__more" aria-labelledby="more-title">
-        <h2 id="more-title">Rewards and settings</h2>
-        <p className="keeping__about">
-          {tally.eggs} eggs, {tally.stars} stars and {tally.days} daily coops so far. {rewardsAhead(tally)[0] ?? "Everything unlocked."}
-        </p>
-        <div className="keeping__actions">
-          <button type="button" className="btn btn--straw" onClick={onSettings}>
-            Rewards and settings
-          </button>
-          <button type="button" className="btn btn--quiet" onClick={() => setGuide(true)}>
-            What the pieces do
-          </button>
-        </div>
-      </section>
+          <Keeping progress={progress} endless={endless} onProgress={onProgress} onEndless={onEndlessCount} />
+        </>
+      )}
 
       {guide && <Guide level={null} onClose={() => setGuide(false)} />}
-
-      <Keeping progress={progress} onProgress={onProgress} />
-
       {updateReady && (
         <div className="update" role="status">
           <span>A new version is ready.</span>
@@ -386,6 +479,15 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
           </button>
         </div>
       )}
+
+      <nav className="tabs" aria-label="Sections">
+        {TABS.map(([value, label, Icon]) => (
+          <button key={value} type="button" className={tab === value ? "tabs__tab tabs__tab--on" : "tabs__tab"} aria-current={tab === value ? "page" : undefined} onClick={() => onTab(value)}>
+            <Icon />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
     </main>
   );
 }
@@ -394,12 +496,12 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
  * Looking after saved progress. It lives in this browser and nowhere else, so there is a way
  * to carry it out as a line of text, a way to bring one back in, and a way to wipe the slate.
  */
-function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p: Progress) => void }) {
+function Keeping({ progress, endless, onProgress, onEndless }: { progress: Progress; endless: EndlessCount; onProgress: (p: Progress) => void; onEndless: (c: EndlessCount) => void }) {
   const [panel, setPanel] = useState<"code" | "restore" | "reset" | null>(null);
   const [said, setSaid] = useState<{ text: string; warn?: boolean } | null>(null);
   const [pasted, setPasted] = useState("");
   const count = Object.keys(progress).length;
-  const code = panel === "code" ? encodeProgress(progress) : "";
+  const code = panel === "code" ? encodeProgress(progress, endless) : "";
 
   const show = (which: typeof panel) => {
     setPanel(which);
@@ -409,7 +511,7 @@ function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p:
   const backUp = async () => {
     show("code");
     try {
-      await navigator.clipboard.writeText(encodeProgress(progress));
+      await navigator.clipboard.writeText(encodeProgress(progress, endless));
       setSaid({ text: "Copied. Paste it somewhere safe, like a note or a message to yourself." });
     } catch {
       setSaid({ text: "Copy the code below and keep it somewhere safe." });
@@ -417,11 +519,12 @@ function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p:
   };
 
   const restore = () => {
-    const theirs = decodeProgress(pasted);
-    if (!theirs) return setSaid({ text: "That isn’t a backup code. Check that all of it was copied.", warn: true });
+    const backup = decodeBackup(pasted);
+    if (!backup) return setSaid({ text: "That isn’t a backup code. Check that all of it was copied.", warn: true });
     // Merging keeps the better record for every level, so restoring can never lose progress.
-    const merged = mergeProgress(progress, theirs);
+    const merged = mergeProgress(progress, backup.progress);
     onProgress(merged);
+    onEndless(mergeEndless(endless, backup.endless));
     setPasted("");
     setPanel(null);
     setSaid({ text: `Restored. ${Object.keys(merged).length} cleared coops are saved here now.` });
@@ -429,6 +532,7 @@ function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p:
 
   const erase = () => {
     onProgress({});
+    onEndless({ easy: 0, medium: 0, hard: 0 });
     setPanel(null);
     setSaid({ text: "Progress erased." });
   };

@@ -52,7 +52,10 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 ## ✨ More to play for
 
 - 📅 **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday. Keep a 🔥 streak by playing on consecutive days. It opens once the tutorial is done, the last six days can be caught up on (they don't count towards the streak), and you can share your result without giving the board away.
-- ♾️ **Endless coop:** fresh puzzles grown on your phone on the spot, Easy, Medium or Hard, as many as you like. Each is checked so it can be cleared, and can be shared as a link.
+- 🧭 **Four tabs:** Levels, Daily, Endless and You, along the bottom of the main screen.
+- ♾️ **Endless coop:** fresh puzzles grown on your phone on the spot, Easy, Medium or Hard, as many as you like. Each is checked so it can be cleared, preferring ones that can go wrong, and can be shared as a link. Leave one part-way and resume it later.
+- 💡 **First meetings:** the first time a piece turns up (in the daily, say, before its chapter), a line under the board says what it does.
+- 🎵 **Music:** a gentle background tune, made up afresh each time, with a volume control for music and effects.
 - ⭐ **Stars:** clear a level without a hint and its tile gets a star.
 - 🎬 **Best solution:** finish over par and watch the fewest-moves solution play out.
 - ⏱️ **Race the clock:** an optional countdown; beat it for a clock badge on the level.
@@ -62,7 +65,7 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 - 🎩 **Rewards:** eggs, stars and daily coops unlock board themes and hats for the chickens. Settings and rewards are a tap away on every screen.
 - 🛠️ **Level editor:** build your own coop. The game checks it can be cleared, sets its par, and gives you a link to send to anyone.
 - ♿ **Accessibility:** larger text, high contrast, reduced motion, vibration on or off, and a spoken description of every board for screen readers.
-- 🔐 **Backups:** progress is saved in your browser. A backup code (under *Your progress* on the level list) carries it to another phone or browser.
+- 🔐 **Backups:** progress is saved in your browser. A backup code (under *Your progress* on the You tab) carries it, endless clears included, to another phone or browser.
 
 ## 🧑‍💻 Development
 

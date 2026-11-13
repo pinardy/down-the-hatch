@@ -528,7 +528,10 @@ export function traps(level: Level, rnd: () => number, games = 12, search = 20_0
 
 /**
  * Grow one level for the game: climb boards of `tier` towards `target` moves for at most
- * `budgetMs`, keeping the best board found. Returns null if nothing solvable turned up.
+ * `budgetMs`, and keep the best board found. A board that careless play can ruin beats a
+ * longer one that can't go wrong: once a board reaches the target, it is played carelessly a
+ * few times, and the search goes on while time allows until one has traps. Returns null if
+ * nothing solvable turned up.
  */
 export function grow(tierName: string, seed: number, budgetMs: number, target: number): LevelDef | null {
   const chosen = TIERS.find((t) => t.name === tierName);
@@ -536,8 +539,9 @@ export function grow(tierName: string, seed: number, budgetMs: number, target: n
   const tier: Tier = { ...chosen, target };
   const rnd = mulberry32(seed);
   const until = Date.now() + budgetMs;
-  let best: { def: LevelDef; moves: number } | null = null;
-  while (Date.now() < until && (!best || best.moves < target)) {
+  let best: { def: LevelDef; moves: number; traps: number } | null = null;
+  const worth = (b: { moves: number; traps: number }) => Math.min(b.moves, target) * (1 + b.traps) + b.moves / 100;
+  while (Date.now() < until && !(best && best.moves >= target && best.traps > 0)) {
     const first = build(tier, rnd);
     let now = first && par(first, 15_000);
     if (!first || !now) continue;
@@ -552,7 +556,10 @@ export function grow(tierName: string, seed: number, budgetMs: number, target: n
         now = scored;
       }
     }
-    if (!best || now.moves > best.moves) best = { def: now.def, moves: now.moves };
+    // Only boards near the target are worth the time it takes to look for traps.
+    const trapped = now.moves >= target * 0.75 ? traps(now.level, rnd, 6, 15_000) : 0;
+    const found = { def: now.def, moves: now.moves, traps: trapped };
+    if (!best || worth(found) > worth(best)) best = found;
   }
   return best && best.moves >= 2 ? best.def : null;
 }
