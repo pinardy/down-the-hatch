@@ -90,6 +90,8 @@ const COMMIT_DROP = 0.85;
 /** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
 const HINT_SEARCH = 300_000;
 const STUCK_SEARCH = 250_000;
+/** Rewind settles for the latest position proved winnable once this long has passed. */
+const REWIND_DEADLINE_MS = 2_000;
 /** A search shorter than this shows no "Thinking": the answer just appears. */
 const THINK_AFTER_MS = 180;
 const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";
@@ -253,6 +255,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     setStuck(true);
     setNotice({ text: settings.hard ? "There’s no way to clear the coop from here. Start over to try again." : STUCK_NOTE, warn: true });
   }, [settings.hard]);
+  /** What the solver has found about positions this game passed through: winnable or lost. */
+  const verdicts = useRef(new WeakMap<GameState, boolean>());
   /** Undo or rewind used on this attempt: the clear doesn't count as a hard-mode clear. */
   const helped = useRef(false);
   const [wonHard, setWonHard] = useState(false);
@@ -531,6 +535,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     const got = await consult((now) => solveInBackground(level, now, HINT_SEARCH));
     if (!got) return;
     const { now, answer } = got;
+    if (answer.status !== "unknown") verdicts.current.set(now, answer.status === "solved");
     if (answer.status === "stuck") return markStuck();
     if (answer.status === "unknown" || !answer.steps.length) return setNotice({ text: "Too many chickens to see a way through yet. Drop a few and ask again.", warn: true });
     const first = answer.steps[0].hatch;
@@ -582,10 +587,14 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
 
   /** Undo as far as it takes to reach a position that can still be won, and no further. */
   const rewind = async () => {
-    const got = await consult((now) => lastWinnableInBackground(level, [...history.current, now], HINT_SEARCH));
+    const got = await consult((now) => {
+      const states = [...history.current, now];
+      return lastWinnableInBackground(level, states, HINT_SEARCH, states.map((s) => verdicts.current.get(s) ?? null), REWIND_DEADLINE_MS);
+    });
     if (!got) return;
     const states = [...history.current, got.now];
     const target = states[got.answer];
+    verdicts.current.set(target, true);
     helped.current = true;
     history.current = states.slice(0, got.answer);
     if (got.answer < trail.current.marks.length) {
@@ -638,7 +647,9 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     if (phase !== "playing" || game.moves === 0 || isWon(game)) return;
     let stale = false;
     const id = window.setTimeout(() => {
-      void solveInBackground(level, game, STUCK_SEARCH).then((answer) => {
+      void solveInBackground(level, game, STUCK_SEARCH, true).then((answer) => {
+        // Remembered either way: Rewind can start from what is already known.
+        if (answer.status !== "unknown") verdicts.current.set(game, answer.status === "solved");
         if (!stale && alive.current && gameRef.current === game && answer.status === "stuck") markStuck();
       });
     }, 450);

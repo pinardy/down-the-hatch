@@ -247,17 +247,30 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
 
 /**
  * Given the positions a game has passed through, oldest first, find the last one that can
- * still be won. A position that cannot be won never leads to one that can, so the winnable
+ * still be won. `known` gives answers already found for some of them (true winnable, false
+ * lost), and `deadlineMs` bounds the time spent. A position that cannot be won never leads to one that can, so the winnable
  * positions are all at the front and a binary search finds where they end.
  *
  * Returns 0 (the first position) when nothing later is known to be winnable. A position the
  * solver gives up on counts as not winnable: it is better to go back a little too far than
  * to land somewhere that is still stuck.
  */
-export function lastWinnable(level: Level, states: GameState[], maxStates = 300_000): number {
+export function lastWinnable(level: Level, states: GameState[], maxStates = 300_000, known: readonly (boolean | null)[] = [], deadlineMs = Infinity): number {
+  // What is already known narrows the search: the latest position known to be winnable, and
+  // the first known lost after it.
   let good = 0;
+  known.forEach((winnable, i) => winnable === true && i < states.length && (good = Math.max(good, i)));
   let bad = states.length;
-  while (bad - good > 1) {
+  for (let i = good + 1; i < states.length; i++) {
+    if (known[i] === false) {
+      bad = i;
+      break;
+    }
+  }
+  // Out of time, settle for the latest position proved winnable so far: perhaps further back
+  // than need be, but never somewhere that is already lost.
+  const until = Date.now() + deadlineMs;
+  while (bad - good > 1 && Date.now() < until) {
     const mid = (good + bad) >> 1;
     if (solve(level, states[mid], maxStates).status === "solved") good = mid;
     else bad = mid;
