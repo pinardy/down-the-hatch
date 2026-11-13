@@ -12,6 +12,9 @@
 // chickens as its hatches have room for (`cap`). A hatch is a `w` by `h` rectangle, or any
 // `shape` drawn with x's; it can be on a rail (`axis`), frozen until `ice` chickens have
 // dropped, `locked` until a hatch slides over the key, or chained to another by a shared `link`.
+// Paint `1`-`5` (red, gold, teal, blue, plum) recolours a hatch that slides onto it; `o` is a
+// pressure plate and `=` a gate square, open only while a hatch is on a plate; `< > ^ v` are
+// one-way squares. See docs/levels.md.
 
 import { parseLevel } from "./engine";
 import type { Level, LevelDef } from "./types";
@@ -2053,6 +2056,379 @@ const BOILED: LevelDef[] = [
   },
 ];
 
+const PAINTED: LevelDef[] = [
+  {
+    id: "fresh-coat",
+    name: "Fresh coat",
+    tip: "Slide a hatch onto paint and it takes that colour, and the chickens that go with it.",
+    rows: ["4..b", "....", "...."],
+    hatches: [
+      { color: "red", x: 0, y: 1, cap: 1 },
+    ],
+    par: 1,
+  },
+  {
+    id: "dip-and-dash",
+    name: "Dip and dash",
+    rows: ["..5..", "..y..", ".....", "..rr.", "y.r.1", "#rb.."],
+    hatches: [
+      { color: "blue", x: 4, y: 0, h: 2, cap: 1 },
+      { color: "red", x: 3, y: 4, shape: ["x.", "xx"], cap: 3 },
+      { color: "gold", x: 0, y: 3, shape: ["xx", ".x"], cap: 1 },
+      { color: "gold", x: 3, y: 2, shape: ["xx", ".x"], cap: 1 },
+      { color: "blue", x: 0, y: 0, shape: ["xx", "x.", "x."], cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "change-of-heart",
+    name: "Change of heart",
+    rows: ["2..t.", "...#.", "1p..y", "..r.t", "r3y#."],
+    hatches: [
+      { color: "teal", x: 4, y: 0, h: 2, cap: 2 },
+      { color: "gold", x: 2, y: 0, shape: ["x.", "x.", "xx"], cap: 2 },
+      { color: "red", x: 0, y: 3, cap: 2 },
+      { color: "plum", x: 0, y: 0, shape: [".x", "xx"], cap: 1 },
+    ],
+    par: 6,
+  },
+  {
+    id: "colour-me-in",
+    name: "Colour me in",
+    rows: [".t....", "43....", "..yp..", ".#tt..", "tp...2"],
+    hatches: [
+      { color: "teal", x: 2, y: 3, shape: ["..x", "xxx"], cap: 4 },
+      { color: "gold", x: 5, y: 0, h: 2, cap: 1 },
+      { color: "plum", x: 2, y: 0, w: 3, cap: 2 },
+    ],
+    par: 7,
+  },
+  {
+    id: "brush-with-fate",
+    name: "Brush with fate",
+    rows: ["..rp#", "r...p", "..y.5", "..p..", ".r3.."],
+    hatches: [
+      { color: "red", x: 2, y: 1, w: 2, cap: 3 },
+      { color: "teal", x: 0, y: 2, w: 2, h: 2, cap: 2 },
+      { color: "gold", x: 3, y: 4, cap: 1 },
+      { color: "red", x: 0, y: 0, shape: ["xx", ".x"], cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "splash-zone",
+    name: "Splash zone",
+    rows: ["4.b.5.", "#.b.b.", "#....#", "t.....", "...p.p", "b.4b.."],
+    hatches: [
+      { color: "blue", x: 3, y: 0, h: 2, cap: 5 },
+      { color: "teal", x: 1, y: 1, shape: ["x..", "xxx"], cap: 1 },
+      { color: "plum", x: 2, y: 3, w: 3, cap: 2, axis: "v" },
+    ],
+    par: 10,
+  },
+  {
+    id: "two-coats",
+    name: "Two coats",
+    rows: ["t....", "p...p", "1...4", "p3#rp", "...b."],
+    hatches: [
+      { color: "blue", x: 2, y: 0, h: 3, cap: 1 },
+      { color: "teal", x: 1, y: 0, h: 2, cap: 2 },
+      { color: "plum", x: 1, y: 2, cap: 4 },
+    ],
+    par: 11,
+  },
+  {
+    id: "true-colours",
+    name: "True colours",
+    rows: ["brrrb.", "y.....", "r.b...", "b.....", "4#1b.5"],
+    hatches: [
+      { color: "red", x: 3, y: 2, h: 2, cap: 4 },
+      { color: "gold", x: 4, y: 2, shape: ["xx", ".x"], cap: 1 },
+      { color: "blue", x: 1, y: 1, shape: ["xxx", "x.."], cap: 5 },
+    ],
+    par: 13,
+  },
+  {
+    id: "paint-the-town",
+    name: "Paint the town",
+    rows: ["r4..#.", "...y..", "......", "....y2", "b...by", "b.r#.."],
+    hatches: [
+      { color: "red", x: 5, y: 0, h: 2, cap: 2 },
+      { color: "blue", x: 2, y: 0, shape: ["x.", "x.", "xx"], cap: 3 },
+      { color: "gold", x: 0, y: 1, shape: ["xx", "x.", "x."], cap: 3 },
+    ],
+    par: 15,
+  },
+  {
+    id: "mixed-palette",
+    name: "Mixed palette",
+    rows: ["......", "ybttb.", "..#...", "...t..", ".3.b..", ".2...."],
+    hatches: [
+      { color: "teal", x: 4, y: 3, w: 2, h: 2, cap: 3 },
+      { color: "gold", x: 5, y: 1, h: 2, cap: 1 },
+      { color: "blue", x: 3, y: 5, w: 3, cap: 3 },
+    ],
+    par: 16,
+  },
+  {
+    id: "wet-floor",
+    name: "Wet floor",
+    rows: ["....t", "btt..", "y....", "b..b.", "5....", "...#5"],
+    hatches: [
+      { color: "blue", x: 1, y: 2, w: 3, cap: 3 },
+      { color: "teal", x: 1, y: 3, shape: [".x", "xx"], cap: 3 },
+      { color: "gold", x: 1, y: 0, shape: ["xxx", "..x"], cap: 1 },
+    ],
+    par: 17,
+  },
+];
+
+const GATES: LevelDef[] = [
+  {
+    id: "hold-the-door",
+    name: "Hold the door",
+    tip: "A gate opens only while a hatch stands on the plate. Hold the door for the red hatch.",
+    rows: ["r=.oy", "#...#"],
+    hatches: [
+      { color: "red", x: 2, y: 0, cap: 1 },
+      { color: "gold", x: 1, y: 1, cap: 1 },
+    ],
+    par: 3,
+  },
+  {
+    id: "turnstile",
+    name: "Turnstile",
+    rows: ["......", ".yt..#", ".=r...", "......", "..o.y."],
+    hatches: [
+      { color: "red", x: 3, y: 1, shape: ["x.", "x.", "xx"], cap: 1 },
+      { color: "gold", x: 2, y: 0, w: 3, cap: 1 },
+      { color: "teal", x: 1, y: 3, w: 2, cap: 1 },
+      { color: "gold", x: 0, y: 2, h: 2, cap: 1 },
+    ],
+    par: 9,
+  },
+  {
+    id: "doorman",
+    name: "Doorman",
+    rows: [".....#", ".b...#", "t.=bb.", "..o#..", "bb.y..", "#b...."],
+    hatches: [
+      { color: "teal", x: 4, y: 4, h: 2, cap: 1 },
+      { color: "gold", x: 2, y: 5, w: 2, cap: 1 },
+      { color: "blue", x: 3, y: 0, w: 2, cap: 2, axis: "v" },
+      { color: "blue", x: 4, y: 3, shape: ["xx", ".x", ".x"], cap: 2 },
+      { color: "blue", x: 1, y: 0, w: 2, cap: 2 },
+    ],
+    par: 10,
+  },
+  {
+    id: "night-watch",
+    name: "Night watch",
+    rows: [".....y", ".=tt.o", "...r..", "yr.==.", "r..=tr", "#..y.r"],
+    hatches: [
+      { color: "red", x: 1, y: 4, w: 2, h: 2, cap: 5 },
+      { color: "gold", x: 3, y: 0, shape: ["xx", ".x", ".x"], cap: 3 },
+      { color: "teal", x: 5, y: 2, cap: 1 },
+      { color: "teal", x: 0, y: 1, shape: ["x..", "xxx"], cap: 1 },
+      { color: "teal", x: 0, y: 0, w: 3, cap: 1 },
+    ],
+    par: 12,
+  },
+  {
+    id: "changing-shifts",
+    name: "Changing shifts",
+    rows: ["...t.=", "#o.t.p", "..=bb.", "b=.tb.", ".y#.=."],
+    hatches: [
+      { color: "plum", x: 0, y: 2, w: 2, cap: 1 },
+      { color: "blue", x: 0, y: 0, w: 2, cap: 4 },
+      { color: "teal", x: 5, y: 3, cap: 3 },
+      { color: "gold", x: 4, y: 0, h: 2, cap: 1 },
+    ],
+    par: 13,
+  },
+  {
+    id: "toll-gate",
+    name: "Toll gate",
+    rows: ["..r#r", ".....", "..prp", "p.#.=", ".=o.y", "pr.o="],
+    hatches: [
+      { color: "red", x: 2, y: 1, w: 3, cap: 2 },
+      { color: "plum", x: 0, y: 1, shape: [".x", "xx"], cap: 4 },
+      { color: "gold", x: 0, y: 0, w: 2, cap: 1 },
+      { color: "red", x: 3, y: 3, h: 2, cap: 2 },
+    ],
+    par: 14,
+  },
+  {
+    id: "open-house",
+    name: "Open house",
+    rows: [".o...", ".=p..", "..p..", "ry..r", ".r==r", ".tt#o"],
+    hatches: [
+      { color: "red", x: 0, y: 2, w: 2, cap: 2 },
+      { color: "plum", x: 3, y: 0, w: 2, cap: 2 },
+      { color: "gold", x: 0, y: 4, h: 2, cap: 1 },
+      { color: "teal", x: 3, y: 1, w: 2, h: 2, cap: 2 },
+      { color: "red", x: 2, y: 3, cap: 2 },
+    ],
+    par: 15,
+  },
+  {
+    id: "revolving-door",
+    name: "Revolving door",
+    rows: ["=#.#.", "...pt", "....p", ".=t..", "....=", "popbb"],
+    hatches: [
+      { color: "blue", x: 0, y: 2, h: 3, cap: 2 },
+      { color: "teal", x: 2, y: 4, w: 2, cap: 2 },
+      { color: "plum", x: 0, y: 1, shape: ["xxx", "..x"], cap: 2 },
+      { color: "plum", x: 3, y: 2, h: 2, cap: 2 },
+    ],
+    par: 16,
+  },
+  {
+    id: "gate-crashers",
+    name: "Gate crashers",
+    rows: ["==....", ".=.p..", "o.trt.", "......", ".pttyt"],
+    hatches: [
+      { color: "red", x: 4, y: 0, w: 2, cap: 1 },
+      { color: "gold", x: 4, y: 1, w: 2, cap: 1 },
+      { color: "plum", x: 3, y: 3, w: 2, cap: 2 },
+      { color: "teal", x: 0, y: 3, w: 3, cap: 3 },
+      { color: "teal", x: 2, y: 0, shape: ["xx", "x."], cap: 2 },
+    ],
+    par: 16,
+  },
+  {
+    id: "last-orders",
+    name: "Last orders",
+    rows: ["r#..t", ".=#..", "..=o.", "r=.t.", "ry.r."],
+    hatches: [
+      { color: "red", x: 4, y: 2, h: 2, cap: 2 },
+      { color: "teal", x: 2, y: 3, h: 2, cap: 2 },
+      { color: "gold", x: 3, y: 0, shape: ["x.", "xx"], cap: 1 },
+      { color: "red", x: 0, y: 1, cap: 2 },
+    ],
+    par: 19,
+  },
+];
+
+const ONE_WAY: LevelDef[] = [
+  {
+    id: "one-way-street",
+    name: "One way street",
+    tip: "Arrows are one-way: a hatch can only slide onto them the way they point.",
+    rows: ["r.>..", "..>..", "....."],
+    hatches: [
+      { color: "red", x: 4, y: 0, cap: 1 },
+    ],
+    par: 1,
+  },
+  {
+    id: "no-u-turn",
+    name: "No U-turn",
+    rows: [".vb.<", ".^...", ".y^#.", "r...y", ".^..r"],
+    hatches: [
+      { color: "red", x: 1, y: 3, shape: ["xxx", "..x"], cap: 2 },
+      { color: "gold", x: 0, y: 4, cap: 2 },
+      { color: "blue", x: 4, y: 1, h: 2, cap: 1 },
+    ],
+    par: 6,
+  },
+  {
+    id: "traffic-flow",
+    name: "Traffic flow",
+    rows: ["..>#p>", "#r<.r.", "...y..", "..pv..", "..rr.<", "...y.."],
+    hatches: [
+      { color: "gold", x: 4, y: 2, shape: ["xx", ".x"], cap: 2 },
+      { color: "red", x: 1, y: 5, w: 2, cap: 2 },
+      { color: "plum", x: 0, y: 5, cap: 2 },
+      { color: "red", x: 0, y: 2, shape: [".x", ".x", "xx"], cap: 2 },
+    ],
+    par: 7,
+  },
+  {
+    id: "wrong-way",
+    name: "Wrong way",
+    rows: ["t..t#.", "yby..<", ".vpt..", "v.....", "p.....", "...y.."],
+    hatches: [
+      { color: "gold", x: 3, y: 3, w: 2, cap: 2 },
+      { color: "plum", x: 4, y: 1, shape: ["x.", "xx"], cap: 2 },
+      { color: "teal", x: 0, y: 5, w: 2, cap: 3 },
+      { color: "blue", x: 1, y: 0, w: 2, cap: 1 },
+      { color: "gold", x: 5, y: 3, h: 3, cap: 1 },
+    ],
+    par: 10,
+  },
+  {
+    id: "merry-go-round",
+    name: "Merry-go-round",
+    rows: ["....b", "v.>#.", "t..>t", "...tp", "b..b.", "bttb."],
+    hatches: [
+      { color: "plum", x: 1, y: 2, shape: ["xx", ".x"], cap: 1 },
+      { color: "blue", x: 4, y: 1, cap: 5 },
+      { color: "teal", x: 0, y: 0, shape: ["xx", ".x"], cap: 5 },
+    ],
+    par: 13,
+  },
+  {
+    id: "ring-road",
+    name: "Ring road",
+    rows: ["^<br.", ".b^rb", ".r.t#", "t.yb#", "^....", "b...y"],
+    hatches: [
+      { color: "blue", x: 1, y: 3, cap: 5 },
+      { color: "red", x: 1, y: 5, w: 3, cap: 3 },
+      { color: "gold", x: 2, y: 4, w: 2, cap: 2 },
+      { color: "teal", x: 0, y: 1, h: 2, cap: 2 },
+    ],
+    par: 15,
+  },
+  {
+    id: "diversion",
+    name: "Diversion",
+    rows: ["......", "pr..yp", "..rp.b", "by<...", "p.<b..", "#....."],
+    hatches: [
+      { color: "blue", x: 3, y: 3, shape: ["xx", ".x", ".x"], cap: 3 },
+      { color: "gold", x: 1, y: 0, shape: ["xxx", "..x"], cap: 2 },
+      { color: "red", x: 5, y: 5, cap: 2 },
+      { color: "plum", x: 2, y: 5, w: 2, cap: 4 },
+    ],
+    par: 16,
+  },
+  {
+    id: "cul-de-sac",
+    name: "Cul-de-sac",
+    rows: [">.#r.", "b....", ".....", "b..v.", "y..v#", ".tyty"],
+    hatches: [
+      { color: "gold", x: 1, y: 1, w: 2, cap: 3 },
+      { color: "red", x: 3, y: 2, cap: 1, axis: "v" },
+      { color: "teal", x: 1, y: 2, w: 2, h: 2, cap: 2 },
+      { color: "blue", x: 3, y: 1, shape: ["xx", ".x"], cap: 2 },
+    ],
+    par: 16,
+  },
+  {
+    id: "rush-hour-traffic",
+    name: "Rush hour traffic",
+    rows: ["#..r.t", "...t.r", ".....y", "t.^...", "..^yr>", "...t.^"],
+    hatches: [
+      { color: "red", x: 0, y: 4, h: 2, cap: 3 },
+      { color: "gold", x: 1, y: 3, shape: ["x.", "x.", "xx"], cap: 2 },
+      { color: "teal", x: 1, y: 0, h: 2, cap: 2 },
+      { color: "teal", x: 1, y: 2, shape: ["xxx", "..x"], cap: 2 },
+    ],
+    par: 18,
+  },
+  {
+    id: "bumper-to-bumper",
+    name: "Bumper to bumper",
+    rows: ["#....", "<v...", "^..p.", ".b...", "bt...", "pbtb."],
+    hatches: [
+      { color: "blue", x: 2, y: 0, w: 3, cap: 4 },
+      { color: "teal", x: 1, y: 2, shape: ["xx", ".x", ".x"], cap: 2 },
+      { color: "plum", x: 4, y: 3, h: 2, cap: 2 },
+    ],
+    par: 23,
+  },
+];
+
+
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
 
 export interface Chapter {
@@ -2083,6 +2459,9 @@ const BOOK: { name: string; difficulty: Difficulty; blurb: string; levels: Level
   { name: "Permafrost", difficulty: "Hard", blurb: "Thaw the wrong hatch first and the rest stay frozen.", levels: FROST },
   { name: "Maximum security", difficulty: "Hard", blurb: "The key is a long way off, and the padlocked hatch is in the way.", levels: CELLS },
   { name: "Three-ring coop", difficulty: "Hard", blurb: "Cracked boards, white chickens and chains, all in the same yard.", levels: MEDLEY },
+  { name: "Wet paint", difficulty: "Hard", blurb: "Slide through a puddle and a hatch changes colour, and with it which chickens it takes.", levels: PAINTED },
+  { name: "Gatekeeper", difficulty: "Hard", blurb: "A gate opens only while a hatch stands on a pressure plate. Someone has to hold the door.", levels: GATES },
+  { name: "One way only", difficulty: "Hard", blurb: "Arrows can only be crossed the way they point. Every detour costs.", levels: ONE_WAY },
   { name: "Hard-boiled", difficulty: "Expert", blurb: "Bends, ice, padlocks and eggs, all in one coop. Thirty moves is a good day.", levels: BOILED },
 ];
 
