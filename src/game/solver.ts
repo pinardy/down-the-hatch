@@ -167,3 +167,23 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
   }
   return { status: "stuck", explored: done.size };
 }
+
+/**
+ * Given the positions a game has passed through, oldest first, find the last one that can
+ * still be won. A position that cannot be won never leads to one that can, so the winnable
+ * positions are all at the front and a binary search finds where they end.
+ *
+ * Returns 0 (the first position) when nothing later is known to be winnable. A position the
+ * solver gives up on counts as not winnable: it is better to go back a little too far than
+ * to land somewhere that is still stuck.
+ */
+export function lastWinnable(level: Level, states: GameState[], maxStates = 300_000): number {
+  let good = 0;
+  let bad = states.length;
+  while (bad - good > 1) {
+    const mid = (good + bad) >> 1;
+    if (solve(level, states[mid], maxStates).status === "solved") good = mid;
+    else bad = mid;
+  }
+  return good;
+}

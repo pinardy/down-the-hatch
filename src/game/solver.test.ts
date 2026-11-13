@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isWon, parseLevel, startState, step } from "./engine";
-import { solve } from "./solver";
+import { lastWinnable, solve } from "./solver";
 import { LEVELS } from "./levels";
 import type { LevelDef } from "./types";
 
@@ -105,6 +105,38 @@ describe("harder pieces", () => {
     const level = parseLevel({ name: "egg", rows: [".R"], hatches: [{ color: "red", x: 0, y: 0, cap: 1 }], par: 1 }, 0);
     expect(level.chickens[0]).toMatchObject({ color: "red", hidden: true });
     expect(step(level, startState(level), 0, "right")!.dropped).toHaveLength(1);
+  });
+});
+
+describe("rewinding", () => {
+  // Two red hatches. The first is on a rail and can only reach the chicken below it, so the
+  // second must take the chicken on the right. If it takes the left one instead, the level is lost.
+  const level = parseLevel(
+    {
+      name: "fork",
+      rows: ["...", "r.r"],
+      hatches: [
+        { color: "red", x: 0, y: 0, cap: 1, axis: "v" },
+        { color: "red", x: 1, y: 1, cap: 1 },
+      ],
+      par: 2,
+    },
+    0,
+  );
+  const s0 = startState(level);
+  const up = step(level, s0, 1, "up")!.state;
+  const lost = step(level, step(level, up, 1, "down")!.state, 1, "left")!.state;
+
+  it("knows the wrong chicken loses the level", () => {
+    expect(solve(level, up).status).toBe("solved");
+    expect(solve(level, lost).status).toBe("stuck");
+  });
+
+  it("finds the last position that can still be won", () => {
+    expect(lastWinnable(level, [s0, up, lost])).toBe(1);
+    expect(lastWinnable(level, [s0, lost])).toBe(0);
+    expect(lastWinnable(level, [s0, up])).toBe(1);
+    expect(lastWinnable(level, [s0])).toBe(0);
   });
 });
 

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cellsOf, eggsFor, heldBy, isWon, startState, step } from "../game/engine";
-import { solve } from "../game/solver";
 import type { Dir, GameState, Hatch, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
 import type { DropFx, HintFx, ShutFx } from "./Board";
 import { EggArt } from "./art";
+import { lastWinnableInBackground, solveInBackground } from "./solving";
 import type { Settings } from "./storage";
 
 interface Props {
@@ -51,6 +51,13 @@ const COMMIT = 0.5;
 /** The same, when moving there drops chickens: they fall once the hatch is nearly under them. */
 const COMMIT_DROP = 0.85;
 
+/** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
+const HINT_SEARCH = 300_000;
+const STUCK_SEARCH = 60_000;
+/** A search shorter than this shows no "Thinking": the answer just appears. */
+const THINK_AFTER_MS = 180;
+const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";
+
 const DROP_MS = 460;
 const SHUT_MS = 380;
 
@@ -78,7 +85,27 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
   const [drops, setDrops] = useState<DropFx[]>([]);
   const [shuts, setShuts] = useState<ShutFx[]>([]);
   const [hint, setHint] = useState<HintFx | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(null);
+  /** The level can no longer be won from here: Hint gives way to Rewind. */
+  const [stuck, setStuck] = useState(false);
+  /** The solver has been asked something and is taking long enough to say so. */
+  const [thinking, setThinking] = useState(false);
+  const asking = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const clearNote = useCallback(() => {
+    setNotice(null);
+    setStuck(false);
+  }, []);
+  const markStuck = useCallback(() => {
+    setStuck(true);
+    setNotice({ text: STUCK_NOTE, warn: true });
+  }, []);
   const [phase, setPhase] = useState<Phase>("playing");
   const [secondsLeft, setSecondsLeft] = useState(() => allowance(level));
   const started = game.moves > 0;
@@ -146,7 +173,7 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
         sfx.peep();
       }
       setHint(null);
-      setNotice(null);
+      clearNote();
       if (isWon(out.state)) {
         window.setTimeout(() => {
           setPhase("won");
@@ -156,7 +183,7 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
       }
       return true;
     },
-    [level, commit, onCleared],
+    [level, commit, onCleared, clearNote],
   );
 
   const grab = useCallback(
@@ -250,7 +277,7 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
     hold(null);
     setCanUndo(history.current.length > 0);
     setHint(null);
-    setNotice(null);
+    clearNote();
   };
 
   const restart = () => {
@@ -259,19 +286,39 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
     commit(startState(level));
     hold(null);
     setHint(null);
-    setNotice(null);
+    clearNote();
     setDrops([]);
     setShuts([]);
     setSecondsLeft(allowance(level));
     setPhase("playing");
   };
 
-  const showHint = () => {
-    unlockAudio();
+  /**
+   * Wait for the solver, showing "Thinking" if it is slow. Returns null if the player moved,
+   * left the level or asked again in the meantime: the answer is then for a board that is gone.
+   */
+  const consult = async <T,>(job: (now: GameState) => Promise<T>): Promise<{ now: GameState; answer: T } | null> => {
+    if (asking.current) return null;
+    asking.current = true;
     const now = gameRef.current;
-    const answer = solve(level, now, 300_000);
-    if (answer.status === "stuck") return setNotice("There’s no way to clear the coop from here. Undo a move or start over.");
-    if (answer.status === "unknown" || !answer.steps.length) return setNotice("Too many chickens to see a way through yet. Drop a few and ask again.");
+    const slow = window.setTimeout(() => setThinking(true), THINK_AFTER_MS);
+    try {
+      const answer = await job(now);
+      return alive.current && gameRef.current === now ? { now, answer } : null;
+    } finally {
+      window.clearTimeout(slow);
+      asking.current = false;
+      if (alive.current) setThinking(false);
+    }
+  };
+
+  const showHint = async () => {
+    unlockAudio();
+    const got = await consult((now) => solveInBackground(level, now, HINT_SEARCH));
+    if (!got) return;
+    const { now, answer } = got;
+    if (answer.status === "stuck") return markStuck();
+    if (answer.status === "unknown" || !answer.steps.length) return setNotice({ text: "Too many chickens to see a way through yet. Drop a few and ask again.", warn: true });
     const first = answer.steps[0].hatch;
     const hatch = now.hatches.find((t) => t.id === first)!;
     const path: { x: number; y: number }[] = [];
@@ -285,16 +332,39 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
     setHint({ ghost: { ...hatch, x, y }, path: path.slice(0, -1) });
   };
 
+  /** Undo as far as it takes to reach a position that can still be won, and no further. */
+  const rewind = async () => {
+    const got = await consult((now) => lastWinnableInBackground(level, [...history.current, now], HINT_SEARCH));
+    if (!got) return;
+    const states = [...history.current, got.now];
+    const target = states[got.answer];
+    history.current = states.slice(0, got.answer);
+    commit(target);
+    hold(null);
+    setCanUndo(history.current.length > 0);
+    setHint(null);
+    setStuck(false);
+    const back = got.now.moves - target.moves;
+    setNotice({
+      text: target.moves === 0 ? "Back to the start. Try a different first move this time." : `Back ${back} ${back === 1 ? "move" : "moves"}. The coop can still be cleared from here.`,
+      warn: false,
+    });
+  };
+
   // A little after each move, check quietly whether the level can still be cleared.
   useEffect(() => {
     if (phase !== "playing" || game.moves === 0 || isWon(game)) return;
+    let stale = false;
     const id = window.setTimeout(() => {
-      if (solve(level, game, 20_000).status === "stuck") {
-        setNotice("There’s no way to clear the coop from here. Undo a move or start over.");
-      }
+      void solveInBackground(level, game, STUCK_SEARCH).then((answer) => {
+        if (!stale && alive.current && gameRef.current === game && answer.status === "stuck") markStuck();
+      });
     }, 450);
-    return () => window.clearTimeout(id);
-  }, [game, level, phase]);
+    return () => {
+      stale = true;
+      window.clearTimeout(id);
+    };
+  }, [game, level, phase, markStuck]);
 
   // The optional countdown starts on the first move.
   useEffect(() => {
@@ -316,6 +386,13 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
     turning: performance.now() - held.turnedAt < 160,
   };
   const eggs = eggsFor(game.moves, level.par);
+  // What the line under the board says when nothing more pressing needs saying.
+  const standing =
+    game.moves > level.par + 2
+      ? "One egg from here. Start over to try for all three."
+      : game.moves > level.par
+        ? `Over par. Finish in ${level.par + 2} moves or fewer to keep two eggs.`
+        : (level.tip ?? (best !== undefined ? `Your best: ${best} ${best === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
   const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
@@ -329,6 +406,12 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
             {level.chapter}, {place} of {total}
           </span>
           {level.name}
+          {/* The eggs this run would earn if it finished now. They go as the moves pass par. */}
+          <span className="play__eggs" role="img" aria-label={`On course for ${eggs} of 3 eggs`}>
+            {[1, 2, 3].map((n) => (
+              <EggArt key={n} earned={n <= eggs} />
+            ))}
+          </span>
         </h1>
         <dl className="stats">
           {settings.clock && (
@@ -352,8 +435,8 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
         <Board level={level} game={game} cell={cell} drops={drops} shuts={shuts} hint={hint} seen={seen} locked={phase !== "playing"} held={heldAt} onGrab={grab} onDrag={dragTo} onRelease={release} onNudge={nudge} />
       </div>
 
-      <p className={notice ? "play__note play__note--warn" : "play__note"} role="status">
-        {notice ?? level.tip ?? (best !== undefined ? `Your best: ${best} ${best === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like.")}
+      <p className={notice?.warn ? "play__note play__note--warn" : "play__note"} role="status">
+        {notice?.text ?? standing}
       </p>
 
       <footer className="play__bar">
@@ -363,8 +446,8 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
         <button type="button" className="btn" onClick={restart} disabled={game.moves === 0 && phase === "playing"}>
           Start over
         </button>
-        <button type="button" className="btn btn--straw" onClick={showHint} disabled={phase !== "playing"}>
-          Hint
+        <button type="button" className="btn btn--straw" onClick={stuck ? rewind : showHint} disabled={phase !== "playing" || thinking} aria-busy={thinking}>
+          {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
         </button>
       </footer>
 
