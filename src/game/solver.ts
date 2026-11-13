@@ -27,7 +27,8 @@ interface Node {
   alive: number[]; // chicken bitset, 30 bits per entry
   birds: number;
   key: boolean; // the key has been picked up
-  last: number; // hatch moved last, -1 for none
+  broken: number; // cracked boards that have given way, one bit each
+  last: number; // hatch moved last (for a chained pair, the lower id), -1 for none
   parent: Node | null;
   via: number; // hatch * 4 + dir index
 }
@@ -43,6 +44,13 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
   const birdColor = level.chickens.map((c) => c.color);
   const flock = level.chickens.length;
   const keyAt = level.key ? level.key.y * w + level.key.x : -1;
+  // Cracked boards, numbered so that which have given way fits in one integer.
+  const crackAt = new Int8Array(w * h).fill(-1);
+  let cracks = 0;
+  level.cracks.forEach((cracked, k) => cracked && (crackAt[k] = cracks++));
+  // Chained pairs: each hatch's partner (-1 for none), and the id its moves are counted under.
+  const partner = shape.map((t) => t.link ?? -1);
+  const mover = shape.map((t) => (t.link === undefined ? t.id : Math.min(t.id, t.link)));
   // Per hatch: which squares of its box it covers, and for each direction the squares
   // (as offsets from its corner) it would newly cover by sliding one step that way.
   const covers = shape.map((t) => {
@@ -63,6 +71,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     alive: new Array(Math.ceil(Math.max(1, level.chickens.length) / BITS)).fill(0),
     birds: from.chickens.length,
     key: from.keyTaken,
+    broken: from.broken.reduce((bits, k) => bits | (1 << crackAt[k]), 0),
     last: from.lastHatch ?? -1,
     parent: null,
     via: -1,
@@ -77,55 +86,94 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     let s = String.fromCharCode(node.last + 1 + (node.key ? 64 : 0));
     for (let i = 0; i < n; i++) s += String.fromCharCode(node.left[i] ? node.pos[i] + 1 : 0, node.left[i]);
     for (const bits of node.alive) s += String.fromCharCode(bits & 0x7fff, bits >>> 15);
+    if (cracks) s += String.fromCharCode(node.broken & 0x7fff, node.broken >>> 15);
     return s;
   };
 
-  /** Slide hatch `i` one square, or return null if blocked. Mirrors engine.step. */
+  /** Does hatch `j`, where it stands in `node`, cover this square? */
+  const coversAt = (node: Node, j: number, cx: number, cy: number) => {
+    const ox = cx - (node.pos[j] % w);
+    const oy = cy - ((node.pos[j] / w) | 0);
+    return ox >= 0 && oy >= 0 && ox < shape[j].w && oy < shape[j].h && covers[j][oy * shape[j].w + ox];
+  };
+
+  /**
+   * Slide hatch `i` one square, and its chained partner with it, or return null if either is
+   * blocked. Mirrors engine.step. A chained pair is only ever moved by its lower id, so the
+   * search does not try the same slide twice.
+   */
   const slide = (node: Node, i: number, d: number): Node | null => {
-    const t = shape[i];
-    if (t.ice && flock - node.birds < t.ice) return null;
-    if (t.locked && !node.key) return null;
+    const j = partner[i] >= 0 && node.left[partner[i]] ? partner[i] : -1;
+    if (j >= 0 && j < i) return null;
     const sideways = d >= 2;
-    if (t.axis === "h" && !sideways) return null;
-    if (t.axis === "v" && sideways) return null;
-    const x0 = node.pos[i] % w;
-    const y0 = (node.pos[i] / w) | 0;
-
-    let eaten = 0;
-    let alive: number[] | null = null;
-    let key = node.key;
-    for (const [ex, ey] of edges[i][d]) {
-      const cx = x0 + ex;
-      const cy = y0 + ey;
-      if (cx < 0 || cy < 0 || cx >= w || cy >= h) return null;
-      const k = cy * w + cx;
-      if (bales[k]) return null;
-      for (let j = 0; j < n; j++) {
-        if (j === i || !node.left[j]) continue;
-        const ox = cx - (node.pos[j] % w);
-        const oy = cy - ((node.pos[j] / w) | 0);
-        if (ox >= 0 && oy >= 0 && ox < shape[j].w && oy < shape[j].h && covers[j][oy * shape[j].w + ox]) return null;
-      }
-      const bird = birdAt[k];
-      if (bird >= 0 && (alive ?? node.alive)[(bird / BITS) | 0] & (1 << (bird % BITS))) {
-        if (birdColor[bird] !== t.color) return null;
-        alive ??= node.alive.slice();
-        alive[(bird / BITS) | 0] &= ~(1 << (bird % BITS));
-        eaten++;
-      }
-      if (k === keyAt) key = true;
-    }
-    if (eaten > node.left[i]) return null;
-
     const { dx, dy } = DELTA[DIRS[d]];
-    const pos = node.pos.slice();
-    pos[i] = (y0 + dy) * w + x0 + dx;
-    let left = node.left;
-    if (eaten) {
-      left = node.left.slice();
-      left[i] -= eaten;
+
+    let alive: number[] | null = null;
+    let left: number[] | null = null;
+    let key = node.key;
+    let birds = node.birds;
+    for (let m = 0; m < (j >= 0 ? 2 : 1); m++) {
+      const a = m ? j : i;
+      const other = m ? i : j; // the partner, or -1
+      const t = shape[a];
+      if (t.ice && flock - node.birds < t.ice) return null;
+      if (t.locked && !node.key) return null;
+      if (t.axis === "h" && !sideways) return null;
+      if (t.axis === "v" && sideways) return null;
+      const x0 = node.pos[a] % w;
+      const y0 = (node.pos[a] / w) | 0;
+
+      let eaten = 0;
+      for (const [ex, ey] of edges[a][d]) {
+        const cx = x0 + ex;
+        const cy = y0 + ey;
+        if (cx < 0 || cy < 0 || cx >= w || cy >= h) return null;
+        const k = cy * w + cx;
+        if (bales[k]) return null;
+        if (crackAt[k] >= 0 && node.broken & (1 << crackAt[k])) return null;
+        // A square the partner is sliding out of is free.
+        if (other >= 0 && coversAt(node, other, cx, cy)) continue;
+        for (let b = 0; b < n; b++) {
+          if (b === a || b === other || !node.left[b]) continue;
+          if (coversAt(node, b, cx, cy)) return null;
+        }
+        const bird = birdAt[k];
+        if (bird >= 0 && (alive ?? node.alive)[(bird / BITS) | 0] & (1 << (bird % BITS))) {
+          if (birdColor[bird] !== t.color && birdColor[bird] !== "any") return null;
+          alive ??= node.alive.slice();
+          alive[(bird / BITS) | 0] &= ~(1 << (bird % BITS));
+          eaten++;
+        }
+        if (k === keyAt) key = true;
+      }
+      if (eaten > node.left[a]) return null;
+      if (eaten) {
+        left ??= node.left.slice();
+        left[a] -= eaten;
+        birds -= eaten;
+      }
     }
-    return { pos, left, alive: alive ?? node.alive, birds: node.birds - eaten, key, last: i, parent: node, via: i * 4 + d };
+
+    const pos = node.pos.slice();
+    pos[i] += dy * w + dx;
+    if (j >= 0) pos[j] += dy * w + dx;
+    // A cracked board gives way once nothing of the pair is standing on it any more.
+    let broken = node.broken;
+    if (cracks) {
+      for (let m = 0; m < (j >= 0 ? 2 : 1); m++) {
+        const a = m ? j : i;
+        const x0 = node.pos[a] % w;
+        const y0 = (node.pos[a] / w) | 0;
+        for (const [cx, cy] of shape[a].cells) {
+          const c = crackAt[(y0 + cy) * w + x0 + cx];
+          if (c < 0) continue;
+          // Still covered if a hatch of the pair stood one square back from here before the slide.
+          const held = coversAt(node, i, x0 + cx - dx, y0 + cy - dy) || (j >= 0 && coversAt(node, j, x0 + cx - dx, y0 + cy - dy));
+          if (!held) broken |= 1 << c;
+        }
+      }
+    }
+    return { pos, left: left ?? node.left, alive: alive ?? node.alive, birds, key, broken, last: mover[i], parent: node, via: i * 4 + d };
   };
 
   const done = new Set<string>();
@@ -153,7 +201,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         for (let d = 0; d < 4; d++) {
           const child = slide(node, i, d);
           if (!child) continue;
-          const childCost = i === node.last ? cost : cost + 1;
+          const childCost = mover[i] === node.last ? cost : cost + 1;
           const childKey = keyOf(child);
           const known = best.get(childKey);
           if (known !== undefined && known <= childCost) continue;

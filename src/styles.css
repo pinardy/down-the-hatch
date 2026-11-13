@@ -751,6 +751,21 @@ ol {
   height: 100%;
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
 }
+.crack-art,
+.hole-art {
+  width: 100%;
+  height: 100%;
+}
+/* The board gives way as the hatch slides off it. */
+.hole-art {
+  animation: cave 260ms ease-out;
+}
+@keyframes cave {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
 
 .hatch,
 .chicken,

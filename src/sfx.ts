@@ -67,6 +67,11 @@ export const sfx = {
     tone("triangle", 900, 1500, 0.09, 0.12);
     tone("triangle", 1500, 700, 0.16, 0.1, 0.07);
   },
+  /** A cracked board giving way. */
+  crack() {
+    tone("sawtooth", 260, 70, 0.16, 0.12);
+    tone("square", 140, 50, 0.22, 0.08, 0.05);
+  },
   /** An egg cracking open. */
   peep() {
     tone("square", 1500, 1900, 0.05, 0.05);
