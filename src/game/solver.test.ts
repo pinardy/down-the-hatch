@@ -410,6 +410,17 @@ describe("rewinding", () => {
     expect(lastWinnable(level, [s0, up])).toBe(1);
     expect(lastWinnable(level, [s0])).toBe(0);
   });
+
+  it("starts from what is already known, and settles for a proved position when out of time", () => {
+    // Known winnable at 1: no need to look before it.
+    expect(lastWinnable(level, [s0, up, lost], 300_000, [null, true, null])).toBe(1);
+    // Known lost at 2: no need to look at it.
+    expect(lastWinnable(level, [s0, up, lost], 300_000, [null, null, false])).toBe(1);
+    // No time at all: the start, which can always be won.
+    expect(lastWinnable(level, [s0, up, lost], 300_000, [], 0)).toBe(0);
+    // No time, but 1 is known: that.
+    expect(lastWinnable(level, [s0, up, lost], 300_000, [null, true, null], 0)).toBe(1);
+  });
 });
 
 describe("levels", () => {
