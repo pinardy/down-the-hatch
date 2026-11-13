@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { eggsFor } from "../game/engine";
 import type { Chapter } from "../game/levels";
 import { unlockAudio } from "../sfx";
@@ -33,6 +33,14 @@ export function Home({ chapters, progress, settings, lastPlayed, onPlay, onSetti
       if (!now.delete(name)) now.add(name);
       return now;
     });
+  // Coming back from a level, put it back in view: the list is long and the top is a long way up.
+  const cameFrom = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // Braces matter: some browsers return a promise from scrollIntoView, and an effect must not return one.
+    cameFrom.current?.scrollIntoView({ block: "center" });
+  }, []);
+  // The big welcome is for the first visit. After that the list matters more.
+  const returning = cleared > 0;
   const play = (index: number) => {
     unlockAudio();
     onPlay(index);
@@ -40,14 +48,12 @@ export function Home({ chapters, progress, settings, lastPlayed, onPlay, onSetti
 
   return (
     <main className="screen home">
-      <header className="home__hero">
-        <TitleArt />
+      <header className={returning ? "home__hero home__hero--compact" : "home__hero"}>
+        {!returning && <TitleArt />}
         <h1 className="home__title">
-          Down the
-          <br />
-          Hatch
+          Down the{returning ? " " : <br />}Hatch
         </h1>
-        <p className="home__pitch">Slide a hatch under chickens of its own colour and down they go. Clear the coop.</p>
+        {!returning && <p className="home__pitch">Slide a hatch under chickens of its own colour and down they go. Clear the coop.</p>}
         <button type="button" className="btn btn--straw btn--big" onClick={() => play(next ? next.index : 0)}>
           {next && nextIn ? (cleared === 0 ? "Start playing" : `Play ${nextIn.name} ${nextIn.levels.indexOf(next) + 1}`) : "Play from the start"}
         </button>
@@ -60,17 +66,26 @@ export function Home({ chapters, progress, settings, lastPlayed, onPlay, onSetti
         {chapters.map((chapter, c) => {
           const done = chapter.levels.filter((l) => progress[l.name] !== undefined).length;
           const all = done === chapter.levels.length;
+          const won = chapter.levels.reduce((n, l) => n + (progress[l.name] !== undefined ? eggsFor(progress[l.name], l.par) : 0), 0);
           const isOpen = open.has(chapter.name);
           return (
             <section key={chapter.name} className={all ? "chapter chapter--done" : "chapter"}>
               <h2>
                 <button type="button" className="chapter__toggle" aria-expanded={isOpen} aria-controls={`chapter-${c}`} onClick={() => toggle(chapter.name)}>
-                  <span className="chapter__title">
-                    {chapter.name}
-                    <span className={`grade grade--${chapter.difficulty.toLowerCase()}`}>{chapter.difficulty}</span>
-                  </span>
-                  <span className="chapter__tally">
-                    {done} of {chapter.levels.length}
+                  <span className="chapter__head">
+                    <span className="chapter__title">
+                      {chapter.name}
+                      <span className={`grade grade--${chapter.difficulty.toLowerCase()}`}>{chapter.difficulty}</span>
+                    </span>
+                    <span className="chapter__tally">
+                      <span>
+                        {done} of {chapter.levels.length} cleared
+                      </span>
+                      <span className="chapter__eggs">
+                        <EggArt earned={won > 0} />
+                        {won} of {chapter.levels.length * 3} eggs
+                      </span>
+                    </span>
                   </span>
                   <svg className="chapter__chevron" viewBox="0 0 16 16" aria-hidden="true">
                     <path d="M3 6 l5 5 l5 -5" />
@@ -88,6 +103,7 @@ export function Home({ chapters, progress, settings, lastPlayed, onPlay, onSetti
                         <li key={l.name}>
                           <button
                             type="button"
+                            ref={l.index === lastPlayed ? cameFrom : undefined}
                             className={best !== undefined ? "level level--done" : l === next ? "level level--next" : "level"}
                             onClick={() => play(l.index)}
                             aria-label={`${chapter.name} ${i + 1}, ${l.name}${best !== undefined ? `, cleared with ${earned} of 3 eggs` : ""}`}

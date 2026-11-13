@@ -6,17 +6,66 @@ import { Play } from "./ui/Play";
 import { loadProgress, loadSettings, saveProgress, saveSettings } from "./ui/storage";
 import type { Settings } from "./ui/storage";
 
+/**
+ * Which level this entry in the browser's history is showing, or null for the level list.
+ * Opening a level adds an entry, so the phone's back button returns to the list instead of
+ * leaving the game. Where history is off limits (some preview frames) this is always null
+ * and the game falls back to plain state.
+ */
+function levelInHistory(): number | null {
+  try {
+    const at = (window.history.state as { level?: unknown } | null)?.level;
+    return typeof at === "number" && LEVELS[at] ? at : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
-  const [playing, setPlaying] = useState<number | null>(null);
-  const [lastPlayed, setLastPlayed] = useState<number | null>(null);
+  const [playing, setPlaying] = useState<number | null>(levelInHistory);
+  const [lastPlayed, setLastPlayed] = useState<number | null>(playing);
   const [progress, setProgress] = useState(loadProgress);
   const [settings, setSettings] = useState(loadSettings);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
 
+  // Back and forward: show whatever that entry was showing.
+  useEffect(() => {
+    const onPop = () => {
+      const at = levelInHistory();
+      if (at !== null) setLastPlayed(at);
+      setPlaying(at);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const play = (index: number) => {
+    try {
+      // From the list, a new entry; from one level to the next, the same entry, so back still means the list.
+      if (playing === null) window.history.pushState({ level: index }, "");
+      else window.history.replaceState({ level: index }, "");
+    } catch {
+      /* no history here: the Levels button still works */
+    }
     setLastPlayed(index);
     setPlaying(index);
+  };
+
+  const toLevels = () => {
+    if (levelInHistory() === null) return setPlaying(null);
+    // Leave through history, so the entry for this level is not left behind for back to find.
+    window.history.back();
+    // If nothing is behind this entry (a restored tab, say) back does nothing: go to the list anyway.
+    window.setTimeout(() => {
+      if (levelInHistory() === null) return;
+      try {
+        window.history.replaceState(null, "");
+      } catch {
+        /* as above */
+      }
+      setPlaying(null);
+    }, 400);
   };
 
   const changeSettings = (s: Settings) => {
@@ -52,7 +101,7 @@ export default function App() {
       settings={settings}
       onCleared={cleared}
       onNext={level.index + 1 < LEVELS.length ? () => play(level.index + 1) : null}
-      onLevels={() => setPlaying(null)}
+      onLevels={toLevels}
     />
   );
 }
