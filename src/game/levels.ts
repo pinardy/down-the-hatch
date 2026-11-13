@@ -2429,6 +2429,153 @@ const ONE_WAY: LevelDef[] = [
 ];
 
 
+const WORKSHOP: LevelDef[] = [
+  {
+    id: "odd-jobs",
+    name: "Odd jobs",
+    rows: ["....b<", "....y.", "......", ".y^.o.", ">4....", "y....2", "y=.<.."],
+    hatches: [
+      { color: "teal", x: 1, y: 1, shape: ["xxx", "..x"], cap: 1 },
+      { color: "gold", x: 4, y: 4, shape: ["xx", "x.", "x."], cap: 1 },
+      { color: "red", x: 5, y: 1, h: 3, cap: 1 },
+      { color: "plum", x: 2, y: 3, shape: [".x", ".x", "xx"], cap: 1 },
+      { color: "gold", x: 0, y: 1, shape: ["x.", "xx", "x."], cap: 1 },
+    ],
+    par: 10,
+  },
+  {
+    id: "elbow-grease",
+    name: "Elbow grease",
+    rows: ["p=^.o=", "5r.pp.", "tp....", "rp^...", ".....r", "<.....", "o.#3.."],
+    hatches: [
+      { color: "teal", x: 2, y: 4, shape: ["xxx", "x.."], cap: 1 },
+      { color: "blue", x: 4, y: 2, shape: [".x", "xx"], cap: 1 },
+      { color: "red", x: 3, y: 5, shape: ["xxx", ".x."], cap: 3 },
+      { color: "plum", x: 2, y: 1, shape: ["x.", "xx"], cap: 2 },
+      { color: "plum", x: 0, y: 4, shape: ["xx", ".x"], cap: 2 },
+    ],
+    par: 12,
+  },
+  {
+    id: "shop-floor",
+    name: "Shop floor",
+    rows: ["=....^", "..o...", "..=ttb", "4.b...", "5.....", "..p<..", ">.pp.v"],
+    hatches: [
+      { color: "plum", x: 2, y: 0, w: 3, cap: 1 },
+      { color: "blue", x: 2, y: 3, shape: [".x", "xx"], cap: 2 },
+      { color: "gold", x: 4, y: 3, w: 2, h: 2, cap: 1 },
+      { color: "red", x: 0, y: 4, shape: [".x", "xx", ".x"], cap: 1 },
+      { color: "teal", x: 0, y: 1, shape: ["xx", ".x", ".x"], cap: 2 },
+    ],
+    par: 13,
+  },
+  {
+    id: "tool-shed",
+    name: "Tool shed",
+    rows: ["..4.2^", "...o..", "......", "b....>", "..=t.>", "byby..", "....b."],
+    hatches: [
+      { color: "red", x: 4, y: 1, shape: ["xx", "x.", "x."], cap: 1 },
+      { color: "gold", x: 1, y: 2, shape: [".x.", "xxx"], cap: 2 },
+      { color: "blue", x: 4, y: 5, shape: ["xx", ".x"], cap: 2 },
+      { color: "teal", x: 2, y: 6, cap: 1 },
+      { color: "teal", x: 0, y: 0, shape: [".x", "xx"], cap: 1 },
+    ],
+    par: 16,
+  },
+  {
+    id: "overtime",
+    name: "Overtime",
+    rows: [".rr...", ".=#tpy", "=o.t..", "^.p=p.", "2v....", "3.t..."],
+    hatches: [
+      { color: "teal", x: 4, y: 2, shape: ["xx", ".x", ".x"], cap: 3 },
+      { color: "gold", x: 3, y: 4, shape: ["xx", ".x"], cap: 1 },
+      { color: "red", x: 3, y: 0, w: 3, cap: 2 },
+      { color: "plum", x: 0, y: 0, h: 2, cap: 2 },
+      { color: "plum", x: 1, y: 3, cap: 1 },
+    ],
+    par: 19,
+  },
+  {
+    id: "night-shift",
+    name: "Night shift",
+    rows: ["..t...", "......", "oyt...", "#pp...", "t..=y.", "<..vp.", "p3#.r."],
+    hatches: [
+      { color: "teal", x: 3, y: 2, w: 2, cap: 1 },
+      { color: "plum", x: 5, y: 2, h: 2, cap: 4 },
+      { color: "red", x: 3, y: 0, shape: ["xxx", ".x."], cap: 1 },
+      { color: "gold", x: 1, y: 4, shape: ["xx", "x."], cap: 2 },
+      { color: "teal", x: 1, y: 0, shape: ["x..", "xxx"], cap: 2 },
+    ],
+    par: 21,
+  },
+  {
+    id: "assembly-line",
+    name: "Assembly line",
+    rows: ["..y^r.", "..=.y.", "tb..or", ".y^#..", "..ryr#", "yy.r5o"],
+    hatches: [
+      { color: "gold", x: 4, y: 3, w: 2, cap: 6 },
+      { color: "teal", x: 2, y: 1, shape: [".x", "xx"], cap: 1 },
+      { color: "blue", x: 0, y: 0, shape: [".x", "xx"], cap: 1 },
+      { color: "red", x: 0, y: 3, h: 2, cap: 3 },
+      { color: "red", x: 5, y: 0, h: 2, cap: 2 },
+    ],
+    par: 24,
+  },
+  {
+    id: "apprentice-piece",
+    name: "Apprentice piece",
+    rows: ["y..t2=", ">=....", "tv.#..", "=vv.o.", "ty.=..", "...y.3"],
+    hatches: [
+      { color: "teal", x: 0, y: 5, w: 3, cap: 1, axis: "v" },
+      { color: "blue", x: 5, y: 2, h: 2, cap: 1 },
+      { color: "gold", x: 4, y: 1, w: 2, cap: 2 },
+      { color: "red", x: 4, y: 4, shape: ["xx", "x."], cap: 1 },
+      { color: "gold", x: 1, y: 0, shape: ["xx", ".x", ".x"], cap: 1 },
+    ],
+    par: 26,
+  },
+  {
+    id: "master-craftsman",
+    name: "Master craftsman",
+    rows: ["#..y.=", "y.....", "<.1btb", "......", "r..o=.", "=.....", "^...4b"],
+    hatches: [
+      { color: "blue", x: 3, y: 0, shape: [".x.", "xxx"], cap: 2 },
+      { color: "plum", x: 1, y: 4, shape: ["xx", ".x", ".x"], cap: 1 },
+      { color: "teal", x: 3, y: 3, shape: ["xxx", "..x"], cap: 1 },
+      { color: "gold", x: 3, y: 5, shape: ["xxx", "x.."], cap: 1 },
+      { color: "blue", x: 1, y: 0, shape: ["xx", ".x"], cap: 1 },
+      { color: "gold", x: 1, y: 1, shape: ["x.", "x.", "xx"], cap: 1 },
+    ],
+    par: 27,
+  },
+  {
+    id: "grand-design",
+    name: "Grand design",
+    rows: [">.>p..", "py..b.", "......", "#b...o", "4..5..", "....p=", "p..<y."],
+    hatches: [
+      { color: "red", x: 3, y: 3, shape: ["xx", ".x"], cap: 1 },
+      { color: "blue", x: 1, y: 4, w: 2, cap: 2 },
+      { color: "teal", x: 2, y: 1, shape: ["xx", "x.", "x."], cap: 1 },
+      { color: "plum", x: 1, y: 5, shape: ["xxx", ".x."], cap: 2 },
+      { color: "gold", x: 4, y: 0, shape: ["xx", ".x", ".x"], cap: 2 },
+    ],
+    par: 30,
+  },
+  {
+    id: "magnum-opus",
+    name: "Magnum opus",
+    rows: ["^t....", "#...y#", "y..=..", "..ro..", "...=tp", ".=.t2y", ".y<..y"],
+    hatches: [
+      { color: "plum", x: 0, y: 4, shape: ["xxx", "x.."], cap: 1 },
+      { color: "blue", x: 4, y: 2, shape: [".x", "xx"], cap: 1 },
+      { color: "red", x: 2, y: 1, w: 2, cap: 1, axis: "v" },
+      { color: "gold", x: 0, y: 1, shape: [".x", ".x", "xx"], cap: 4 },
+      { color: "teal", x: 2, y: 0, w: 3, cap: 3 },
+    ],
+    par: 43,
+  },
+];
+
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
 
 export interface Chapter {
@@ -2463,6 +2610,7 @@ const BOOK: { name: string; difficulty: Difficulty; blurb: string; levels: Level
   { name: "Gatekeeper", difficulty: "Hard", blurb: "A gate opens only while a hatch stands on a pressure plate. Someone has to hold the door.", levels: GATES },
   { name: "One way only", difficulty: "Hard", blurb: "Arrows can only be crossed the way they point. Every detour costs.", levels: ONE_WAY },
   { name: "Hard-boiled", difficulty: "Expert", blurb: "Bends, ice, padlocks and eggs, all in one coop. Thirty moves is a good day.", levels: BOILED },
+  { name: "The workshop", difficulty: "Expert", blurb: "Paint, gates and one-way floors in one yard. Plan who holds the door, and who changes coats.", levels: WORKSHOP },
 ];
 
 let count = 0;
