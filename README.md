@@ -15,6 +15,11 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 
 82 levels: a twelve-level tutorial, then four chapters that add L- and T-shaped hatches, frozen hatches, padlocks and mystery eggs, then five much harder chapters that take 18 to 34 moves a level. Each chapter is tagged Easy, Medium, Hard or Expert on the level list. Undo, Start over and Hint are always there, and if you slide into a dead end, Rewind takes you back to the last position that can still be won.
 
+- **Daily coop:** one extra board a day, the same for everyone, with a streak for playing on consecutive days.
+- **Stars:** clear a level without asking for a hint and its tile gets a star.
+- **Best solution:** finish over par and you can watch the fewest-moves solution play out.
+- **Backups:** progress is saved in your browser. A backup code (under "Your progress" on the level list) carries it to another phone or browser.
+
 ## Development
 
 ```bash

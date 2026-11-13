@@ -45,6 +45,8 @@ export interface Chicken {
 
 /** How a level is written down in levels.ts. */
 export interface LevelDef {
+  /** What saved progress is filed under. Never change it once a level has shipped; the name is free to change. */
+  id: string;
   name: string;
   /**
    * One string per row. `.` floor, `#` hay bale (never moves), `k` the key,
@@ -75,6 +77,7 @@ export interface LevelDef {
 export interface Level {
   /** Position among all levels, from 0. */
   index: number;
+  id: string;
   name: string;
   chapter: string;
   w: number;

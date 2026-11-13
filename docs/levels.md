@@ -4,6 +4,7 @@ A level is an ASCII grid plus a list of hatches:
 
 ```ts
 {
+  id: "wrong-feathers",
   name: "Wrong feathers",
   rows: [".brr",      // . floor   # hay bale
          "#..."],     // r y t b p  a red, gold, teal, blue or plum chicken
@@ -14,6 +15,8 @@ A level is an ASCII grid plus a list of hatches:
   par: 2,
 }
 ```
+
+The `id` is what a player's saved progress is filed under. Give every level its own, and never change it once the level has shipped; the `name` can change freely.
 
 More grid squares: `k` is the key, and an upper-case chicken (`R Y T B P`) is still in its egg. A hatch can also take:
 
@@ -36,6 +39,12 @@ Each colour needs exactly as many chickens as its hatches have room for. `npm te
 `npm run levels -- shapes 42 120` searches the `shapes` tier with seed 42 for 120 seconds. The tiers are `tiny`, `small`, `medium` and `large` (plain boards), then `shapes`, `ice`, `lock` and `mix`, which must use the harder pieces. `xl`, `shapes-hard`, `ice-hard`, `lock-hard` and `mix-hard` are the same on bigger boards, climbed for much longer towards a par in the high twenties; expect about one board every minute and a half, and give them several minutes.
 
 Par is only a rough stand-in for difficulty, so play what it finds before keeping it.
+
+## The daily coop
+
+The daily coop draws one board a day, in order, from `src/game/daily-pool.ts`, and starts again when it reaches the end. Nothing is fetched, so it works offline. Pool boards are written like levels but need no `id` or `name`.
+
+To add boards, run a mid-difficulty tier (`medium`, `large`, `shapes`, `ice`, `lock` or `mix`) and paste the best into the pool. Add them at the **end**: a board's place in the pool decides which day it falls on, so appending leaves the days people have already played alone until the pool next comes round. `npm test` solves every pool board and checks its par.
 
 ## Chapters
 

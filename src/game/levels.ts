@@ -5,6 +5,8 @@
 // Grid key:  .  floor     #  hay bale     k  the key
 //            r y t b p   a red, gold, teal, blue or plum chicken
 //            R Y T B P   the same chicken still in its egg (colour hidden until a hatch is beside it)
+// Every level has an `id`. Saved progress is filed under it, so a level can be renamed freely
+// but its id must never change, and no two levels may share one.
 // Hatches are listed separately and must sit on floor. Each colour needs exactly as many
 // chickens as its hatches have room for (`cap`). A hatch is a `w` by `h` rectangle, or any
 // `shape` drawn with x's; it can be on a rail (`axis`), frozen until `ice` chickens have
@@ -15,6 +17,7 @@ import type { Level, LevelDef } from "./types";
 
 const TUTORIAL: LevelDef[] = [
   {
+    id: "first-peck",
     name: "First peck",
     tip: "Drag the hatch under the chickens.",
     rows: ["....", "..rr", "...."],
@@ -22,6 +25,7 @@ const TUTORIAL: LevelDef[] = [
     par: 1,
   },
   {
+    id: "wrong-feathers",
     name: "Wrong feathers",
     tip: "A hatch only takes its own colour. Clear the blue chicken out of red’s way.",
     rows: [".brr", "#..."],
@@ -32,6 +36,7 @@ const TUTORIAL: LevelDef[] = [
     par: 2,
   },
   {
+    id: "full-house",
     name: "Full house",
     tip: "The number is the room left. A full hatch shuts and gets out of the way.",
     rows: ["r...y", "##.##"],
@@ -42,6 +47,7 @@ const TUTORIAL: LevelDef[] = [
     par: 2,
   },
   {
+    id: "side-door",
     name: "Side door",
     tip: "A long hatch drops chickens with any part of itself.",
     rows: ["..bt", "...b", "..t.", "...#", "...t"],
@@ -52,6 +58,7 @@ const TUTORIAL: LevelDef[] = [
     par: 4,
   },
   {
+    id: "pecking-order",
     name: "Pecking order",
     tip: "Two red hatches share the red chickens. Which one takes which matters.",
     rows: ["..tr", "#..r", "r...", "...t"],
@@ -63,6 +70,7 @@ const TUTORIAL: LevelDef[] = [
     par: 4,
   },
   {
+    id: "scratch-patch",
     name: "Scratch patch",
     rows: [".y..", "....", "rr.#", "ry.r", "y..."],
     hatches: [
@@ -73,6 +81,7 @@ const TUTORIAL: LevelDef[] = [
     par: 5,
   },
   {
+    id: "hay-fever",
     name: "Hay fever",
     rows: ["..#..", ".....", ".ybb.", "by#y.", "y...."],
     hatches: [
@@ -83,6 +92,7 @@ const TUTORIAL: LevelDef[] = [
     par: 7,
   },
   {
+    id: "red-rover",
     name: "Red rover",
     rows: ["...r.", "..brr", ".....", "r...b", ".rb.r"],
     hatches: [
@@ -93,6 +103,7 @@ const TUTORIAL: LevelDef[] = [
     par: 7,
   },
   {
+    id: "tight-squeeze",
     name: "Tight squeeze",
     rows: [".....", ".b...", ".p...", "rbp..", "..#.."],
     hatches: [
@@ -104,6 +115,7 @@ const TUTORIAL: LevelDef[] = [
     par: 8,
   },
   {
+    id: "on-the-rails",
     name: "On the rails",
     tip: "Arrowheads mean a hatch is on rails. It only slides that way.",
     rows: [".y..y", "...y.", "....b", "..r..", ".r.t.", "..#.r"],
@@ -116,6 +128,7 @@ const TUTORIAL: LevelDef[] = [
     par: 10,
   },
   {
+    id: "square-meal",
     name: "Square meal",
     rows: ["..#.#", ".rpy.", "t....", ".....", ".....", ".p.r."],
     hatches: [
@@ -127,6 +140,7 @@ const TUTORIAL: LevelDef[] = [
     par: 11,
   },
   {
+    id: "rush-hour-at-the-roost",
     name: "Rush hour at the roost",
     rows: ["p#rt..", "..p.b.", ".....#", "..r...", "......", "..##.t"],
     hatches: [
@@ -142,6 +156,7 @@ const TUTORIAL: LevelDef[] = [
 
 const SHAPES: LevelDef[] = [
   {
+    id: "elbow-room",
     name: "Elbow room",
     tip: "A bent hatch needs room for every corner, and drops chickens with any square.",
     rows: [".....", ".....", "r...b", "....."],
@@ -152,6 +167,7 @@ const SHAPES: LevelDef[] = [
     par: 2,
   },
   {
+    id: "dog-leg",
     name: "Dog-leg",
     rows: ["b.y.#.", "......", ".....#", "....p.", "....p.", "brb..."],
     hatches: [
@@ -163,6 +179,7 @@ const SHAPES: LevelDef[] = [
     par: 14,
   },
   {
+    id: "tee-time",
     name: "Tee time",
     rows: ["....y", "...t.", ".b...", ".....", "yb...", "tbb.."],
     hatches: [
@@ -174,6 +191,7 @@ const SHAPES: LevelDef[] = [
     par: 15,
   },
   {
+    id: "crooked-row",
     name: "Crooked row",
     rows: ["....#.", "...ppp", "......", "pt...p", "##....", "...rrp"],
     hatches: [
@@ -186,6 +204,7 @@ const SHAPES: LevelDef[] = [
     par: 16,
   },
   {
+    id: "boxed-in",
     name: "Boxed in",
     rows: ["..bp.y", "#....y", "#.....", "yy...#", "b.....", ".p...b"],
     hatches: [
@@ -200,6 +219,7 @@ const SHAPES: LevelDef[] = [
 
 const ICE: LevelDef[] = [
   {
+    id: "first-frost",
     name: "First frost",
     tip: "A frozen hatch shows how many chickens must drop, anywhere, before it thaws.",
     rows: ["...r", "...b", "..b."],
@@ -210,6 +230,7 @@ const ICE: LevelDef[] = [
     par: 2,
   },
   {
+    id: "thin-ice",
     name: "Thin ice",
     rows: ["....b", ".r...", "#....", ".....", "r.tb.", "b...."],
     hatches: [
@@ -221,6 +242,7 @@ const ICE: LevelDef[] = [
     par: 12,
   },
   {
+    id: "cold-shoulder",
     name: "Cold shoulder",
     rows: ["..b...", ".tr...", "b#....", "#.....", "......", ".yby.."],
     hatches: [
@@ -232,6 +254,7 @@ const ICE: LevelDef[] = [
     par: 13,
   },
   {
+    id: "black-ice",
     name: "Black ice",
     rows: ["....t", ".byr#", "tb..t", "t...r", "..t..", "..ryt"],
     hatches: [
@@ -244,6 +267,7 @@ const ICE: LevelDef[] = [
     par: 13,
   },
   {
+    id: "deep-freeze",
     name: "Deep freeze",
     rows: ["......", ".....p", ".t..#.", ".....p", ".p...p", "rrt.r."],
     hatches: [
@@ -258,6 +282,7 @@ const ICE: LevelDef[] = [
 
 const LOCKS: LevelDef[] = [
   {
+    id: "spare-key",
     name: "Spare key",
     tip: "A padlocked hatch stays put until another hatch slides over the key.",
     rows: ["...r", ".k.b"],
@@ -268,6 +293,7 @@ const LOCKS: LevelDef[] = [
     par: 2,
   },
   {
+    id: "latchkey",
     name: "Latchkey",
     rows: ["y.t.#t", ".#t.#.", ".kb...", "b..y..", "...yb.", "...t.."],
     hatches: [
@@ -279,6 +305,7 @@ const LOCKS: LevelDef[] = [
     par: 10,
   },
   {
+    id: "under-wraps",
     name: "Under wraps",
     rows: ["...by", "#ykr#", ".t...", ".....", ".y..y", "rb.r#"],
     hatches: [
@@ -290,6 +317,7 @@ const LOCKS: LevelDef[] = [
     par: 12,
   },
   {
+    id: "key-change",
     name: "Key change",
     rows: [".brb..", ".....b", "yk....", "...y.r", "r..bt.", "#...yy"],
     hatches: [
@@ -301,6 +329,7 @@ const LOCKS: LevelDef[] = [
     par: 12,
   },
   {
+    id: "jailbird",
     name: "Jailbird",
     rows: ["......", "....#.", "k..y..", "y.pyp.", ".#.yt.", ".pp.yp"],
     hatches: [
@@ -312,6 +341,7 @@ const LOCKS: LevelDef[] = [
     par: 14,
   },
   {
+    id: "throw-away-the-key",
     name: "Throw away the key",
     rows: ["...k..", "r..br.", "......", "..bt.y", "...y.r", "......"],
     hatches: [
@@ -326,6 +356,7 @@ const LOCKS: LevelDef[] = [
 
 const FLOCK: LevelDef[] = [
   {
+    id: "surprise-inside",
     name: "Surprise inside",
     tip: "An egg hides its chicken’s colour. Slide a hatch up beside it to crack it open.",
     rows: ["..R.", "...B", "...."],
@@ -336,6 +367,7 @@ const FLOCK: LevelDef[] = [
     par: 2,
   },
   {
+    id: "mixed-clutch",
     name: "Mixed clutch",
     rows: ["..ky..", ".Yrr..", "......", "b.Y...", "Y...y.", "...#..", "p.ry.."],
     hatches: [
@@ -348,6 +380,7 @@ const FLOCK: LevelDef[] = [
     par: 14,
   },
   {
+    id: "henhouse-blues",
     name: "Henhouse blues",
     rows: [".....B", "......", ".Y...b", "#k....", "B.....", ".p.t.y", ".B..T."],
     hatches: [
@@ -360,6 +393,7 @@ const FLOCK: LevelDef[] = [
     par: 14,
   },
   {
+    id: "all-cooped-up",
     name: "All cooped up",
     rows: ["r..pr#", ".t...#", "..r.pR", ".B...k", "..r...", ".#RrRb"],
     hatches: [
@@ -372,6 +406,7 @@ const FLOCK: LevelDef[] = [
     par: 18,
   },
   {
+    id: "last-one-out",
     name: "Last one out",
     rows: [".Y#...", "...krp", "..Y..b", ".r....", ".R..y#", "...tB#"],
     hatches: [
@@ -389,6 +424,7 @@ const FLOCK: LevelDef[] = [
 
 const RANGE: LevelDef[] = [
   {
+    id: "gridlock",
     name: "Gridlock",
     rows: ["..ptpb", "rt..tp", "p.....", "....b.", "..ttb.", "..y#.#"],
     hatches: [
@@ -401,6 +437,7 @@ const RANGE: LevelDef[] = [
     par: 18,
   },
   {
+    id: "traffic-jam",
     name: "Traffic jam",
     rows: ["...t..", ".p....", "......", "p.b...", ".#...#", "r..ypp"],
     hatches: [
@@ -413,6 +450,7 @@ const RANGE: LevelDef[] = [
     par: 18,
   },
   {
+    id: "cross-coop-traffic",
     name: "Cross-coop traffic",
     rows: ["b.p.yt", "....r#", "......", ".....p", "b...t.", "..b.t."],
     hatches: [
@@ -426,6 +464,7 @@ const RANGE: LevelDef[] = [
     par: 18,
   },
   {
+    id: "no-through-road",
     name: "No through road",
     rows: ["....p.", "t.bp..", "t.y..p", "#.....", ".p..p#", "yy....", ".tp..."],
     hatches: [
@@ -438,6 +477,7 @@ const RANGE: LevelDef[] = [
     par: 20,
   },
   {
+    id: "roundabout",
     name: "Roundabout",
     rows: ["by...p", "tt....", "p...r#", "....tr", "t..r..", "b....."],
     hatches: [
@@ -450,6 +490,7 @@ const RANGE: LevelDef[] = [
     par: 20,
   },
   {
+    id: "long-way-round",
     name: "Long way round",
     rows: ["t....b", "rpt..p", ".b...#", "......", "......", "r..#p."],
     hatches: [
@@ -462,6 +503,7 @@ const RANGE: LevelDef[] = [
     par: 24,
   },
   {
+    id: "barn-dance",
     name: "Barn dance",
     rows: ["b..b.b", ".p.#..", ".p#r..", "...r..", ".b....", ".b.y..", "tr.b.#"],
     hatches: [
@@ -474,6 +516,7 @@ const RANGE: LevelDef[] = [
     par: 25,
   },
   {
+    id: "musical-chairs",
     name: "Musical chairs",
     rows: ["#..yp#", "rrpy..", "pp.#by", "#y..#.", "......", "...y.."],
     hatches: [
@@ -487,6 +530,7 @@ const RANGE: LevelDef[] = [
     par: 26,
   },
   {
+    id: "fox-in-the-henhouse",
     name: "Fox in the henhouse",
     rows: [".....#", "yb....", ".....p", "b#....", ".##.rp", "p..pry", "...t.."],
     hatches: [
@@ -499,6 +543,7 @@ const RANGE: LevelDef[] = [
     par: 27,
   },
   {
+    id: "wing-and-a-prayer",
     name: "Wing and a prayer",
     rows: [".....y", "rt..p.", "pr....", ".br...", ".rt...", "#r#py."],
     hatches: [
@@ -514,6 +559,7 @@ const RANGE: LevelDef[] = [
 
 const TWISTS: LevelDef[] = [
   {
+    id: "odd-angles",
     name: "Odd angles",
     rows: ["tbptp.", ".....b", "..bbb.", "....p.", ".b..p.", "ytby.."],
     hatches: [
@@ -526,6 +572,7 @@ const TWISTS: LevelDef[] = [
     par: 18,
   },
   {
+    id: "tight-corners",
     name: "Tight corners",
     rows: [".t..y.", "...#..", "y.....", "pt..y.", "r....#", ".p.#..", ".t...p"],
     hatches: [
@@ -538,6 +585,7 @@ const TWISTS: LevelDef[] = [
     par: 19,
   },
   {
+    id: "round-the-bend",
     name: "Round the bend",
     rows: ["..t.p.", "..y..t", "pr...y", "y....#", ".r.tbt", "...trb"],
     hatches: [
@@ -550,6 +598,7 @@ const TWISTS: LevelDef[] = [
     par: 21,
   },
   {
+    id: "wishbone",
     name: "Wishbone",
     rows: [".#....", "p.....", ".p...b", "..t...", "bp..bb", "y.....", "t...tp"],
     hatches: [
@@ -562,6 +611,7 @@ const TWISTS: LevelDef[] = [
     par: 21,
   },
   {
+    id: "dovetail",
     name: "Dovetail",
     rows: [".yt.ty", "......", "...p.#", "...btt", "..t..b", "..t.t."],
     hatches: [
@@ -574,6 +624,7 @@ const TWISTS: LevelDef[] = [
     par: 21,
   },
   {
+    id: "jigsaw",
     name: "Jigsaw",
     rows: ["rryrp.", ".y#...", ".tby..", ".....t", "rr...t", ".r..rp"],
     hatches: [
@@ -586,6 +637,7 @@ const TWISTS: LevelDef[] = [
     par: 23,
   },
   {
+    id: "contortionist",
     name: "Contortionist",
     rows: [".#tb.t", "t.t...", "y.p...", "....b#", "...ty#", ".t.yty", ".....t"],
     hatches: [
@@ -598,6 +650,7 @@ const TWISTS: LevelDef[] = [
     par: 25,
   },
   {
+    id: "pretzel-logic",
     name: "Pretzel logic",
     rows: ["rtbpt.", "..rp..", "p.p...", "r.r...", ".....b", "......"],
     hatches: [
@@ -610,6 +663,7 @@ const TWISTS: LevelDef[] = [
     par: 26,
   },
   {
+    id: "in-a-twist",
     name: "In a twist",
     rows: ["..r...", "..tt..", ".t...r", ".....b", "....ty", ".....b"],
     hatches: [
@@ -623,6 +677,7 @@ const TWISTS: LevelDef[] = [
     par: 28,
   },
   {
+    id: "knot-likely",
     name: "Knot likely",
     rows: ["#..rpr", ".r....", "...r.b", "t....#", "r....y", "tbbb.."],
     hatches: [
@@ -638,6 +693,7 @@ const TWISTS: LevelDef[] = [
 
 const FROST: LevelDef[] = [
   {
+    id: "cold-feet",
     name: "Cold feet",
     rows: ["...p#.", "....rp", "...y.b", "...b.#", ".....r", "p..rp.", "...ybr"],
     hatches: [
@@ -650,6 +706,7 @@ const FROST: LevelDef[] = [
     par: 18,
   },
   {
+    id: "ice-breaker",
     name: "Ice breaker",
     rows: [".rp...", "......", ".....y", "t..#..", "y.rtp.", "b.....", "yr.r.."],
     hatches: [
@@ -662,6 +719,7 @@ const FROST: LevelDef[] = [
     par: 18,
   },
   {
+    id: "frostbite",
     name: "Frostbite",
     rows: ["tb....", ".....y", "..rt..", "......", "..y...", ".b#...", "....r."],
     hatches: [
@@ -674,6 +732,7 @@ const FROST: LevelDef[] = [
     par: 19,
   },
   {
+    id: "slow-thaw",
     name: "Slow thaw",
     rows: [".py...", "..yp..", "p....#", ".....t", "......", "..b.t.", ".r...r"],
     hatches: [
@@ -686,6 +745,7 @@ const FROST: LevelDef[] = [
     par: 19,
   },
   {
+    id: "snowed-in",
     name: "Snowed in",
     rows: ["t....p", ".t...t", "......", "b....#", ".br.##", "#t....", "....rb"],
     hatches: [
@@ -698,6 +758,7 @@ const FROST: LevelDef[] = [
     par: 21,
   },
   {
+    id: "chill-factor",
     name: "Chill factor",
     rows: ["....y.", ".....r", "r...p.", "..ryp.", "......", ".bp..."],
     hatches: [
@@ -710,6 +771,7 @@ const FROST: LevelDef[] = [
     par: 24,
   },
   {
+    id: "cold-storage",
     name: "Cold storage",
     rows: [".p..pb", "p...b.", ".t...t", "....y.", "......", "..bp..", "..rty."],
     hatches: [
@@ -722,6 +784,7 @@ const FROST: LevelDef[] = [
     par: 25,
   },
   {
+    id: "brain-freeze",
     name: "Brain freeze",
     rows: ["p.p.b#", "y....#", "b..p.p", "b.....", ".#...y", ".#.r.y"],
     hatches: [
@@ -734,6 +797,7 @@ const FROST: LevelDef[] = [
     par: 26,
   },
   {
+    id: "tip-of-the-iceberg",
     name: "Tip of the iceberg",
     rows: [".tp.yb", "....yy", ".t..bt", "pb...p", "......", "......"],
     hatches: [
@@ -746,6 +810,7 @@ const FROST: LevelDef[] = [
     par: 26,
   },
   {
+    id: "absolute-zero",
     name: "Absolute zero",
     rows: ["t#....", "......", "....#t", ".b..t.", "p..tp.", "#...ty"],
     hatches: [
@@ -761,6 +826,7 @@ const FROST: LevelDef[] = [
 
 const CELLS: LevelDef[] = [
   {
+    id: "lockdown",
     name: "Lockdown",
     rows: ["...k..", "r#.p.p", "b....b", "r....r", "p.....", "..y..."],
     hatches: [
@@ -773,6 +839,7 @@ const CELLS: LevelDef[] = [
     par: 18,
   },
   {
+    id: "deadbolt",
     name: "Deadbolt",
     rows: ["ty....", "......", ".....y", "b.y...", "k..y.b", "...rty"],
     hatches: [
@@ -785,6 +852,7 @@ const CELLS: LevelDef[] = [
     par: 18,
   },
   {
+    id: "skeleton-key",
     name: "Skeleton key",
     rows: ["....#t", "......", "by..ky", "yt..pb", "r...yr", ".....p"],
     hatches: [
@@ -797,6 +865,7 @@ const CELLS: LevelDef[] = [
     par: 20,
   },
   {
+    id: "doing-time",
     name: "Doing time",
     rows: ["..ry#p", "..r...", ".....k", "t.b.p.", "......", "##bt.."],
     hatches: [
@@ -810,6 +879,7 @@ const CELLS: LevelDef[] = [
     par: 21,
   },
   {
+    id: "cell-block",
     name: "Cell block",
     rows: ["......", "......", "....rk", ".....t", "yb..t#", "t#ryr#"],
     hatches: [
@@ -822,6 +892,7 @@ const CELLS: LevelDef[] = [
     par: 22,
   },
   {
+    id: "chain-gang",
     name: "Chain gang",
     rows: ["...prp", "......", ".....y", "....rb", "...tky", "..b..t", "#..ryy"],
     hatches: [
@@ -834,6 +905,7 @@ const CELLS: LevelDef[] = [
     par: 23,
   },
   {
+    id: "solitary",
     name: "Solitary",
     rows: ["#rr..p", "......", "r....b", "#...kp", "...rr.", "brrr..", "..y..."],
     hatches: [
@@ -846,6 +918,7 @@ const CELLS: LevelDef[] = [
     par: 24,
   },
   {
+    id: "safe-cracker",
     name: "Safe cracker",
     rows: ["yrr.rk", "..t...", "......", "......", "..p..t", "p.r.tp"],
     hatches: [
@@ -858,6 +931,7 @@ const CELLS: LevelDef[] = [
     par: 24,
   },
   {
+    id: "no-parole",
     name: "No parole",
     rows: ["tpb...", "btb...", "y...r.", "y..r..", "t.p...", "p....k"],
     hatches: [
@@ -873,6 +947,7 @@ const CELLS: LevelDef[] = [
 
 const BOILED: LevelDef[] = [
   {
+    id: "scrambled",
     name: "Scrambled",
     rows: ["#yB.#.y", ".....T.", "P..t...", "...#..#", "..R.kbP", ".......", "y......"],
     hatches: [
@@ -886,6 +961,7 @@ const BOILED: LevelDef[] = [
     par: 18,
   },
   {
+    id: "bad-egg",
     name: "Bad egg",
     rows: ["#.r#B..", "k....p.", "......p", "...T...", "#.T..rp", "yT.....", "B....tb"],
     hatches: [
@@ -899,6 +975,7 @@ const BOILED: LevelDef[] = [
     par: 19,
   },
   {
+    id: "fowl-play",
     name: "Fowl play",
     rows: ["ytt.k.", "......", ".....y", "tb#.RR", "......", ".T.P.p", "..Pypp"],
     hatches: [
@@ -912,6 +989,7 @@ const BOILED: LevelDef[] = [
     par: 23,
   },
   {
+    id: "walking-on-eggshells",
     name: "Walking on eggshells",
     rows: [".#.k.r#", "......r", "YPb....", "Pb..#..", ".......", "..T...#", "tYP...b"],
     hatches: [
@@ -925,6 +1003,7 @@ const BOILED: LevelDef[] = [
     par: 23,
   },
   {
+    id: "chicken-and-egg",
     name: "Chicken and egg",
     rows: [".PY#.Y", "...r.T", "P.....", "......", ".tb.t.", "..t...", ".#kr.."],
     hatches: [
@@ -938,6 +1017,7 @@ const BOILED: LevelDef[] = [
     par: 26,
   },
   {
+    id: "poultry-in-motion",
     name: "Poultry in motion",
     rows: [".p#....", ".tr.T.r", "......#", ".Tb....", ".y.rk..", "Rr.....", "T...#.#"],
     hatches: [
@@ -951,6 +1031,7 @@ const BOILED: LevelDef[] = [
     par: 28,
   },
   {
+    id: "home-to-roost",
     name: "Home to roost",
     rows: ["r....#y", ".......", "...#.#P", "..t..#p", "..k....", ".....P.", "B.....B"],
     hatches: [
@@ -964,6 +1045,7 @@ const BOILED: LevelDef[] = [
     par: 30,
   },
   {
+    id: "the-last-straw",
     name: "The last straw",
     rows: ["...kpT", "..bbRb", ".....Y", "....B#", ".By...", ".Y..r#", ".....#"],
     hatches: [
@@ -977,6 +1059,7 @@ const BOILED: LevelDef[] = [
     par: 30,
   },
   {
+    id: "coop-de-grace",
     name: "Coop de grâce",
     rows: ["#tr...", ".b..Pr", ".p....", "....Tr", "....#t", ".ky...", "Tb.P.."],
     hatches: [
@@ -990,6 +1073,7 @@ const BOILED: LevelDef[] = [
     par: 32,
   },
   {
+    id: "cock-a-doodle-doom",
     name: "Cock-a-doodle-doom",
     rows: ["..k..#", "..P...", ".....B", "..p..#", "...p..", "...tp#", "pRB.y."],
     hatches: [
