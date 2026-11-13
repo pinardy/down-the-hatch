@@ -13,7 +13,7 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 - The number on a hatch is how many more chickens it can take. Full hatches leave the board.
 - Drop every chicken to clear the level. Match the par (fewest moves) for three eggs.
 
-127 levels in 15 chapters, each tagged Easy, Medium, Hard or Expert on the level list. After the tutorial, each chapter adds one piece and works up to it gently:
+158 levels in 19 chapters, each tagged Easy, Medium, Hard or Expert on the level list. After the tutorial, each chapter adds one piece and works up to it gently:
 
 | Piece | What it does |
 |---|---|
@@ -25,7 +25,7 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 | White chickens | drop down any hatch, and take up room in it |
 | Chained hatches | two that slide together, or not at all |
 
-The hard chapters combine them and take 14 to 34 moves a level.
+Four more chapters (Thin ice, Mystery guests, Chain of custody, Tangled) pair a newer piece with an older one. The hard chapters combine them and take 14 to 34 moves a level.
 
 Undo, Start over and Hint are always there, and if you slide into a dead end, Rewind takes you back to the last position that can still be won.
 
