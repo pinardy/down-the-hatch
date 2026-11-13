@@ -1,32 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import type { Playing } from "../App";
-import { dailyStreak } from "../game/daily";
+import { dailyId, dailyStreak, dayFromKey, dayKey, earlierDays, msUntilTomorrow, untilText } from "../game/daily";
 import { eggsFor } from "../game/engine";
 import type { Chapter } from "../game/levels";
 import type { Level } from "../game/types";
 import { unlockAudio } from "../sfx";
 import { useUpdateReady } from "../update";
-import { ChickenArt, EggArt, SoloArt, TitleArt } from "./art";
+import { ClockArt, EggArt, GearArt, SoloArt, TitleArt } from "./art";
 import { Guide } from "./Guide";
-import { isUnlocked, nextReward, REWARDS, wearing } from "./rewards";
-import type { BoardTheme, Hat, Reward } from "./rewards";
-import { decodeProgress, encodeProgress, mergeProgress } from "./storage";
-import type { Progress, Settings } from "./storage";
+import type { Tally } from "./rewards";
+import { rewardsAhead } from "./Settings";
+import { decodeProgress, encodeProgress, inPlayIds, mergeProgress } from "./storage";
+import type { Progress } from "./storage";
+
+/** How many missed daily coops can still be caught up on. */
+const CATCH_UP_DAYS = 6;
 
 interface Props {
   chapters: Chapter[];
   /** Today's daily coop. */
   daily: Level;
   progress: Progress;
-  settings: Settings;
+  /** Today, as YYYY-MM-DD. */
+  today: string;
   /** The level just played, if any: its chapter starts open. */
   lastPlayed: Playing | null;
-  /** Eggs earned across the numbered levels. */
-  eggs: number;
+  /** Eggs, stars and daily coops earned. */
+  tally: Tally;
   /** Something to tell the player as the list comes up (a broken link, say). */
   notice: string | null;
-  onPlay: (which: number | "daily") => void;
-  onSettings: (s: Settings) => void;
+  onPlay: (which: Playing) => void;
+  /** Open the settings and rewards sheet. */
+  onSettings: () => void;
   /** Replace all saved progress (after restoring a backup, or erasing). */
   onProgress: (p: Progress) => void;
   onEditor: () => void;
@@ -34,7 +39,7 @@ interface Props {
   onCode: (text: string) => boolean;
 }
 
-export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, lastPlayed, notice, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
+export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
   const levels = chapters.flatMap((c) => c.levels);
   const eggsOn = (l: Level) => (progress[l.id] ? eggsFor(progress[l.id].moves, l.par) : 0);
   const next = levels.find((l) => !progress[l.id]);
@@ -61,13 +66,27 @@ export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, la
   }, []);
   // The big welcome is for the first visit. After that the list matters more.
   const returning = cleared > 0;
-  const play = (which: number | "daily") => {
+  const play = (which: Playing) => {
     unlockAudio();
     onPlay(which);
   };
 
   const dailyBest = progress[daily.id];
-  const streak = dailyStreak((id) => progress[id] !== undefined, new Date());
+  // A board caught up on late doesn't keep a streak going.
+  const streak = dailyStreak((id) => progress[id] !== undefined && !progress[id].late, dayFromKey(today));
+  // The daily coop uses pieces the tutorial teaches, so it opens once the tutorial is done.
+  const tutorial = chapters[0];
+  const taught = tutorial.levels.filter((l) => progress[l.id]).length;
+  const dailyOpen = taught === tutorial.levels.length || Object.keys(progress).some((id) => id.startsWith("daily-"));
+  const missed = earlierDays(dayFromKey(today), CATCH_UP_DAYS).map((d) => ({ key: dayKey(d), id: dailyId(d), date: d }));
+  const unfinished = useState(inPlayIds)[0];
+  // Once today's is done, count down to the next one.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!dailyBest) return;
+    const id = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, [dailyBest]);
   const updateReady = useUpdateReady();
   const [guide, setGuide] = useState(false);
   const [pasted, setPasted] = useState("");
@@ -75,6 +94,9 @@ export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, la
 
   return (
     <main className="screen home">
+      <button type="button" className="btn btn--quiet home__gear" onClick={onSettings} aria-label="Settings and rewards">
+        <GearArt />
+      </button>
       <header className={returning ? "home__hero home__hero--compact" : "home__hero"}>
         {!returning && <TitleArt />}
         <h1 className="home__title">
@@ -95,30 +117,67 @@ export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, la
         </p>
       )}
 
-      <button type="button" className={dailyBest ? "daily daily--done" : "daily"} onClick={() => play("daily")}>
-        <span className="daily__text">
-          <span className="daily__title">
-            Daily coop
-            <span className="daily__date">{daily.name}</span>
+      {dailyOpen ? (
+        <section className="daily-box" aria-label="Daily coop">
+          <button type="button" className={dailyBest ? "daily daily--done" : "daily"} onClick={() => play("daily")}>
+            <span className="daily__text">
+              <span className="daily__title">
+                Daily coop
+                <span className="daily__date">{daily.name}</span>
+              </span>
+              <span className="daily__about">
+                {dailyBest ? (
+                  <>
+                    Cleared in {dailyBest.moves} {dailyBest.moves === 1 ? "move" : "moves"}
+                    <span className="level__eggs" role="img" aria-label={`${eggsOn(daily)} of 3 eggs`}>
+                      {[1, 2, 3].map((n) => (
+                        <EggArt key={n} earned={n <= eggsOn(daily)} />
+                      ))}
+                    </span>
+                  </>
+                ) : (
+                  `A new board every day, harder as the week goes on. Par ${daily.par}.`
+                )}
+              </span>
+              {dailyBest && <span className="daily__about">Next board in {untilText(msUntilTomorrow(new Date(now)))}.</span>}
+              {streak > 1 && <span className="daily__streak">{streak} days in a row</span>}
+            </span>
+            <span className="daily__go">{dailyBest ? "Again" : unfinished.has(daily.id) ? "Resume" : "Play"}</span>
+          </button>
+          <div className="catch-up">
+            <span className="catch-up__label">Earlier boards</span>
+            <ol className="catch-up__days">
+              {missed.map((d) => {
+                const rec = progress[d.id];
+                return (
+                  <li key={d.key}>
+                    <button
+                      type="button"
+                      className={rec ? "catch-up__day catch-up__day--done" : "catch-up__day"}
+                      onClick={() => play({ day: d.key })}
+                      aria-label={`${d.date.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}${rec ? `, cleared in ${rec.moves} moves${rec.late ? ", late" : ""}` : unfinished.has(d.id) ? ", started" : ", not played"}`}
+                    >
+                      <span className="catch-up__weekday">{d.date.toLocaleDateString(undefined, { weekday: "short" })}</span>
+                      <span className="catch-up__mark" aria-hidden="true">
+                        {rec ? "✓" : unfinished.has(d.id) ? "…" : d.date.getDate()}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+      ) : (
+        <div className="daily daily--locked" role="note">
+          <span className="daily__text">
+            <span className="daily__title">Daily coop</span>
+            <span className="daily__about">
+              A new board every day. It opens once you’ve cleared the tutorial ({taught} of {tutorial.levels.length}).
+            </span>
           </span>
-          <span className="daily__about">
-            {dailyBest ? (
-              <>
-                Cleared in {dailyBest.moves} {dailyBest.moves === 1 ? "move" : "moves"}
-                <span className="level__eggs" role="img" aria-label={`${eggsOn(daily)} of 3 eggs`}>
-                  {[1, 2, 3].map((n) => (
-                    <EggArt key={n} earned={n <= eggsOn(daily)} />
-                  ))}
-                </span>
-              </>
-            ) : (
-              `A new board every day. Par ${daily.par}.`
-            )}
-          </span>
-          {streak > 1 && <span className="daily__streak">{streak} days in a row</span>}
-        </span>
-        <span className="daily__go">{dailyBest ? "Again" : "Play"}</span>
-      </button>
+        </div>
+      )}
 
       <div className="chapters">
         {chapters.map((chapter, c) => {
@@ -171,9 +230,15 @@ export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, la
                             ref={l.index === lastPlayed ? cameFrom : undefined}
                             className={best ? "level level--done" : l === next ? "level level--next" : "level"}
                             onClick={() => play(l.index)}
-                            aria-label={`${chapter.name} ${i + 1}, ${l.name}${best ? `, cleared with ${earned} of 3 eggs${best.solo ? ", without hints" : ""}` : ""}`}
+                            aria-label={`${chapter.name} ${i + 1}, ${l.name}${best ? `, cleared with ${earned} of 3 eggs${best.solo ? ", without hints" : ""}${best.clock ? ", beat the clock" : ""}` : unfinished.has(l.id) ? ", started" : ""}`}
                           >
-                            {best?.solo && <SoloArt />}
+                            {(best?.solo || best?.clock) && (
+                              <span className="level__badges">
+                                {best.clock && <ClockArt />}
+                                {best.solo && <SoloArt />}
+                              </span>
+                            )}
+                            {!best && unfinished.has(l.id) && <span className="level__started">Started</span>}
                             <span className="level__number">{i + 1}</span>
                             <span className="level__name">{l.name}</span>
                             <span className="level__eggs" aria-hidden="true">
@@ -227,50 +292,19 @@ export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, la
         {badCode && <p className="keeping__said keeping__said--warn">That isn’t a coop this game can read. Check that all of it was copied.</p>}
       </section>
 
-      <Rewards eggs={eggsEarned} settings={settings} onSettings={onSettings} />
-
-      <section className="home__settings" aria-label="Settings">
-        <label className="toggle">
-          <input type="checkbox" checked={settings.sound} onChange={(e) => onSettings({ ...settings, sound: e.target.checked })} />
-          <span>
-            Sound
-            <small>Clucks, thunks and a fanfare.</small>
-          </span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={settings.clock} onChange={(e) => onSettings({ ...settings, clock: e.target.checked })} />
-          <span>
-            Race the clock
-            <small>A countdown on every level. Off, there’s no rush.</small>
-          </span>
-        </label>
-        <label className="toggle">
-          <input type="checkbox" checked={settings.bigText} onChange={(e) => onSettings({ ...settings, bigText: e.target.checked })} />
-          <span>
-            Larger text
-            <small>Everything but the board, a size up.</small>
-          </span>
-        </label>
-        <fieldset className="toggle choice">
-          <legend>Look</legend>
-          <div className="choice__options">
-            {(
-              [
-                ["system", "Match device"],
-                ["light", "Daylight"],
-                ["dark", "Lamplight"],
-              ] as const
-            ).map(([value, label]) => (
-              <label key={value} className={settings.theme === value ? "choice__option choice__option--on" : "choice__option"}>
-                <input type="radio" name="theme" value={value} checked={settings.theme === value} onChange={() => onSettings({ ...settings, theme: value })} />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <button type="button" className="btn btn--quiet home__guide" onClick={() => setGuide(true)}>
-          What the pieces do
-        </button>
+      <section className="home__more" aria-labelledby="more-title">
+        <h2 id="more-title">Rewards and settings</h2>
+        <p className="keeping__about">
+          {tally.eggs} eggs, {tally.stars} stars and {tally.days} daily coops so far. {rewardsAhead(tally)[0] ?? "Everything unlocked."}
+        </p>
+        <div className="keeping__actions">
+          <button type="button" className="btn btn--straw" onClick={onSettings}>
+            Rewards and settings
+          </button>
+          <button type="button" className="btn btn--quiet" onClick={() => setGuide(true)}>
+            What the pieces do
+          </button>
+        </div>
       </section>
 
       {guide && <Guide level={null} onClose={() => setGuide(false)} />}
@@ -384,48 +418,6 @@ function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p:
       <p className={said?.warn ? "keeping__said keeping__said--warn" : "keeping__said"} role="status">
         {said?.text}
       </p>
-    </section>
-  );
-}
-
-/** What eggs buy: board themes and hats. Locked ones show how many eggs they need. */
-function Rewards({ eggs, settings, onSettings }: { eggs: number; settings: Settings; onSettings: (s: Settings) => void }) {
-  const next = nextReward(eggs);
-  const board = wearing("board", settings.board, eggs, "barn");
-  const hat = wearing("hat", settings.hat, eggs, "none");
-  const option = (r: Reward) => {
-    const open = isUnlocked(r, eggs);
-    const on = r.kind === "board" ? board === r.id : hat === r.id;
-    return (
-      <button
-        key={r.id}
-        type="button"
-        className={on ? "reward reward--on" : open ? "reward" : "reward reward--locked"}
-        disabled={!open}
-        aria-pressed={on}
-        aria-label={open ? r.name : `${r.name}, unlocks at ${r.eggs} eggs`}
-        onClick={() => onSettings(r.kind === "board" ? { ...settings, board: r.id as BoardTheme } : { ...settings, hat: r.id as Hat })}
-      >
-        <span className={r.kind === "board" ? `reward__swatch swatch--${r.id}` : "reward__swatch swatch--barn"}>{r.kind === "hat" && <ChickenArt color="gold" hat={r.id as Hat} />}</span>
-        <span className="reward__name">{r.name}</span>
-        {!open && (
-          <span className="reward__cost">
-            <EggArt earned={false} /> {r.eggs}
-          </span>
-        )}
-      </button>
-    );
-  };
-  return (
-    <section className="rewards" aria-labelledby="rewards-title">
-      <h2 id="rewards-title">Rewards</h2>
-      <p className="keeping__about">
-        {eggs} {eggs === 1 ? "egg" : "eggs"} so far. {next ? `${next.eggs - eggs} more for the ${next.name}${next.kind === "board" ? " board" : ""}.` : "Everything unlocked."}
-      </p>
-      <h3 className="rewards__kind">Board</h3>
-      <div className="rewards__grid">{REWARDS.filter((r) => r.kind === "board").map(option)}</div>
-      <h3 className="rewards__kind">Hat</h3>
-      <div className="rewards__grid">{REWARDS.filter((r) => r.kind === "hat").map(option)}</div>
     </section>
   );
 }

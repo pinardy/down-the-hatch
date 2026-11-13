@@ -1,29 +1,48 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { cellsOf, eggsFor, heldBy, isWon, startState, step } from "../game/engine";
+import type { CSSProperties } from "react";
+import { msUntilTomorrow, untilText } from "../game/daily";
+import { blockedBy, cellsOf, eggsFor, heldBy, isWon, startState, step, twoEggLimit } from "../game/engine";
+import type { Blocker } from "../game/engine";
+import { DIRS } from "../game/types";
 import type { Dir, GameState, Hatch, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
-import type { DropFx, HintFx, ShutFx } from "./Board";
-import { EggArt, SoloArt } from "./art";
+import type { BumpFx, DemoFx, DropFx, HintFx, ShutFx } from "./Board";
+import { ClockArt, EggArt, GearArt, PAINT, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
 import { Guide } from "./Guide";
-import { newlyUnlocked } from "./rewards";
-import type { Cleared, Settings } from "./storage";
+import { newlyUnlocked, rewardName } from "./rewards";
+import type { Reward, Tally } from "./rewards";
+import { loadInPlay, saveInPlay } from "./storage";
+import type { Cleared, InPlay, Settings } from "./storage";
 
 interface Props {
   level: Level;
   /** The line above the level's name: its chapter and place in it, or "Daily coop". */
   where: string;
   best: Cleared | undefined;
+  /** Where an unfinished attempt is kept, so leaving doesn't lose it. None for home-made coops. */
+  saveId?: string;
+  /** A daily coop: its result can be shared. */
+  daily?: boolean;
+  /** A past day's daily coop, caught up on late. */
+  late?: boolean;
   settings: Settings;
-  /** Eggs earned across the numbered levels, for announcing rewards this win unlocks. */
-  eggs: number;
+  /** Everything earned so far, for announcing rewards this win unlocks. */
+  tally: Tally;
   /** What the way out is called: back to the level list, or to the editor. */
   backLabel?: string;
-  /** `solo` when the level was cleared without a hint and without having watched the solution. */
-  onCleared: (moves: number, solo: boolean) => void;
+  /**
+   * `solo` when the level was cleared without a hint and without having watched the solution;
+   * `clock` when it was cleared inside the time with Race the clock on.
+   */
+  onCleared: (moves: number, solo: boolean, clock: boolean) => void;
   onNext: (() => void) | null;
   onLevels: () => void;
+  /** Open the settings and rewards sheet. */
+  onSettings: () => void;
+  /** Put on a reward this win unlocked. */
+  onWear: (r: Reward) => void;
 }
 
 /** `replay` is the best solution playing itself out; `shown` is the sheet that follows it. */
@@ -75,14 +94,72 @@ const SHUT_MS = 380;
 /** Seconds allowed when racing the clock: generous, and longer for longer puzzles. */
 const allowance = (level: Level) => 30 + level.par * 8;
 
-export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = "Levels", onCleared, onNext, onLevels }: Props) {
-  // Eggs before this level was played: rewards between then and now are new.
-  const eggsAtStart = useRef(eggsNow).current;
-  const unlocked = newlyUnlocked(eggsAtStart, eggsNow);
-  const [game, setGame] = useState<GameState>(() => startState(level));
+/** The gap between one egg landing on the win sheet and the next. */
+const EGG_LAND_MS = 260;
+
+const dirIndex = (d: Dir) => DIRS.indexOf(d);
+
+/** A board left part-way through, replayed through the rules. Null if there is none, or it no longer fits the level. */
+function restore(level: Level, saved: InPlay | null): { game: GameState; history: GameState[]; saved: InPlay } | null {
+  if (!saved || !saved.log.length) return null;
+  const states = [startState(level)];
+  for (const [id, d] of saved.log) {
+    const out = step(level, states[states.length - 1], id, DIRS[d]);
+    if (!out) return null;
+    states.push(out.state);
+  }
+  const game = states[states.length - 1];
+  if (isWon(game)) return null;
+  if (saved.marks.some((m, i) => m > saved.log.length || (i > 0 && m < saved.marks[i - 1]))) return null;
+  return { game, history: saved.marks.map((m) => states[m]), saved };
+}
+
+/** What to tell the player when a slide is refused, for the refusals that teach a rule. */
+function whyBlocked(level: Level, game: GameState, why: Blocker): string | null {
+  const hatch = (id: number) => game.hatches.find((t) => t.id === id);
+  switch (why.kind) {
+    case "chicken": {
+      const t = hatch(why.hatch);
+      const bird = game.chickens.find((c) => c.id === why.id);
+      if (!t || !bird) return null;
+      const mine = PAINT[t.color].name;
+      return `A ${mine} hatch only takes ${mine} chickens. That ${PAINT[bird.color].name} one is in the way.`;
+    }
+    case "full": {
+      const t = hatch(why.hatch);
+      return t ? `That hatch only has room for ${t.left} more. It can’t take them all at once.` : null;
+    }
+    case "ice": {
+      const t = hatch(why.hatch);
+      if (!t) return null;
+      const n = Math.max(0, (t.ice ?? 0) - (level.chickens.length - game.chickens.length));
+      return `Frozen until ${n} more ${n === 1 ? "chicken drops" : "chickens drop"}, anywhere on the board.`;
+    }
+    case "lock":
+      return "Padlocked until a hatch slides over the key.";
+    case "rail": {
+      const t = hatch(why.hatch);
+      return t ? `That hatch is on rails. It only slides ${t.axis === "h" ? "sideways" : "up and down"}.` : null;
+    }
+    case "hole":
+      return "That board has given way. Nothing can cross it now.";
+    default:
+      return null;
+  }
+}
+
+export function Play({ level, where, best, saveId, daily = false, late = false, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
+  // What was earned before this level was played: rewards between then and now are new.
+  const tallyAtStart = useRef(tally).current;
+  const unlocked = newlyUnlocked(tallyAtStart, tally);
+  // A board left part-way through last time, picked up again.
+  const [resumed] = useState(() => (saveId ? restore(level, loadInPlay(saveId)) : null));
+  const [game, setGame] = useState<GameState>(() => resumed?.game ?? startState(level));
   const gameRef = useRef(game);
-  const history = useRef<GameState[]>([]);
-  const [canUndo, setCanUndo] = useState(false);
+  const history = useRef<GameState[]>(resumed?.history ?? []);
+  /** The slides that led to the board, and where each undo goes back to: what is saved. */
+  const trail = useRef<{ log: [number, number][]; marks: number[] }>({ log: resumed ? [...resumed.saved.log] : [], marks: resumed ? [...resumed.saved.marks] : [] });
+  const [canUndo, setCanUndo] = useState(history.current.length > 0);
   /** True between picking a hatch up and its first step, so one drag is one undo. */
   const fresh = useRef(false);
   const fxKey = useRef(0);
@@ -94,12 +171,15 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     setHeld(next);
   }, []);
   // Which eggs have shown their chicken. Kept through undo and restart: you can't unsee it.
-  const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set());
+  const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set(resumed?.saved.seen ?? []));
   const seenRef = useRef(seen);
   const [drops, setDrops] = useState<DropFx[]>([]);
   const [shuts, setShuts] = useState<ShutFx[]>([]);
   const [hint, setHint] = useState<HintFx | null>(null);
-  const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(null);
+  const [bump, setBump] = useState<BumpFx | null>(null);
+  /** The refusal already shown for this grab, so pushing on against it doesn't repeat it. */
+  const bumped = useRef<string | null>(null);
+  const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(() => (resumed ? { text: "Picked up where you left off. Start over for a fresh go.", warn: false } : null));
   /** The level can no longer be won from here: Hint gives way to Rewind. */
   const [stuck, setStuck] = useState(false);
   /** The piece guide is open. */
@@ -116,9 +196,10 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
   }, []);
   // Help taken. A hint counts against this run only; having watched the solution counts for as
   // long as the level stays open.
-  const hinted = useRef(false);
+  const hinted = useRef(resumed?.saved.hinted ?? false);
   const watched = useRef(false);
   const [wonSolo, setWonSolo] = useState(false);
+  const [wonClock, setWonClock] = useState(false);
   /** True while the best solution is playing itself: steps then leave no undo and win nothing. */
   const replaying = useRef(false);
   const replayTimer = useRef<number | null>(null);
@@ -137,8 +218,26 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     setNotice({ text: STUCK_NOTE, warn: true });
   }, []);
   const [phase, setPhase] = useState<Phase>("playing");
-  const [secondsLeft, setSecondsLeft] = useState(() => allowance(level));
+  const [secondsLeft, setSecondsLeft] = useState(() => resumed?.saved.seconds || allowance(level));
+  const secondsRef = useRef(secondsLeft);
+  secondsRef.current = secondsLeft;
   const started = game.moves > 0;
+
+  // Keep the board as it stands, so leaving the level (or the phone closing the tab) loses nothing.
+  const save = useCallback(() => {
+    if (!saveId || replaying.current) return;
+    const { log, marks } = trail.current;
+    if (!log.length || isWon(gameRef.current)) return saveInPlay(saveId, null);
+    saveInPlay(saveId, { log, marks, seen: [...seenRef.current], hinted: hinted.current, at: Date.now(), ...(settings.clock ? { seconds: secondsRef.current } : {}) });
+  }, [saveId, settings.clock]);
+  useEffect(() => {
+    if (phase === "playing") save();
+  }, [game, phase, save]);
+  useEffect(() => {
+    const onHide = () => document.visibilityState === "hidden" && phase === "playing" && save();
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [phase, save]);
 
   // Fit the board to whatever room the screen leaves it.
   const stageRef = useRef<HTMLDivElement>(null);
@@ -149,7 +248,7 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     const fit = () => {
       const pad = 28; // the fence around the field
       const size = Math.floor(Math.min((el.clientWidth - pad) / level.w, (el.clientHeight - pad) / level.h, 92));
-      setCell(Math.max(28, size));
+      setCell(Math.max(18, size));
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -170,10 +269,12 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
       if (!out) return false;
       if (fresh.current && !replaying.current) {
         history.current.push(before);
+        trail.current.marks.push(trail.current.log.length);
         setCanUndo(true);
         fresh.current = false;
         streak.current = 0;
       }
+      if (!replaying.current) trail.current.log.push([hatchId, dirIndex(dir)]);
       if (out.dropped.length) {
         const added = out.dropped.map((chicken) => ({ key: ++fxKey.current, chicken }));
         setDrops((d) => [...d, ...added]);
@@ -205,25 +306,52 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
         sfx.peep();
       }
       setHint(null);
+      setBump(null);
       clearNote();
       if (isWon(out.state) && !replaying.current) {
         const solo = !hinted.current && !watched.current;
+        const onTime = settings.clock && secondsRef.current > 0;
+        if (saveId) saveInPlay(saveId, null);
         window.setTimeout(() => {
           setWonSolo(solo);
+          setWonClock(onTime);
           setPhase("won");
-          sfx.win();
-          onCleared(out.state.moves, solo);
+          const earned = eggsFor(out.state.moves, level.par);
+          for (let i = 0; i < earned; i++) window.setTimeout(() => sfx.egg(i), 320 + i * EGG_LAND_MS);
+          window.setTimeout(() => (earned === 3 ? sfx.win() : sfx.done()), 320 + earned * EGG_LAND_MS);
+          onCleared(out.state.moves, solo, onTime);
         }, DROP_MS + 120);
       }
       return true;
     },
-    [level, commit, onCleared, clearNote],
+    [level, commit, onCleared, clearNote, saveId, settings.clock],
+  );
+
+  /** A slide was refused: show what is in the way, once per grab and direction. */
+  const refuse = useCallback(
+    (hatchId: number, dir: Dir) => {
+      const tag = `${hatchId}:${dir}`;
+      if (bumped.current === tag) return;
+      bumped.current = tag;
+      const now = gameRef.current;
+      const why = blockedBy(level, now, hatchId, dir);
+      if (!why) return;
+      sfx.bump();
+      buzz(8);
+      const key = ++fxKey.current;
+      setBump({ key, hatch: hatchId, dir, why });
+      window.setTimeout(() => setBump((b) => (b?.key === key ? null : b)), 450);
+      const text = whyBlocked(level, now, why);
+      if (text) setNotice((n) => (n?.warn ? n : { text, warn: false }));
+    },
+    [level],
   );
 
   const grab = useCallback(
     (hatchId: number) => {
       unlockAudio();
       fresh.current = true;
+      bumped.current = null;
       hold({ id: hatchId, track: null, offset: 0, turnedAt: 0 });
     },
     [hold],
@@ -267,6 +395,8 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
             dodged = true;
             continue;
           }
+          // Pushing on into it: say what's in the way.
+          if (Math.abs(d) > 0.3) refuse(hatchId, dir);
           break;
         }
         if (Math.abs(d) >= (ahead.dropped.length ? COMMIT_DROP : COMMIT)) {
@@ -281,7 +411,7 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
       const turned = was !== null && was.track !== null && was.track !== track;
       hold({ id: hatchId, track, offset, turnedAt: turned ? performance.now() : (was?.turnedAt ?? 0) });
     },
-    [level, tryStep, hold],
+    [level, tryStep, hold, refuse],
   );
 
   /** The finger lifted: settle on the nearest square. */
@@ -299,14 +429,16 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
   const nudge = useCallback(
     (hatchId: number, dir: Dir) => {
       fresh.current = true;
-      if (!tryStep(hatchId, dir)) sfx.bump();
+      bumped.current = null;
+      if (!tryStep(hatchId, dir)) refuse(hatchId, dir);
     },
-    [tryStep],
+    [tryStep, refuse],
   );
 
   const undo = () => {
     const prev = history.current.pop();
     if (!prev) return;
+    trail.current.log.length = trail.current.marks.pop() ?? 0;
     commit(prev);
     hold(null);
     setCanUndo(history.current.length > 0);
@@ -318,6 +450,7 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     stopReplay();
     hinted.current = false;
     history.current = [];
+    trail.current = { log: [], marks: [] };
     setCanUndo(false);
     commit(startState(level));
     hold(null);
@@ -366,7 +499,10 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
       path.push({ x, y });
     }
     hinted.current = true;
-    setHint({ ghost: { ...hatch, x, y }, path: path.slice(0, -1) });
+    setHint({ key: ++fxKey.current, from: { x: hatch.x, y: hatch.y }, ghost: { ...hatch, x, y }, path: path.slice(0, -1) });
+    const back = x === hatch.x && y === hatch.y;
+    setNotice({ text: back ? "Slide the glowing hatch out along the dots, then back where it was." : "Slide the glowing hatch along the dots to the outline.", warn: false });
+    save();
   };
 
   /** Put the board back to the start and play the best solution through, one slide at a time. */
@@ -406,6 +542,10 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     const states = [...history.current, got.now];
     const target = states[got.answer];
     history.current = states.slice(0, got.answer);
+    if (got.answer < trail.current.marks.length) {
+      trail.current.log.length = trail.current.marks[got.answer];
+      trail.current.marks = trail.current.marks.slice(0, got.answer);
+    }
     commit(target);
     hold(null);
     setCanUndo(history.current.length > 0);
@@ -417,6 +557,29 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
       warn: false,
     });
   };
+
+  // The very first level shows a hand making the first move, until the player has a go.
+  const [demo, setDemo] = useState<DemoFx | null>(null);
+  useEffect(() => {
+    if (level.index !== 0) return;
+    let live = true;
+    void solveInBackground(level, startState(level), 20_000).then((answer) => {
+      if (!live || answer.status !== "solved" || !answer.steps.length) return;
+      const first = answer.steps[0].hatch;
+      const hatch = level.hatches.find((t) => t.id === first)!;
+      let { x, y } = hatch;
+      for (const st of answer.steps) {
+        if (st.hatch !== first) break;
+        x += st.dir === "left" ? -1 : st.dir === "right" ? 1 : 0;
+        y += st.dir === "up" ? -1 : st.dir === "down" ? 1 : 0;
+      }
+      const [cx, cy] = hatch.cells[0];
+      setDemo({ from: { x: hatch.x + cx, y: hatch.y + cy }, to: { x: x + cx, y: y + cy } });
+    });
+    return () => {
+      live = false;
+    };
+  }, [level]);
 
   // A little after each move, check quietly whether the level can still be cleared.
   useEffect(() => {
@@ -454,15 +617,36 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
     turning: performance.now() - held.turnedAt < 160,
   };
   const eggs = eggsFor(game.moves, level.par);
+  const limit = twoEggLimit(level.par);
   // What the line under the board says when nothing more pressing needs saying.
   const standing =
     phase === "replay" || phase === "shown"
       ? `The best solution: ${level.par} ${level.par === 1 ? "move" : "moves"}.`
-      : game.moves > level.par + 2
+      : game.moves > limit
       ? "One egg from here. Start over to try for all three."
       : game.moves > level.par
-        ? `Over par. Finish in ${level.par + 2} moves or fewer to keep two eggs.`
-          : (level.tip ?? (best ? `Your best: ${best.moves} ${best.moves === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
+        ? `Over par. Finish in ${limit} moves or fewer to keep two eggs.`
+          : (level.tip ?? (late && game.moves === 0 ? "A day you missed. It earns eggs and counts towards rewards, but not the streak." : best ? `Your best: ${best.moves} ${best.moves === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
+
+  // Sharing a daily result: no board, no spoilers, just how it went.
+  const [shared, setShared] = useState<string | null>(null);
+  const share = async () => {
+    const text = [`Down the Hatch, daily coop ${level.name}`, `${game.moves} ${game.moves === 1 ? "move" : "moves"} (par ${level.par}) ${"🥚".repeat(eggs)}${"⚪".repeat(3 - eggs)}${wonSolo ? " ⭐ no hints" : ""}`, location.origin + location.pathname].join("\n");
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+    } catch (e) {
+      if ((e as { name?: string }).name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared("Copied. Paste it anywhere.");
+    } catch {
+      setShared(text);
+    }
+  };
   const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
@@ -474,6 +658,9 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
           </button>
           <button type="button" className="btn btn--quiet play__help" onClick={() => setGuide(true)} aria-label="What the pieces do">
             ?
+          </button>
+          <button type="button" className="btn btn--quiet play__help" onClick={onSettings} aria-label="Settings and rewards">
+            <GearArt />
           </button>
         </div>
         <h1 className="play__title">
@@ -507,7 +694,23 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
       </header>
 
       <div className="play__stage" ref={stageRef}>
-        <Board level={level} game={game} cell={cell} drops={drops} shuts={shuts} hint={hint} seen={seen} locked={phase !== "playing"} held={heldAt} onGrab={grab} onDrag={dragTo} onRelease={release} onNudge={nudge} />
+        <Board
+          level={level}
+          game={game}
+          cell={cell}
+          drops={drops}
+          shuts={shuts}
+          hint={hint}
+          bump={bump}
+          demo={demo && game.moves === 0 && !held && phase === "playing" ? demo : null}
+          seen={seen}
+          locked={phase !== "playing"}
+          held={heldAt}
+          onGrab={grab}
+          onDrag={dragTo}
+          onRelease={release}
+          onNudge={nudge}
+        />
       </div>
 
       <p className={notice?.warn ? "play__note play__note--warn" : "play__note"} role="status">
@@ -533,30 +736,70 @@ export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = 
           <div className="sheet__card">
             {phase === "won" ? (
               <>
+                {eggs === 3 && (
+                  <div className="burst" aria-hidden="true">
+                    {Array.from({ length: 14 }, (_, i) => (
+                      <span key={i} style={{ "--a": `${(i * 360) / 14}deg`, "--d": `${(i % 3) * 60}ms` } as CSSProperties} />
+                    ))}
+                  </div>
+                )}
                 <div className="sheet__eggs" role="img" aria-label={`${eggs} of 3 eggs`}>
                   {[1, 2, 3].map((n) => (
-                    <EggArt key={n} earned={n <= eggs} />
+                    <span key={n} className={n <= eggs ? "sheet__egg sheet__egg--earned" : "sheet__egg"} style={{ animationDelay: `${320 + (n - 1) * EGG_LAND_MS}ms` }}>
+                      <EggArt earned={n <= eggs} />
+                    </span>
                   ))}
                 </div>
                 <h2 id="sheet-title">Coop cleared</h2>
                 <p>
                   {game.moves} {game.moves === 1 ? "move" : "moves"}. {game.moves <= level.par ? "That’s par, the fewest possible." : `Par is ${level.par}.`}
                 </p>
-                {wonSolo && (
+                {(wonSolo || wonClock) && (
                   <p className="sheet__solo">
-                    <SoloArt /> No hints used.
+                    {wonSolo && (
+                      <>
+                        <SoloArt /> No hints used.
+                      </>
+                    )}
+                    {wonClock && (
+                      <>
+                        <ClockArt /> Beat the clock.
+                      </>
+                    )}
                   </p>
                 )}
+                {game.moves > level.par && <p className="sheet__more">{eggs === 2 ? "Match par for the third egg." : `${limit} moves or fewer earns two eggs; par earns three.`}</p>}
+                {daily && !late && <p className="sheet__more">Next board in {untilText(msUntilTomorrow(new Date()))}.</p>}
                 {unlocked.length > 0 && (
-                  <p className="sheet__reward">
-                    Unlocked: {unlocked.map((r) => `${r.name} ${r.kind === "board" ? "board" : ""}`.trim()).join(" and ")}! Choose it on the level list.
-                  </p>
+                  <div className="sheet__reward">
+                    <p>Unlocked: {unlocked.map(rewardName).join(" and ")}!</p>
+                    <div className="sheet__wear">
+                      {unlocked.map((r) => {
+                        const on = r.kind === "board" ? settings.board === r.id : settings.hat === r.id;
+                        return (
+                          <button key={r.id} type="button" className="btn" onClick={() => onWear(r)} disabled={on}>
+                            {on ? `Wearing the ${r.name}` : `Try on the ${r.name}`}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
                 <div className="sheet__actions">
                   {onNext && (
                     <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
                       Next level
                     </button>
+                  )}
+                  {daily && (
+                    <button type="button" className="btn btn--straw btn--big" onClick={share} autoFocus>
+                      Share result
+                    </button>
+                  )}
+                  {shared && (
+                    <p className="sheet__shared" role="status">
+                      {shared}
+                    </p>
                   )}
                   <button type="button" className="btn" onClick={restart}>
                     Play again

@@ -22,6 +22,15 @@ export interface Cleared {
   moves: number;
   /** Cleared at least once without asking for a hint or watching the solution. */
   solo?: boolean;
+  /** Cleared at least once inside the time allowed, with Race the clock on. */
+  clock?: boolean;
+  /** A daily coop only ever cleared after its own day was over. It doesn't count towards the streak. */
+  late?: boolean;
+}
+
+/** A record with only the flags that are set, so equal records compare equal. */
+function record(moves: number, solo?: boolean, clock?: boolean, late?: boolean): Cleared {
+  return { moves, ...(solo ? { solo: true } : {}), ...(clock ? { clock: true } : {}), ...(late ? { late: true } : {}) };
 }
 
 /** Keyed by level id (and by `daily-YYYY-MM-DD` for the daily coop). */
@@ -67,7 +76,7 @@ function tidy(raw: unknown): Progress {
   if (!isObject(raw)) return out;
   for (const [id, v] of Object.entries(raw)) {
     if (!isId(id) || !isObject(v) || !isMoves(v.moves)) continue;
-    out[id] = v.solo === true ? { moves: v.moves, solo: true } : { moves: v.moves };
+    out[id] = record(v.moves, v.solo === true, v.clock === true, v.late === true);
   }
   return out;
 }
@@ -91,11 +100,10 @@ export function loadProgress(idOfName: Record<string, string>): Progress {
 }
 export const saveProgress = (p: Progress) => write(PROGRESS_KEY, p);
 
-/** The better of two records for the same level: fewest moves, and solo if either was. */
+/** The better of two records for the same level: fewest moves, solo or on the clock if either was, late only if both were. */
 export function better(a: Cleared | undefined, b: Cleared): Cleared {
-  if (!a) return b;
-  const moves = Math.min(a.moves, b.moves);
-  return a.solo || b.solo ? { moves, solo: true } : { moves };
+  if (!a) return record(b.moves, b.solo, b.clock, b.late);
+  return record(Math.min(a.moves, b.moves), a.solo || b.solo, a.clock || b.clock, a.late && b.late);
 }
 
 /** Combine two sets of progress, keeping the better record for every level. Neither loses anything. */
@@ -107,13 +115,17 @@ export function mergeProgress(mine: Progress, theirs: Progress): Progress {
 
 // ── Backup codes ──
 // Progress as one line of text that can be copied out of one browser and pasted into another.
-// "DTH1." then base64url of a compact JSON object: { id: moves } or { id: [moves, 1] } when solo.
+// "DTH1." then base64url of a compact JSON object: { id: moves }, or { id: [moves, flags] } when
+// any flag is set: 1 solo, 2 late, 4 on the clock. Older codes only ever used [moves, 1].
 
 const CODE_PREFIX = "DTH1.";
 
 export function encodeProgress(progress: Progress): string {
-  const compact: Record<string, number | [number, 1]> = {};
-  for (const [id, r] of Object.entries(progress)) compact[id] = r.solo ? [r.moves, 1] : r.moves;
+  const compact: Record<string, number | [number, number]> = {};
+  for (const [id, r] of Object.entries(progress)) {
+    const flags = (r.solo ? 1 : 0) | (r.late ? 2 : 0) | (r.clock ? 4 : 0);
+    compact[id] = flags ? [r.moves, flags] : r.moves;
+  }
   return CODE_PREFIX + btoa(JSON.stringify(compact)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
@@ -128,10 +140,63 @@ export function decodeProgress(code: string): Progress | null {
     for (const [id, v] of Object.entries(compact)) {
       const moves = Array.isArray(v) ? v[0] : v;
       if (!isId(id) || !isMoves(moves)) return null;
-      out[id] = Array.isArray(v) && v[1] === 1 ? { moves, solo: true } : { moves };
+      const flags = Array.isArray(v) && Number.isInteger(v[1]) ? (v[1] as number) : 0;
+      out[id] = record(moves, (flags & 1) !== 0, (flags & 4) !== 0, (flags & 2) !== 0);
     }
     return out;
   } catch {
     return null;
   }
+}
+
+// ── A level in progress ──
+// The board a player left mid-level, so that leaving (or the phone closing the tab) doesn't
+// throw away a long attempt. Kept as the slides that led there, not the board itself: they are
+// replayed through the rules on the way back in, so a level that has since changed simply
+// starts afresh instead of showing a board that can't exist.
+
+const IN_PLAY_KEY = "down-the-hatch:in-play:v1";
+/** How many unfinished levels are remembered; the oldest is forgotten first. */
+const IN_PLAY_MAX = 8;
+
+export interface InPlay {
+  /** Every slide from the start to the board as it was left: [hatch id, 0 up, 1 down, 2 left, 3 right]. */
+  log: [number, number][];
+  /** Where each undo would go back to: a length of `log`. */
+  marks: number[];
+  /** Eggs whose chicken has been seen. */
+  seen: number[];
+  /** A hint was taken on this attempt. */
+  hinted: boolean;
+  /** Seconds left on the clock, when racing it. */
+  seconds?: number;
+  /** When it was saved (ms), to forget the oldest. */
+  at: number;
+}
+
+const isPair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]) && v[1] >= 0 && v[1] < 4;
+const isInts = (v: unknown): v is number[] => Array.isArray(v) && v.every((n) => Number.isInteger(n) && n >= 0);
+
+export function loadInPlay(id: string): InPlay | null {
+  const all = read(IN_PLAY_KEY);
+  const v = isObject(all) ? all[id] : null;
+  if (!isObject(v) || !Array.isArray(v.log) || !v.log.every(isPair) || !isInts(v.marks) || !isInts(v.seen)) return null;
+  return { log: v.log, marks: v.marks, seen: v.seen, hinted: v.hinted === true, at: typeof v.at === "number" ? v.at : 0, ...(typeof v.seconds === "number" ? { seconds: v.seconds } : {}) };
+}
+
+/** Remember this level's board, or forget it (null) once it is cleared or back at the start. */
+export function saveInPlay(id: string, game: InPlay | null) {
+  const saved = read(IN_PLAY_KEY);
+  const all: Record<string, unknown> = isObject(saved) ? { ...saved } : {};
+  if (game) all[id] = game;
+  else delete all[id];
+  const ids = Object.keys(all).sort((a, b) => (((all[b] as InPlay)?.at ?? 0) - ((all[a] as InPlay)?.at ?? 0)));
+  for (const old of ids.slice(IN_PLAY_MAX)) delete all[old];
+  write(IN_PLAY_KEY, all);
+}
+
+/** The ids of levels left part-way through. */
+export function inPlayIds(): Set<string> {
+  const all = read(IN_PLAY_KEY);
+  return new Set(isObject(all) ? Object.keys(all) : []);
 }

@@ -194,6 +194,8 @@ ol {
 /* Once there is progress to show, the welcome shrinks to a strip and the list moves up. */
 .home__hero--compact {
   gap: 0.7rem;
+  /* Clear of the settings button in the corner. */
+  padding-inline: 2.6rem;
 }
 .home__hero--compact .home__title {
   font-size: clamp(1.9rem, 9vw, 2.6rem);
@@ -998,16 +1000,17 @@ ol {
   }
 }
 
-/* Frozen: the frame frosts over and the pit ices up. */
-.hatch__body--ice .piece__frame,
-.hatch__body--ice .piece__nub {
-  background: color-mix(in srgb, var(--frame) 42%, #e4f4ff);
-}
+/* Frozen: the pit ices over and frost rims the frame, which keeps its colour: colour is what
+   says which chickens a hatch takes, so nothing that holds a hatch still may hide it. */
 .hatch__body--ice .piece__frame {
-  box-shadow: inset 0 var(--lip-h) 0 #fff, 0 var(--drop-h) 0 rgba(0, 0, 0, 0.32);
+  box-shadow: inset 0 var(--lip-h) 0 #fff, inset 0 0 0 calc(var(--cell) * 0.035) rgba(240, 250, 255, 0.85), 0 var(--drop-h) 0 rgba(0, 0, 0, 0.32);
 }
 .hatch__body--ice .piece__pit {
-  background-color: #5b8fb0;
+  background-color: #4d84a6;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0 14%, transparent 14% 40%, rgba(255, 255, 255, 0.22) 40% 47%, transparent 47%);
+}
+.hatch__body--ice .hatch__label {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
 }
 .hatch__body--ice,
 .hatch__body--lock {
@@ -1017,10 +1020,9 @@ ol {
 .hatch__body--lock .piece {
   cursor: not-allowed;
 }
-/* Padlocked: dulled, as if the lamp were off. */
-.hatch__body--lock .piece__frame,
-.hatch__body--lock .piece__nub {
-  filter: saturate(0.45) brightness(0.72);
+/* Padlocked: bars across the pit. The frame keeps its colour. */
+.hatch__body--lock .piece__pit {
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(var(--cell) * 0.14), rgba(240, 194, 79, 0.55) calc(var(--cell) * 0.14) calc(var(--cell) * 0.2)), var(--pit-shade);
 }
 
 /* Railed hatches wear a pair of arrowheads on the frame, pointing the only way they slide. */
@@ -1147,6 +1149,123 @@ ol {
   }
 }
 
+/* While a hatch is held: the chickens it can take stand up; the rest step back. */
+.chicken {
+  transition: opacity 160ms;
+}
+.chicken--dim {
+  opacity: 0.5;
+}
+.chicken--wanted .chicken__art {
+  animation: perk 520ms ease-in-out infinite alternate;
+}
+@keyframes perk {
+  to {
+    transform: translateY(-6%) scale(1.06);
+  }
+}
+
+/* A refused slide: the hatch leans the way it was pushed, and whatever stopped it shakes. */
+.hatch--bump-up .hatch__body {
+  animation: lean-up 260ms ease-out;
+}
+.hatch--bump-down .hatch__body {
+  animation: lean-down 260ms ease-out;
+}
+.hatch--bump-left .hatch__body {
+  animation: lean-left 260ms ease-out;
+}
+.hatch--bump-right .hatch__body {
+  animation: lean-right 260ms ease-out;
+}
+@keyframes lean-up {
+  40% {
+    transform: translateY(-7%);
+  }
+}
+@keyframes lean-down {
+  40% {
+    transform: translateY(7%);
+  }
+}
+@keyframes lean-left {
+  40% {
+    transform: translateX(-7%);
+  }
+}
+@keyframes lean-right {
+  40% {
+    transform: translateX(7%);
+  }
+}
+.hatch--wobble .hatch__label,
+.chicken--wobble .chicken__art,
+.tile--wobble > svg {
+  animation: shake 380ms ease-in-out;
+}
+@keyframes shake {
+  20% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(10deg);
+  }
+  70% {
+    transform: rotate(-6deg);
+  }
+}
+.hatch--wobble .hatch__label {
+  animation-name: shake-label;
+}
+@keyframes shake-label {
+  20% {
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1.15);
+  }
+  45% {
+    transform: translate(-50%, -50%) rotate(10deg) scale(1.15);
+  }
+  70% {
+    transform: translate(-50%, -50%) rotate(-6deg);
+  }
+}
+
+/* The first level: a hand drags the hatch across, over and over, until the player has a go. */
+.demo-hand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: calc(var(--cell) * 0.75);
+  height: calc(var(--cell) * 0.75);
+  pointer-events: none;
+  animation: demo 2600ms ease-in-out 900ms infinite both;
+}
+.hand-art {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.3));
+}
+@keyframes demo {
+  0% {
+    opacity: 0;
+    transform: translate(calc(var(--cell) * (var(--fx) + 0.4)), calc(var(--cell) * (var(--fy) + 0.45)));
+  }
+  12%,
+  22% {
+    opacity: 1;
+    transform: translate(calc(var(--cell) * (var(--fx) + 0.4)), calc(var(--cell) * (var(--fy) + 0.45))) scale(0.9);
+  }
+  68%,
+  80% {
+    opacity: 1;
+    transform: translate(calc(var(--cell) * (var(--tx) + 0.4)), calc(var(--cell) * (var(--ty) + 0.45))) scale(0.9);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--cell) * (var(--tx) + 0.4)), calc(var(--cell) * (var(--ty) + 0.45)));
+  }
+}
+
 .hint-ghost {
   z-index: 4;
   pointer-events: none;
@@ -1162,10 +1281,27 @@ ol {
 }
 .hint-dot::after {
   content: "";
-  width: calc(var(--cell) * 0.16);
-  height: calc(var(--cell) * 0.16);
+  width: calc(var(--cell) * 0.2);
+  height: calc(var(--cell) * 0.2);
   border-radius: 50%;
   background: var(--straw);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+/* The hinted hatch walking its way, square by square. */
+.hint-runner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+.hint-runner__cell {
+  left: 0;
+  top: 0;
+  border-radius: calc(var(--cell) * 0.22);
+  box-shadow: inset 0 0 0 3px var(--cream), 0 0 0 2px rgba(43, 26, 18, 0.5);
+  background: rgba(255, 246, 227, 0.18);
 }
 .hatch--hinted .piece__frame,
 .hatch--hinted .piece__nub {
@@ -1231,6 +1367,83 @@ ol {
   height: 2.9rem;
   stroke-width: 1.2;
 }
+/* The eggs land one at a time; the ones not earned stay as outlines. */
+.sheet__egg {
+  display: block;
+}
+.sheet__egg--earned {
+  animation: land-egg 420ms cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+@keyframes land-egg {
+  0% {
+    transform: translateY(-40%) scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(4%) scale(1.15, 0.88);
+    opacity: 1;
+  }
+}
+.sheet__card {
+  position: relative;
+}
+/* Three eggs: a burst of feathers behind them. */
+.burst {
+  position: absolute;
+  left: 50%;
+  top: 3.2rem;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.burst span {
+  position: absolute;
+  width: 0.55rem;
+  height: 1.1rem;
+  margin: -0.55rem 0 0 -0.275rem;
+  border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%;
+  background: var(--straw);
+  opacity: 0;
+  animation: feather 900ms cubic-bezier(0.2, 0.7, 0.4, 1) calc(1100ms + var(--d)) forwards;
+}
+.burst span:nth-child(3n) {
+  background: var(--barn);
+}
+.burst span:nth-child(3n + 1) {
+  background: var(--cream);
+}
+@keyframes feather {
+  0% {
+    opacity: 1;
+    transform: rotate(var(--a)) translateY(0) scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--a)) translateY(-6.5rem) rotate(160deg) scale(1);
+  }
+}
+.sheet .sheet__more {
+  font-size: 0.9rem;
+}
+.sheet__reward p {
+  margin: 0;
+  color: var(--text);
+}
+.sheet__wear {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.sheet .sheet__shared {
+  margin: 0;
+  font-size: 0.85rem;
+  white-space: pre-line;
+}
+.sheet__solo .clock-badge {
+  margin-left: 0.5rem;
+}
 .sheet__actions {
   display: flex;
   flex-direction: column;
@@ -1255,8 +1468,21 @@ ol {
   .hatch__count,
   .sheet,
   .sheet__card,
-  .hint-ghost {
+  .hint-ghost,
+  .sheet__egg--earned,
+  .chicken--wanted .chicken__art,
+  .hatch__body,
+  .hatch__label,
+  .chicken--wobble .chicken__art,
+  .tile--wobble > svg {
     animation: none;
+  }
+  .burst,
+  .demo-hand {
+    display: none;
+  }
+  .hint-runner {
+    transition: none;
   }
   .hatch,
   .hatch--held,
@@ -1721,4 +1947,226 @@ ol {
 .chip .crack-art,
 .chip .key__art {
   filter: none;
+}
+
+/* ── Icons ── */
+
+.gear-art {
+  width: 1.2em;
+  height: 1.2em;
+  display: block;
+  margin: auto;
+}
+.clock-badge,
+.day-art {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--ink);
+}
+.reward__cost .solo,
+.reward__cost .day-art {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--text-soft);
+}
+
+/* ── Home: settings in the corner, badges on the tiles ── */
+
+.home {
+  position: relative;
+}
+.home__gear {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.9rem;
+  width: 2.6em;
+  padding-inline: 0;
+  z-index: 2;
+}
+.home__more {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.home__more h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.level__badges {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  display: flex;
+  gap: 2px;
+}
+.level .level__badges .solo {
+  position: static;
+}
+.level__started {
+  position: absolute;
+  top: 0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── The daily coop: catching up, and locked for beginners ── */
+
+.daily-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.daily--locked {
+  cursor: default;
+  opacity: 0.75;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.catch-up {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.catch-up__label {
+  flex: none;
+  font-size: 0.82rem;
+  color: var(--text-soft);
+}
+.catch-up__days {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+.catch-up__day {
+  font: inherit;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0;
+  color: var(--text);
+  background: var(--tile);
+  border: 0;
+  border-radius: 0.7rem;
+  box-shadow: 0 3px 0 var(--line);
+  cursor: pointer;
+  touch-action: manipulation;
+  line-height: 1.1;
+}
+.catch-up__day:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--line);
+}
+.catch-up__day--done {
+  color: var(--ink);
+  background: var(--straw);
+  box-shadow: 0 3px 0 var(--straw-deep);
+}
+.catch-up__weekday {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+.catch-up__mark {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* ── The settings sheet ── */
+
+.settings {
+  width: min(100%, 26rem);
+  max-height: calc(100dvh - 2.4rem);
+  overflow-y: auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.settings h2 {
+  text-align: center;
+}
+.settings .rewards h2 {
+  text-align: left;
+  font-size: 1.2rem;
+}
+.settings__close {
+  align-self: center;
+}
+
+/* ── Two more boards: for stars and for daily coops ── */
+
+:root[data-board="harvest"] {
+  --floor: #b77a3c;
+  --floor-alt: #ac7136;
+  --fence: #5b2d16;
+}
+:root[data-board="sunset"] {
+  --floor: #a8556a;
+  --floor-alt: #9c4d62;
+  --fence: #3b1830;
+}
+.swatch--harvest {
+  border-color: #5b2d16;
+  background: repeating-conic-gradient(#b77a3c 0 25%, #ac7136 0 50%) 0 0 / 50% 50%;
+}
+.swatch--sunset {
+  border-color: #3b1830;
+  background: repeating-conic-gradient(#a8556a 0 25%, #9c4d62 0 50%) 0 0 / 50% 50%;
+}
+
+/* ── Phones on their side: the board on the left, everything else beside it ── */
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen.play {
+    max-width: 62rem;
+  }
+  .play {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "stage top" "stage note" "stage bar";
+    gap: 0.5rem 1rem;
+    padding: 0.5rem calc(0.9rem + env(safe-area-inset-right, 0px)) 0.5rem calc(0.9rem + env(safe-area-inset-left, 0px));
+  }
+  .play__top {
+    grid-area: top;
+  }
+  .play__stage {
+    grid-area: stage;
+  }
+  .play__note {
+    grid-area: note;
+    font-size: 0.9rem;
+  }
+  .play__bar {
+    grid-area: bar;
+    grid-template-columns: 1fr 1fr;
+  }
+  .play__bar .btn:last-child {
+    grid-column: 1 / -1;
+  }
+  .play__title {
+    font-size: 1.2rem;
+  }
+  .play__number {
+    font-size: 0.78rem;
+  }
+  .sheet {
+    padding: 0.6rem;
+  }
+  .sheet__card {
+    max-height: calc(100dvh - 1.2rem);
+    overflow-y: auto;
+  }
+  .sheet__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
 }

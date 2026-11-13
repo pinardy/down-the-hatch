@@ -289,7 +289,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
 
       <div className="editor__stage" ref={stageRef}>
         <div className="editor__board">
-          <Board level={level} game={startState(level)} cell={cell} drops={[]} shuts={[]} hint={null} seen={new Set(level.chickens.map((c) => c.id))} locked held={null} onGrab={() => {}} onDrag={() => {}} onRelease={() => {}} onNudge={() => {}} />
+          <Board level={level} game={startState(level)} cell={cell} drops={[]} shuts={[]} hint={null} bump={null} demo={null} seen={new Set(level.chickens.map((c) => c.id))} locked held={null} onGrab={() => {}} onDrag={() => {}} onRelease={() => {}} onNudge={() => {}} />
           <div className="editor__taps" style={{ gridTemplateColumns: `repeat(${draft.w}, ${cell}px)`, gridAutoRows: `${cell}px` }}>
             {draft.cells.map((c, k) => {
               const x = k % draft.w;

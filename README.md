@@ -11,7 +11,8 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 - Drag a hatch to slide it. It drops in any chickens **of its own colour** it passes over.
 - Hay bales, other hatches and other-coloured chickens block the way.
 - The number on a hatch is how many more chickens it can take. Full hatches leave the board.
-- Drop every chicken to clear the level. Match the par (fewest moves) for three eggs.
+- Drop every chicken to clear the level. Match the par (fewest moves) for three eggs. Two eggs allow a little over par: two moves on a short level, a quarter of par on a long one.
+- Push a hatch into something it can't pass and the game shows what's in the way, and why.
 
 158 levels in 19 chapters, each tagged Easy, Medium, Hard or Expert on the level list. After the tutorial, each chapter adds one piece and works up to it gently:
 
@@ -27,12 +28,13 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 
 Four more chapters (Thin ice, Mystery guests, Chain of custody, Tangled) pair a newer piece with an older one. The hard chapters combine them and take 14 to 34 moves a level.
 
-Undo, Start over and Hint are always there, and if you slide into a dead end, Rewind takes you back to the last position that can still be won.
+Undo, Start over and Hint are always there. A hint walks the hatch along its path, and if you slide into a dead end, Rewind takes you back to the last position that can still be won. Leave a level part-way through and it's waiting where you left it.
 
-- **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday, with a streak for playing on consecutive days.
+- **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday, with a streak for playing on consecutive days. It opens once the tutorial is done. The last six days' boards can be caught up on (they don't count towards the streak), and a result can be shared without giving the board away.
 - **Stars:** clear a level without asking for a hint and its tile gets a star.
 - **Best solution:** finish over par and you can watch the fewest-moves solution play out.
-- **Rewards:** eggs unlock board themes and hats for the chickens.
+- **Race the clock:** an optional countdown; beat it for a clock badge on the level.
+- **Rewards:** eggs, stars and daily coops unlock board themes and hats for the chickens. Settings and rewards are a tap away on every screen.
 - **Level editor:** build your own coop; the game checks it can be cleared, sets its par, and gives you a link to send to anyone.
 - **Backups:** progress is saved in your browser. A backup code (under "Your progress" on the level list) carries it to another phone or browser.
 

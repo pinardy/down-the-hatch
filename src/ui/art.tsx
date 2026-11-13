@@ -70,6 +70,23 @@ export function HatArt({ hat }: { hat: Hat }) {
           <path d="M70 41 l5 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
         </g>
       );
+    case "flower":
+      return (
+        <g>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <ellipse key={a} cx="56" cy="20" rx="4.5" ry="8" fill="#fffdf5" transform={`rotate(${a} 56 28)`} />
+          ))}
+          <circle cx="56" cy="28" r="4.5" fill="#f0c24f" />
+        </g>
+      );
+    case "party":
+      return (
+        <g>
+          <path d="M56 30 l12 -26 l12 26 z" fill="#5fb7e8" />
+          <path d="M60 22 l16 -2 M63 14 l9 -1" stroke="#f0c24f" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="68" cy="4" r="4" fill="#e8577c" />
+        </g>
+      );
     case "crown":
       return (
         <g>
@@ -211,6 +228,55 @@ export function TitleArt() {
       </div>
       <ChickenArt color="gold" className="title-art__chicken" />
     </div>
+  );
+}
+
+/** The mark for a level cleared inside the time, with Race the clock on. */
+export function ClockArt() {
+  return (
+    <svg className="clock-badge" viewBox="0 0 24 24" role="img" aria-label="Beat the clock">
+      <circle cx="12" cy="13" r="8.5" fill="#fff6e3" stroke="currentColor" strokeWidth="2.4" />
+      <path d="M12 8.5 V13 l3 2" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M9.5 2.5 h5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A small calendar page, for rewards paid in daily coops. */
+export function DayArt() {
+  return (
+    <svg className="day-art" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" strokeWidth="2.2" />
+      <path d="M3 10 h18 M8 3 v4 M16 3 v4" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** A gear, for settings. */
+export function GearArt() {
+  return (
+    <svg className="gear-art" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M10.3 2.5 h3.4 l.5 2.6 a7.5 7.5 0 0 1 1.9 1.1 l2.5 -.9 1.7 2.9 -2 1.7 a7.5 7.5 0 0 1 0 2.2 l2 1.7 -1.7 2.9 -2.5 -.9 a7.5 7.5 0 0 1 -1.9 1.1 l-.5 2.6 h-3.4 l-.5 -2.6 a7.5 7.5 0 0 1 -1.9 -1.1 l-2.5 .9 -1.7 -2.9 2 -1.7 a7.5 7.5 0 0 1 0 -2.2 l-2 -1.7 1.7 -2.9 2.5 .9 a7.5 7.5 0 0 1 1.9 -1.1 z"
+        fill="currentColor"
+      />
+      <circle cx="12" cy="12" r="3.2" fill="var(--bg)" />
+    </svg>
+  );
+}
+
+/** A pointing hand, for showing a new player what to do. */
+export function HandArt() {
+  return (
+    <svg className="hand-art" viewBox="0 0 48 48" aria-hidden="true">
+      <path
+        d="M17 26 V9 a3.5 3.5 0 0 1 7 0 v12 l1 -1 a3.5 3.5 0 0 1 6 2 l1 -.5 a3.5 3.5 0 0 1 5.5 2.5 l.5 -.2 a3.5 3.5 0 0 1 5 3 v7 c0 7 -5 12 -12 12 h-3 c-5 0 -8 -2 -11 -6 l-7 -9 a3.4 3.4 0 0 1 5 -4.5 z"
+        fill="#fff6e3"
+        stroke="#2b1a12"
+        strokeWidth="2.6"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

@@ -1,8 +1,9 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 import { heldBy, partnerOf, thawIn } from "../game/engine";
+import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
-import { BaleArt, ChainArt, ChickenArt, CrackArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, SnowArt } from "./art";
+import { BaleArt, ChainArt, ChickenArt, CrackArt, HandArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, SnowArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -13,10 +14,26 @@ export interface ShutFx {
   hatch: Hatch;
 }
 export interface HintFx {
+  /** A fresh number for each hint, so the walk-through starts again. */
+  key: number;
+  /** Where the hatch is now. */
+  from: { x: number; y: number };
   /** Where the hatch should end up. */
   ghost: Hatch;
   /** The squares its top-left corner passes through on the way. */
   path: { x: number; y: number }[];
+}
+/** A slide was refused: the hatch nudges that way and whatever stopped it wobbles. */
+export interface BumpFx {
+  key: number;
+  hatch: number;
+  dir: Dir;
+  why: Blocker;
+}
+/** A hand showing the first move: from one square to another (of the hatch's first square). */
+export interface DemoFx {
+  from: { x: number; y: number };
+  to: { x: number; y: number };
 }
 
 interface Props {
@@ -26,6 +43,8 @@ interface Props {
   drops: DropFx[];
   shuts: ShutFx[];
   hint: HintFx | null;
+  bump: BumpFx | null;
+  demo: DemoFx | null;
   /** Eggs whose chicken has been seen. */
   seen: ReadonlySet<number>;
   locked: boolean;
@@ -115,7 +134,38 @@ function HatchFace({ hatch, stuck = null, thaw = 0, chained = false }: { hatch: 
   );
 }
 
-export function Board({ level, game, cell, drops, shuts, hint, seen, locked, held, onGrab, onDrag, onRelease, onNudge }: Props) {
+/**
+ * The hinted hatch walking its way: an outline steps from where the hatch is, along the path,
+ * to where it should end up, pauses, and goes round again. It shows a slide out and back, which
+ * a still outline over the hatch itself cannot.
+ */
+function HintRunner({ hint }: { hint: HintFx }) {
+  const stops = [hint.from, ...hint.path, { x: hint.ghost.x, y: hint.ghost.y }];
+  const [at, setAt] = useState(0);
+  useEffect(() => {
+    setAt(0);
+    let i = 0;
+    let id = 0;
+    const tick = () => {
+      i = (i + 1) % (stops.length + 2); // two beats of rest at the end
+      setAt(Math.min(i, stops.length - 1));
+      id = window.setTimeout(tick, i === 0 ? 450 : 300);
+    };
+    id = window.setTimeout(tick, 450);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint.key]);
+  const p = stops[at];
+  return (
+    <span className="hint-runner" style={place(p.x, p.y, hint.ghost.w, hint.ghost.h)} aria-hidden="true">
+      {hint.ghost.cells.map(([cx, cy]) => (
+        <span key={`${cx},${cy}`} className="hint-runner__cell" style={{ ...place(cx, cy), position: "absolute" }} />
+      ))}
+    </span>
+  );
+}
+
+export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen, locked, held, onGrab, onDrag, onRelease, onNudge }: Props) {
   const fieldRef = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; pointer: number; offX: number; offY: number } | null>(null);
 
@@ -154,12 +204,19 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
     onNudge(hatch.id, dir);
   };
 
+  // While a hatch is held, the chickens it (or its chained partner) could take stand out.
+  const heldHatch = held ? game.hatches.find((t) => t.id === held.id) : undefined;
+  const heldPartner = heldHatch && partnerOf(game, heldHatch);
+  const takes = heldHatch ? new Set([heldHatch.color, heldPartner?.color]) : null;
+  const wobble = bump?.why;
+  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" ? wobble.y * level.w + wobble.x : -1;
+
   return (
     <div className="board" style={{ "--cell": `${cell}px` } as CSSProperties}>
       <div className="board__field" ref={fieldRef} style={{ width: cell * level.w, height: cell * level.h }}>
         <div className="board__floor" style={{ gridTemplateColumns: `repeat(${level.w}, var(--cell))` }} aria-hidden="true">
           {level.bales.map((bale, k) => (
-            <div key={k} className={(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}>
+            <div key={k} className={`${(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}${k === bumpedSquare ? " tile--wobble" : ""}`}>
               {bale && <BaleArt />}
               {level.cracks[k] && (game.broken.includes(k) ? <HoleArt /> : <CrackArt />)}
             </div>
@@ -180,6 +237,7 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
             {hint.ghost.cells.map(([cx, cy]) => (
               <span key={`${cx},${cy}`} className="hint-ghost" style={place(hint.ghost.x + cx, hint.ghost.y + cy)} />
             ))}
+            <HintRunner hint={hint} />
           </>
         )}
 
@@ -196,12 +254,14 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
             stuck === "lock" ? "padlocked until the key is picked up" : "",
             partner ? `chained to the ${PAINT[partner.color].name} hatch, they slide together` : "",
           ].filter(Boolean);
+          const pushed = bump && (bump.hatch === hatch.id || bump.hatch === partner?.id) ? ` hatch--bump-${bump.dir}` : "";
+          const refused = wobble && ((wobble.kind === "hatch" && wobble.id === hatch.id) || ((wobble.kind === "full" || wobble.kind === "ice" || wobble.kind === "lock" || wobble.kind === "rail") && wobble.hatch === hatch.id)) ? " hatch--wobble" : "";
           return (
             <button
               key={hatch.id}
               type="button"
               data-hatch={hatch.id}
-              className={`hatch${mine ? (mine.turning ? " hatch--held hatch--turning" : " hatch--held") : ""}${hint?.ghost.id === hatch.id ? " hatch--hinted" : ""}`}
+              className={`hatch${mine ? (mine.turning ? " hatch--held hatch--turning" : " hatch--held") : ""}${hint?.ghost.id === hatch.id ? " hatch--hinted" : ""}${pushed}${refused}`}
               style={place(hatch.x + (mine?.dx ?? 0), hatch.y + (mine?.dy ?? 0), hatch.w, hatch.h)}
               aria-label={`${about.join(", ")}. Arrow keys slide it.`}
               onPointerDown={(e) => down(e, hatch)}
@@ -222,16 +282,31 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
           </span>
         ))}
 
-        {game.chickens.map((c) =>
-          c.hidden && !seen.has(c.id) ? (
-            <span key={c.id} className="chicken chicken--egg" style={place(c.x, c.y)}>
-              <MysteryEggArt />
-            </span>
-          ) : (
-            <span key={c.id} className={c.hidden ? "chicken chicken--hatched" : "chicken"} style={place(c.x, c.y)}>
+        {game.chickens.map((c) => {
+          const shake = wobble?.kind === "chicken" && wobble.id === c.id ? " chicken--wobble" : "";
+          if (c.hidden && !seen.has(c.id)) {
+            return (
+              <span key={c.id} className={`chicken chicken--egg${shake}`} style={place(c.x, c.y)}>
+                <MysteryEggArt />
+              </span>
+            );
+          }
+          const focus = takes ? (c.color === "any" || takes.has(c.color) ? " chicken--wanted" : " chicken--dim") : "";
+          return (
+            <span key={c.id} className={`chicken${c.hidden ? " chicken--hatched" : ""}${focus}${shake}`} style={place(c.x, c.y)}>
               <ChickenArt color={c.color} className="chicken__art" />
             </span>
-          ),
+          );
+        })}
+
+        {demo && (
+          <span
+            className="demo-hand"
+            style={{ "--fx": demo.from.x, "--fy": demo.from.y, "--tx": demo.to.x, "--ty": demo.to.y } as CSSProperties}
+            aria-hidden="true"
+          >
+            <HandArt />
+          </span>
         )}
 
         {drops.map(({ key: k, chicken }) => (
