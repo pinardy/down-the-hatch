@@ -6,7 +6,9 @@
 //   npm run levels                      every tier, default seed, 60 s each
 //   npm run levels -- shapes 42 120     the "shapes" tier, seed 42, 120 s
 //
-// Tiers: tiny, small, medium, large (plain boards), shapes, ice, lock, mix (harder pieces).
+// Tiers: tiny, small, medium, large (plain boards), shapes, ice, lock, mix (harder pieces),
+// then xl, shapes-hard, ice-hard, lock-hard and mix-hard: the same on bigger boards, climbed
+// for much longer towards a much higher par.
 //
 // "Moves" here means the game's own count: how many times you have to change hatch. That is
 // only a rough stand-in for difficulty, so curate by playing what this prints.
@@ -40,6 +42,8 @@ interface Tier {
   ice?: boolean; // at least one frozen hatch
   lock?: boolean; // a key and at least one padlocked hatch
   eggs?: number; // share of chickens still in their eggs
+  /** Hard tiers climb for longer and let the solver look further (still within what a hint can search). */
+  hard?: boolean;
 }
 
 const TIERS: Tier[] = [
@@ -51,6 +55,11 @@ const TIERS: Tier[] = [
   { name: "ice", w: [5, 6], h: [6, 6], colors: [3, 4], hatches: [4, 6], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 13, ice: true },
   { name: "lock", w: [5, 6], h: [6, 6], colors: [3, 4], hatches: [4, 6], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 13, lock: true },
   { name: "mix", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 4], rail: 0.1, target: 16, odd: 1, ice: true, lock: true, eggs: 0.35 },
+  { name: "xl", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: PLAIN, cap: [1, 3], bales: [1, 5], rail: 0.2, target: 26, hard: true },
+  { name: "shapes-hard", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 26, odd: 3, hard: true },
+  { name: "ice-hard", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: [...PLAIN, ...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 24, ice: true, hard: true },
+  { name: "lock-hard", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: [...PLAIN, ...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 24, lock: true, hard: true },
+  { name: "mix-hard", w: [6, 7], h: [7, 7], colors: [5, 5], hatches: [6, 8], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 5], rail: 0.1, target: 30, odd: 2, ice: true, lock: true, eggs: 0.35, hard: true },
 ];
 
 /** A level while it is still being changed: every piece is its own record. */
@@ -296,10 +305,13 @@ for (const tier of which) {
     if (!first || !best) continue;
     let draft = first;
     climbs++;
-    const giveUp = Math.min(until, Date.now() + 45_000);
-    for (let i = 0; i < 400 && best.moves < tier.target && Date.now() < giveUp; i++) {
+    const giveUp = Math.min(until, Date.now() + (tier.hard ? 90_000 : 45_000));
+    const started = Date.now();
+    for (let i = 0; i < (tier.hard ? 2500 : 400) && best.moves < tier.target && Date.now() < giveUp; i++) {
+      // A hard board that is still easy after half a minute rarely gets there: start another.
+      if (tier.hard && Date.now() - started > 30_000 && best.moves < tier.target / 2) break;
       const next = mutate(draft, tier, rnd);
-      const scored = next && par(next, 120_000);
+      const scored = next && par(next, tier.hard ? 200_000 : 120_000);
       if (next && scored && scored.moves >= best.moves) {
         draft = next;
         best = scored;

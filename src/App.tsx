@@ -8,10 +8,16 @@ import type { Settings } from "./ui/storage";
 
 export default function App() {
   const [playing, setPlaying] = useState<number | null>(null);
+  const [lastPlayed, setLastPlayed] = useState<number | null>(null);
   const [progress, setProgress] = useState(loadProgress);
   const [settings, setSettings] = useState(loadSettings);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
+
+  const play = (index: number) => {
+    setLastPlayed(index);
+    setPlaying(index);
+  };
 
   const changeSettings = (s: Settings) => {
     setSettings(s);
@@ -33,7 +39,7 @@ export default function App() {
     [levelName],
   );
 
-  if (!level) return <Home chapters={CHAPTERS} progress={progress} settings={settings} onPlay={setPlaying} onSettings={changeSettings} />;
+  if (!level) return <Home chapters={CHAPTERS} progress={progress} settings={settings} lastPlayed={lastPlayed} onPlay={play} onSettings={changeSettings} />;
   const chapter = CHAPTERS.find((c) => c.levels.includes(level))!;
 
   return (
@@ -45,7 +51,7 @@ export default function App() {
       best={progress[level.name]}
       settings={settings}
       onCleared={cleared}
-      onNext={level.index + 1 < LEVELS.length ? () => setPlaying(level.index + 1) : null}
+      onNext={level.index + 1 < LEVELS.length ? () => play(level.index + 1) : null}
       onLevels={() => setPlaying(null)}
     />
   );

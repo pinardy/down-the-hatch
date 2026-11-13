@@ -231,26 +231,102 @@ ol {
   font-size: 0.9rem;
   color: var(--text-soft);
 }
-.chapter h2 {
+.chapters {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 1.35rem;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+.chapter {
+  background: color-mix(in srgb, var(--panel) 45%, transparent);
+  border-radius: 1.1rem;
+}
+.chapter h2 {
+  font-size: 1.2rem;
   font-weight: 600;
 }
+/* The whole header is the button: tap anywhere on it to fold or unfold the chapter. */
+.chapter__toggle {
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 1.1rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.chapter__title {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.55rem;
+  line-height: 1.2;
+}
 .chapter__tally {
+  flex: none;
   font-size: 0.9rem;
   font-weight: 400;
   color: var(--text-soft);
 }
+.chapter--done .chapter__tally {
+  font-weight: 600;
+  color: var(--text);
+}
+.chapter__chevron {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.6;
+  transition: transform 150ms;
+}
+.chapter__toggle[aria-expanded="true"] .chapter__chevron {
+  transform: rotate(180deg);
+}
+.chapter__body {
+  padding: 0 0.7rem 0.9rem;
+}
 .chapter__blurb {
   color: var(--text-soft);
-  margin: 0.1rem 0 0.8rem;
+  margin: -0.2rem 0.2rem 0.8rem;
+}
+/* Difficulty tag. Fixed colours with dark ink, so it reads the same by day or lamplight. */
+.grade {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.grade--easy {
+  background: #63d0bb;
+}
+.grade--medium {
+  background: #f8d568;
+}
+.grade--hard {
+  background: #f58a70;
+}
+.grade--expert {
+  background: #c19cee;
 }
 .level-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6.4rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
   gap: 0.7rem;
 }
 .level {

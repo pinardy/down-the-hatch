@@ -13,7 +13,7 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 - The number on a hatch is how many more chickens it can take. Full hatches leave the board.
 - Drop every chicken to clear the level. Match the par (fewest moves) for three eggs.
 
-Twelve tutorial levels, then four chapters that add L- and T-shaped hatches, frozen hatches, padlocks and mystery eggs. Undo, Start over and Hint are always there.
+82 levels: a twelve-level tutorial, then four chapters that add L- and T-shaped hatches, frozen hatches, padlocks and mystery eggs, then five much harder chapters that take 18 to 34 moves a level. Each chapter is tagged Easy, Medium, Hard or Expert on the level list. Undo, Start over and Hint are always there.
 
 ## Development
 

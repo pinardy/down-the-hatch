@@ -33,4 +33,10 @@ Each colour needs exactly as many chickens as its hatches have room for. `npm te
 
 `npm run levels` grows levels automatically: it builds random boards, then makes small changes (move a chicken, reshape a hatch, add a bale), keeping each change if the solver says the level is still winnable and needs at least as many moves. It prints the best as entries to paste into `levels.ts`.
 
-`npm run levels -- shapes 42 120` searches the `shapes` tier with seed 42 for 120 seconds. The tiers are `tiny`, `small`, `medium` and `large` (plain boards), then `shapes`, `ice`, `lock` and `mix`, which must use the harder pieces. Par is only a rough stand-in for difficulty, so play what it finds before keeping it.
+`npm run levels -- shapes 42 120` searches the `shapes` tier with seed 42 for 120 seconds. The tiers are `tiny`, `small`, `medium` and `large` (plain boards), then `shapes`, `ice`, `lock` and `mix`, which must use the harder pieces. `xl`, `shapes-hard`, `ice-hard`, `lock-hard` and `mix-hard` are the same on bigger boards, climbed for much longer towards a par in the high twenties; expect about one board every minute and a half, and give them several minutes.
+
+Par is only a rough stand-in for difficulty, so play what it finds before keeping it.
+
+## Chapters
+
+Each chapter in `BOOK` has a `difficulty` (`Easy`, `Medium`, `Hard` or `Expert`), shown as a tag beside its name on the level list. Chapters are folded on that list, so the tag and the tally are what a player sees first.

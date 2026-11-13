@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { eggsFor } from "../game/engine";
 import type { Chapter } from "../game/levels";
 import { unlockAudio } from "../sfx";
@@ -8,16 +9,30 @@ interface Props {
   chapters: Chapter[];
   progress: Progress;
   settings: Settings;
+  /** The level just played, if any: its chapter starts open. */
+  lastPlayed: number | null;
   onPlay: (index: number) => void;
   onSettings: (s: Settings) => void;
 }
 
-export function Home({ chapters, progress, settings, onPlay, onSettings }: Props) {
+export function Home({ chapters, progress, settings, lastPlayed, onPlay, onSettings }: Props) {
   const levels = chapters.flatMap((c) => c.levels);
   const next = levels.find((l) => progress[l.name] === undefined);
   const nextIn = next && chapters.find((c) => c.levels.includes(next))!;
   const cleared = levels.filter((l) => progress[l.name] !== undefined).length;
   const eggs = levels.reduce((n, l) => n + (progress[l.name] !== undefined ? eggsFor(progress[l.name], l.par) : 0), 0);
+  // Chapters fold away so the whole list fits on a screen. The one you are working on,
+  // and the one you just came back from, start open.
+  const [open, setOpen] = useState<ReadonlySet<string>>(() => {
+    const names = chapters.filter((c) => c.levels.some((l) => l === next || l.index === lastPlayed)).map((c) => c.name);
+    return new Set(names.length ? names : [chapters[0].name]);
+  });
+  const toggle = (name: string) =>
+    setOpen((was) => {
+      const now = new Set(was);
+      if (!now.delete(name)) now.add(name);
+      return now;
+    });
   const play = (index: number) => {
     unlockAudio();
     onPlay(index);
@@ -41,44 +56,60 @@ export function Home({ chapters, progress, settings, onPlay, onSettings }: Props
         </p>
       </header>
 
-      {chapters.map((chapter) => {
-        const done = chapter.levels.filter((l) => progress[l.name] !== undefined).length;
-        return (
-          <section key={chapter.name} className="chapter" aria-labelledby={`chapter-${chapter.name}`}>
-            <h2 id={`chapter-${chapter.name}`}>
-              {chapter.name}
-              <span className="chapter__tally">
-                {done} of {chapter.levels.length}
-              </span>
-            </h2>
-            <p className="chapter__blurb">{chapter.blurb}</p>
-            <ol className="level-grid">
-              {chapter.levels.map((l, i) => {
-                const best = progress[l.name];
-                const earned = best === undefined ? 0 : eggsFor(best, l.par);
-                return (
-                  <li key={l.name}>
-                    <button
-                      type="button"
-                      className={best !== undefined ? "level level--done" : l === next ? "level level--next" : "level"}
-                      onClick={() => play(l.index)}
-                      aria-label={`${chapter.name} ${i + 1}, ${l.name}${best !== undefined ? `, cleared with ${earned} of 3 eggs` : ""}`}
-                    >
-                      <span className="level__number">{i + 1}</span>
-                      <span className="level__name">{l.name}</span>
-                      <span className="level__eggs" aria-hidden="true">
-                        {[1, 2, 3].map((n) => (
-                          <EggArt key={n} earned={n <= earned} />
-                        ))}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
-        );
-      })}
+      <div className="chapters">
+        {chapters.map((chapter, c) => {
+          const done = chapter.levels.filter((l) => progress[l.name] !== undefined).length;
+          const all = done === chapter.levels.length;
+          const isOpen = open.has(chapter.name);
+          return (
+            <section key={chapter.name} className={all ? "chapter chapter--done" : "chapter"}>
+              <h2>
+                <button type="button" className="chapter__toggle" aria-expanded={isOpen} aria-controls={`chapter-${c}`} onClick={() => toggle(chapter.name)}>
+                  <span className="chapter__title">
+                    {chapter.name}
+                    <span className={`grade grade--${chapter.difficulty.toLowerCase()}`}>{chapter.difficulty}</span>
+                  </span>
+                  <span className="chapter__tally">
+                    {done} of {chapter.levels.length}
+                  </span>
+                  <svg className="chapter__chevron" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 6 l5 5 l5 -5" />
+                  </svg>
+                </button>
+              </h2>
+              {isOpen && (
+                <div id={`chapter-${c}`} className="chapter__body">
+                  <p className="chapter__blurb">{chapter.blurb}</p>
+                  <ol className="level-grid">
+                    {chapter.levels.map((l, i) => {
+                      const best = progress[l.name];
+                      const earned = best === undefined ? 0 : eggsFor(best, l.par);
+                      return (
+                        <li key={l.name}>
+                          <button
+                            type="button"
+                            className={best !== undefined ? "level level--done" : l === next ? "level level--next" : "level"}
+                            onClick={() => play(l.index)}
+                            aria-label={`${chapter.name} ${i + 1}, ${l.name}${best !== undefined ? `, cleared with ${earned} of 3 eggs` : ""}`}
+                          >
+                            <span className="level__number">{i + 1}</span>
+                            <span className="level__name">{l.name}</span>
+                            <span className="level__eggs" aria-hidden="true">
+                              {[1, 2, 3].map((n) => (
+                                <EggArt key={n} earned={n <= earned} />
+                              ))}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
 
       <section className="home__settings" aria-label="Settings">
         <label className="toggle">
