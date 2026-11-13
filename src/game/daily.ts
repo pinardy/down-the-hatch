@@ -57,3 +57,26 @@ export function dailyStreak(cleared: (id: string) => boolean, today: Date): numb
   }
   return run;
 }
+
+/** The calendar day a YYYY-MM-DD key names, at noon. */
+export function dayFromKey(key: string): Date {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d, 12);
+}
+
+/** The `count` days before `today`, most recent first: the boards that can still be caught up on. */
+export const earlierDays = (today: Date, count: number) => Array.from({ length: count }, (_, i) => daysBefore(today, i + 1));
+
+/** Milliseconds from `now` until the next board, at the player's midnight. */
+export function msUntilTomorrow(now: Date): number {
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return midnight.getTime() - now.getTime();
+}
+
+/** "5h 12m", "12m", "under a minute". */
+export function untilText(ms: number): string {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return "under a minute";
+  const h = Math.floor(minutes / 60);
+  return h ? `${h}h ${minutes % 60}m` : `${minutes}m`;
+}

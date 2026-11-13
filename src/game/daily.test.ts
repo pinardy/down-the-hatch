@@ -73,3 +73,13 @@ describe("daily coop", () => {
     expect(isWon(s)).toBe(true);
   });
 });
+
+describe("daily coop timing", () => {
+  it("counts down to the player's midnight", async () => {
+    const { msUntilTomorrow, untilText, earlierDays, dayKey: key } = await import("./daily");
+    expect(msUntilTomorrow(new Date(2026, 10, 13, 23, 0))).toBe(3_600_000);
+    expect(untilText(3_600_000 + 12 * 60_000)).toBe("1h 12m");
+    expect(untilText(30_000)).toBe("under a minute");
+    expect(earlierDays(new Date(2026, 10, 1, 9), 2).map(key)).toEqual(["2026-10-31", "2026-10-30"]);
+  });
+});

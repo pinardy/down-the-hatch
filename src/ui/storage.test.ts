@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { better, decodeProgress, encodeProgress, mergeProgress } from "./storage";
 import type { Progress } from "./storage";
 
+describe("record flags", () => {
+  it("carry the clock and late flags through a backup code", () => {
+    const progress: Progress = { a: { moves: 3, clock: true }, "daily-2026-11-10": { moves: 9, late: true, solo: true } };
+    expect(decodeProgress(encodeProgress(progress))).toEqual(progress);
+  });
+  it("still read old codes, where 1 meant solo", () => {
+    expect(decodeProgress("DTH1." + btoa(JSON.stringify({ a: [4, 1] })))).toEqual({ a: { moves: 4, solo: true } });
+  });
+  it("keep late only when both records were late", () => {
+    expect(better({ moves: 5, late: true }, { moves: 6 })).toEqual({ moves: 5 });
+    expect(better({ moves: 5, late: true }, { moves: 6, late: true, clock: true })).toEqual({ moves: 5, clock: true, late: true });
+  });
+});
+
 describe("backup codes", () => {
   const progress: Progress = { "first-peck": { moves: 1, solo: true }, "red-rover": { moves: 9 }, "daily-2026-11-13": { moves: 14, solo: true } };
 

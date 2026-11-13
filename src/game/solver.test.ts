@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isWon, parseLevel, startState, step } from "./engine";
+import { blockedBy, eggsFor, isWon, parseLevel, startState, step, twoEggLimit } from "./engine";
 import { lastWinnable, solve } from "./solver";
 import { LEVELS } from "./levels";
 import { DIRS } from "./types";
@@ -289,6 +289,43 @@ describe("the solver and the engine agree", () => {
     const fast = solve(level);
     expect(fast.status).toBe(slow === null ? "stuck" : "solved");
     if (fast.status === "solved") expect(fast.moves).toBe(slow);
+  });
+});
+
+describe("eggs", () => {
+  it("gives two eggs for two over par on short levels, and a quarter of par on long ones", () => {
+    expect(eggsFor(5, 5)).toBe(3);
+    expect(eggsFor(7, 5)).toBe(2);
+    expect(eggsFor(8, 5)).toBe(1);
+    expect(twoEggLimit(1)).toBe(3);
+    expect(twoEggLimit(12)).toBe(15);
+    expect(twoEggLimit(30)).toBe(38);
+    expect(eggsFor(38, 30)).toBe(2);
+    expect(eggsFor(39, 30)).toBe(1);
+  });
+});
+
+describe("what blocks a move", () => {
+  // Wander every level with a fixed sequence of tries: whenever the engine refuses a step,
+  // blockedBy must name a reason, and whenever it allows one, blockedBy must find none.
+  it("agrees with the engine on every level", () => {
+    let seed = 7;
+    const rand = (n: number) => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed % n;
+    };
+    for (const level of LEVELS) {
+      let state = startState(level);
+      for (let i = 0; i < 60 && state.hatches.length; i++) {
+        const hatch = state.hatches[rand(state.hatches.length)];
+        const dir = DIRS[rand(4)];
+        const out = step(level, state, hatch.id, dir);
+        const why = blockedBy(level, state, hatch.id, dir);
+        if (out) expect(why).toBeNull();
+        else expect(why, `${level.name}: hatch ${hatch.id} ${dir}`).not.toBeNull();
+        if (out) state = out.state;
+      }
+    }
   });
 });
 

@@ -18,7 +18,11 @@ import type { Chicken, Dir, Feather, GameState, Hatch, Level, LevelDef, StepResu
 
 const CHICKEN_CHARS: Record<string, Feather> = { r: "red", y: "gold", t: "teal", b: "blue", p: "plum", w: "any" };
 
-export function parseLevel(def: LevelDef, index: number, chapter = ""): Level {
+/**
+ * Read a level as written in levels.ts. Throws if it is not a fair level (see validate), unless
+ * `check` is false: the level editor draws boards that are still being built.
+ */
+export function parseLevel(def: LevelDef, index: number, chapter = "", check = true): Level {
   const h = def.rows.length;
   const w = def.rows[0].length;
   const bales: boolean[] = new Array(w * h).fill(false);
@@ -63,11 +67,11 @@ export function parseLevel(def: LevelDef, index: number, chapter = ""): Level {
     hatches[ids[1]].link = ids[0];
   }
   const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, chickens, hatches, par: def.par, tip: def.tip };
-  validate(level);
+  if (check) validate(level);
   return level;
 }
 
-function validate(level: Level) {
+export function validate(level: Level) {
   const fail = (why: string) => {
     throw new Error(`${level.name}: ${why}`);
   };
@@ -210,9 +214,70 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
   };
 }
 
-/** Eggs earned for a finished level: 3 at par, 2 within two moves of it, otherwise 1. */
+/**
+ * The most moves that still earn two eggs. Two over par on a short level; on a long one the
+ * margin grows with it (a quarter of par), so a 30-move coop isn't held to the same two moves.
+ */
+export const twoEggLimit = (par: number) => par + Math.max(2, Math.round(par / 4));
+
+/** Eggs earned for a finished level: 3 at par, 2 within the margin above (see twoEggLimit), otherwise 1. */
 export function eggsFor(moves: number, par: number): 1 | 2 | 3 {
   if (moves <= par) return 3;
-  if (moves <= par + 2) return 2;
+  if (moves <= twoEggLimit(par)) return 2;
   return 1;
+}
+
+/** Why a hatch cannot take one step in a direction. Used to show the player what is in the way. */
+export type Blocker =
+  | { kind: "edge" }
+  | { kind: "bale"; x: number; y: number }
+  | { kind: "hole"; x: number; y: number }
+  | { kind: "hatch"; id: number }
+  | { kind: "chicken"; id: number; hatch: number }
+  | { kind: "full"; hatch: number }
+  | { kind: "ice"; hatch: number }
+  | { kind: "lock"; hatch: number }
+  | { kind: "rail"; hatch: number };
+
+/**
+ * What stops this step, or null if nothing does. Follows the same rules as `step`, but says
+ * which piece is in the way instead of only that something is.
+ */
+export function blockedBy(level: Level, state: GameState, hatchId: number, dir: Dir): Blocker | null {
+  const hatch = state.hatches.find((t) => t.id === hatchId);
+  if (!hatch) return null;
+  const partner = partnerOf(state, hatch);
+  const group = partner ? [hatch, partner] : [hatch];
+  const sideways = dir === "left" || dir === "right";
+  for (const t of group) {
+    const held = heldBy(level, state, t);
+    if (held) return { kind: held, hatch: t.id };
+  }
+  for (const t of group) {
+    if ((t.axis === "h" && !sideways) || (t.axis === "v" && sideways)) return { kind: "rail", hatch: t.id };
+  }
+  const { dx, dy } = DELTA[dir];
+  const covers = (t: Hatch, x: number, y: number) => t.cells.some(([ox, oy]) => t.x + ox === x && t.y + oy === y);
+  for (const t of group) {
+    let mine = 0;
+    for (const [cx, cy] of t.cells) {
+      const x = t.x + cx + dx;
+      const y = t.y + cy + dy;
+      if (covers(t, x, y)) continue;
+      if (x < 0 || y < 0 || x >= level.w || y >= level.h) return { kind: "edge" };
+      const k = y * level.w + x;
+      if (level.bales[k]) return { kind: "bale", x, y };
+      if (state.broken.includes(k)) return { kind: "hole", x, y };
+      if (group.some((g) => g !== t && covers(g, x, y))) continue;
+      const other = state.hatches.find((o) => !group.includes(o) && covers(o, x, y));
+      if (other) return { kind: "hatch", id: other.id };
+      const bird = state.chickens.find((c) => c.x === x && c.y === y);
+      if (bird) {
+        if (bird.color !== t.color && bird.color !== "any") return { kind: "chicken", id: bird.id, hatch: t.id };
+        mine++;
+      }
+    }
+    if (mine > t.left) return { kind: "full", hatch: t.id };
+  }
+  return null;
 }

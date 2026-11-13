@@ -1,48 +1,90 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { dailyLevel, dayKey } from "./game/daily";
+import { dailyLevel, dayFromKey, dayKey } from "./game/daily";
+import { eggsFor } from "./game/engine";
 import { CHAPTERS, LEVELS } from "./game/levels";
+import { decodeLevel, encodeLevel, findCode } from "./game/share";
+import type { SharedLevel } from "./game/share";
 import { setSoundEnabled } from "./sfx";
+import { Editor, loadDraft } from "./ui/Editor";
 import { Home } from "./ui/Home";
 import { Play } from "./ui/Play";
+import { HatContext, wearing } from "./ui/rewards";
+import type { Reward, Tally } from "./ui/rewards";
+import { SettingsSheet } from "./ui/Settings";
 import { better, loadProgress, loadSettings, saveProgress, saveSettings } from "./ui/storage";
-import type { Progress, Settings } from "./ui/storage";
-
-/** What is on screen: one of the numbered levels, today's daily coop, or (null) the level list. */
-export type Playing = number | "daily" | null;
+import type { Cleared, Progress, Settings } from "./ui/storage";
 
 /**
- * Which level this entry in the browser's history is showing, or null for the level list.
- * Opening a level adds an entry, so the phone's back button returns to the list instead of
- * leaving the game. Where history is off limits (some preview frames) this is always null
- * and the game falls back to plain state.
+ * What is on screen. Each kind but the list gets its own entry in the browser's history, so the
+ * phone's back button steps back through them instead of leaving the game.
  */
-function levelInHistory(): Playing {
+export type Screen = { kind: "list" } | { kind: "level"; index: number } | { kind: "daily"; /** A past day's board, YYYY-MM-DD; today's when absent. */ day?: string } | { kind: "shared"; code: string; /** Opened from the editor to test it. */ test?: boolean } | { kind: "editor" };
+/** What a level list button asks for: a numbered level, today's daily coop, or an earlier day's (YYYY-MM-DD). */
+export type Playing = number | "daily" | { day: string };
+
+const LIST: Screen = { kind: "list" };
+
+/** The screen this history entry was showing. Where history is off limits, always the list. */
+function screenInHistory(): Screen {
   try {
-    const at = (window.history.state as { level?: unknown } | null)?.level;
-    return at === "daily" || (typeof at === "number" && LEVELS[at]) ? at : null;
+    const s = (window.history.state as { screen?: Screen } | null)?.screen;
+    if (!s) return LIST;
+    if (s.kind === "level" && LEVELS[s.index]) return s;
+    if (s.kind === "daily" && (s.day === undefined || /^\d{4}-\d{2}-\d{2}$/.test(s.day))) return s;
+    if (s.kind === "editor") return s;
+    if (s.kind === "shared" && typeof s.code === "string") return s;
   } catch {
-    return null;
+    /* fall through */
   }
+  return LIST;
+}
+
+/** Opened from a link to a home-made coop: put the list behind it, so back lands somewhere sensible. */
+function screenFromLink(): Screen | null {
+  const code = location.hash.startsWith("#play=") ? findCode(location.hash) : null;
+  if (!code) return null;
+  try {
+    window.history.replaceState({ screen: LIST }, "", location.pathname + location.search);
+    window.history.pushState({ screen: { kind: "shared", code } }, "", `#play=${code}`);
+  } catch {
+    /* no history: just show it */
+  }
+  return { kind: "shared", code };
 }
 
 const ID_OF_NAME = Object.fromEntries(LEVELS.map((l) => [l.name, l.id]));
 
+/** Eggs earned across the numbered levels. */
+export const eggsEarned = (progress: Progress) => LEVELS.reduce((n, l) => n + (progress[l.id] ? eggsFor(progress[l.id].moves, l.par) : 0), 0);
+
+/** Everything rewards are bought with: eggs and stars on the numbered levels, and daily coops cleared. */
+export const tallyOf = (progress: Progress): Tally => ({
+  eggs: eggsEarned(progress),
+  stars: LEVELS.filter((l) => progress[l.id]?.solo).length,
+  days: Object.keys(progress).filter((id) => id.startsWith("daily-")).length,
+});
+
+const samePlace = (a: Screen, b: Screen) => JSON.stringify(a) === JSON.stringify(b);
+
 export default function App() {
-  const [playing, setPlaying] = useState<Playing>(levelInHistory);
-  const [lastPlayed, setLastPlayed] = useState<Playing>(playing);
+  const [screen, setScreen] = useState<Screen>(() => screenFromLink() ?? screenInHistory());
+  const [lastPlayed, setLastPlayed] = useState<number | "daily" | null>(screen.kind === "level" ? screen.index : screen.kind === "daily" ? "daily" : null);
   const [progress, setProgress] = useState(() => loadProgress(ID_OF_NAME));
   const [settings, setSettings] = useState(loadSettings);
+  const [draft, setDraft] = useState(loadDraft);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Which day's coop is "today's". Looked at afresh whenever the level list comes up or the app
   // is brought back to the front, never in the middle of a level: midnight must not swap the board.
   const [today, setToday] = useState(() => dayKey(new Date()));
   useEffect(() => {
-    if (playing !== null) return;
+    if (screen.kind !== "list") return;
     const look = () => setToday(dayKey(new Date()));
     look();
     document.addEventListener("visibilitychange", look);
     return () => document.removeEventListener("visibilitychange", look);
-  }, [playing]);
+  }, [screen.kind]);
   // `today` is YYYY-MM-DD; build the date at noon so it is the same day in any time zone handling.
   const daily = useMemo(() => {
     const [y, m, d] = today.split("-").map(Number);
@@ -50,13 +92,20 @@ export default function App() {
   }, [today]);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
-  // The stylesheet reads both of these off the root element.
+  // The stylesheet reads these off the root element.
   useEffect(() => {
     const root = document.documentElement;
     if (settings.theme === "system") delete root.dataset.theme;
     else root.dataset.theme = settings.theme;
     root.classList.toggle("big-text", settings.bigText);
   }, [settings.theme, settings.bigText]);
+
+  const tally = tallyOf(progress);
+  const board = wearing("board", settings.board, tally, "barn");
+  const hat = wearing("hat", settings.hat, tally, "none");
+  useEffect(() => {
+    document.documentElement.dataset.board = board;
+  }, [board]);
 
   const changeSettings = (s: Settings) => {
     setSettings(s);
@@ -71,75 +120,152 @@ export default function App() {
   // Back and forward: show whatever that entry was showing.
   useEffect(() => {
     const onPop = () => {
-      const at = levelInHistory();
-      if (at !== null) setLastPlayed(at);
-      setPlaying(at);
+      const s = screenInHistory();
+      if (s.kind === "level") setLastPlayed(s.index);
+      if (s.kind === "daily") setLastPlayed("daily");
+      setSettingsOpen(false);
+      setScreen(s);
+    };
+    // A coop link pasted into the address bar of a game that is already open.
+    const onHash = () => {
+      const s = screenFromLink();
+      if (s) setScreen(s);
     };
     window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    window.addEventListener("hashchange", onHash);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("hashchange", onHash);
+    };
   }, []);
 
-  const play = (which: number | "daily") => {
+  /** Go to a screen. From one level straight to the next replaces the entry, so back still means the list. */
+  const go = (next: Screen, replace = false) => {
+    const hash = next.kind === "shared" ? `#play=${next.code}` : location.pathname + location.search;
     try {
-      // From the list, a new entry; from one level to the next, the same entry, so back still means the list.
-      if (playing === null) window.history.pushState({ level: which }, "");
-      else window.history.replaceState({ level: which }, "");
+      if (replace) window.history.replaceState({ screen: next }, "", hash);
+      else window.history.pushState({ screen: next }, "", hash);
     } catch {
-      /* no history here: the Levels button still works */
+      /* no history here: the on-screen buttons still work */
     }
-    setLastPlayed(which);
-    setPlaying(which);
+    if (next.kind === "level") setLastPlayed(next.index);
+    if (next.kind === "daily") setLastPlayed("daily");
+    setNotice(null);
+    setScreen(next);
   };
 
-  const toLevels = () => {
-    if (levelInHistory() === null) return setPlaying(null);
-    // Leave through history, so the entry for this level is not left behind for back to find.
+  const play = (which: Playing) =>
+    go(which === "daily" ? { kind: "daily" } : typeof which === "number" ? { kind: "level", index: which } : { kind: "daily", day: which.day }, screen.kind === "level" || screen.kind === "daily");
+
+  /** Leave this screen the way the back button would. */
+  const back = () => {
+    const here = screenInHistory();
+    if (samePlace(here, LIST)) return setScreen(LIST);
     window.history.back();
     // If nothing is behind this entry (a restored tab, say) back does nothing: go to the list anyway.
     window.setTimeout(() => {
-      if (levelInHistory() === null) return;
+      if (!samePlace(screenInHistory(), here)) return;
       try {
-        window.history.replaceState(null, "");
+        window.history.replaceState({ screen: LIST }, "", location.pathname + location.search);
       } catch {
         /* as above */
       }
-      setPlaying(null);
+      setScreen(LIST);
     }, 400);
   };
 
-  const level = playing === null ? null : playing === "daily" ? daily : LEVELS[playing];
-  const levelId = level?.id;
+  const sharedLevel = useMemo(() => (screen.kind === "shared" ? decodeLevel(screen.code) : null), [screen]);
+  useEffect(() => {
+    if (screen.kind === "shared" && !sharedLevel) {
+      try {
+        window.history.replaceState({ screen: LIST }, "", location.pathname + location.search);
+      } catch {
+        /* as above */
+      }
+      setScreen(LIST);
+      setNotice("That link doesn’t hold a coop this game can read. Check that all of it was copied.");
+    }
+  }, [screen, sharedLevel]);
+
+  // A past day's board, caught up on. Today's is `daily`, which turns over only on the level list.
+  const pastDay = screen.kind === "daily" && screen.day && screen.day !== today ? screen.day : null;
+  const pastDaily = useMemo(() => (pastDay ? dailyLevel(dayFromKey(pastDay)) : null), [pastDay]);
+  const level = screen.kind === "level" ? LEVELS[screen.index] : screen.kind === "daily" ? (pastDaily ?? daily) : sharedLevel;
+  const levelId = screen.kind === "level" || screen.kind === "daily" ? level?.id : undefined;
   const cleared = useCallback(
-    (moves: number, solo: boolean) => {
+    (moves: number, solo: boolean, clock: boolean) => {
+      // Home-made coops are played for fun: they leave no record.
       if (!levelId) return;
+      const record: Cleared = { moves, ...(solo ? { solo } : {}), ...(clock ? { clock } : {}), ...(pastDay ? { late: true } : {}) };
       setProgress((p) => {
         const was = p[levelId];
-        const now = better(was, solo ? { moves, solo } : { moves });
-        if (was && was.moves === now.moves && was.solo === now.solo) return p;
+        const now = better(was, record);
+        if (was && JSON.stringify(was) === JSON.stringify(now)) return p;
         const next = { ...p, [levelId]: now };
         saveProgress(next);
         return next;
       });
     },
-    [levelId],
+    [levelId, pastDay],
   );
 
-  if (!level) {
-    return <Home chapters={CHAPTERS} daily={daily} progress={progress} settings={settings} lastPlayed={lastPlayed} onPlay={play} onSettings={changeSettings} onProgress={changeProgress} />;
-  }
-  const chapter = CHAPTERS.find((c) => c.levels.includes(level));
-  const next = chapter && level.index + 1 < LEVELS.length ? level.index + 1 : null;
+  /** Put on a reward that has just been unlocked. */
+  const wear = (r: Reward) => changeSettings(r.kind === "board" ? { ...settings, board: r.id as Settings["board"] } : { ...settings, hat: r.id as Settings["hat"] });
 
+  const openCode = (text: string): boolean => {
+    const code = findCode(text);
+    if (!code || !decodeLevel(code)) return false;
+    go({ kind: "shared", code });
+    return true;
+  };
+
+  let view;
+  if (screen.kind === "editor") {
+    view = <Editor draft={draft} onDraft={setDraft} onBack={back} onPlay={(s: SharedLevel) => go({ kind: "shared", code: encodeLevel(s), test: true })} />;
+  } else if (!level) {
+    view = (
+      <Home
+        chapters={CHAPTERS}
+        daily={daily}
+        progress={progress}
+        tally={tally}
+        today={today}
+        lastPlayed={lastPlayed}
+        notice={notice}
+        onPlay={play}
+        onSettings={() => setSettingsOpen(true)}
+        onProgress={changeProgress}
+        onEditor={() => go({ kind: "editor" })}
+        onCode={openCode}
+      />
+    );
+  } else {
+    const chapter = CHAPTERS.find((c) => c.levels.includes(level));
+    const next = chapter && level.index + 1 < LEVELS.length ? level.index + 1 : null;
+    view = (
+      <Play
+        key={level.id + (screen.kind === "shared" ? screen.code : "")}
+        level={level}
+        where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : level.chapter}
+        best={levelId ? progress[levelId] : undefined}
+        saveId={levelId}
+        daily={screen.kind === "daily"}
+        late={pastDay !== null}
+        settings={settings}
+        tally={tally}
+        backLabel={screen.kind === "shared" && screen.test ? "Editor" : "Levels"}
+        onCleared={cleared}
+        onNext={next === null ? null : () => play(next)}
+        onLevels={back}
+        onSettings={() => setSettingsOpen(true)}
+        onWear={wear}
+      />
+    );
+  }
   return (
-    <Play
-      key={level.id}
-      level={level}
-      where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : level.chapter}
-      best={progress[level.id]}
-      settings={settings}
-      onCleared={cleared}
-      onNext={next === null ? null : () => play(next)}
-      onLevels={toLevels}
-    />
+    <HatContext.Provider value={hat}>
+      {view}
+      {settingsOpen && <SettingsSheet settings={settings} tally={tally} onSettings={changeSettings} onClose={() => setSettingsOpen(false)} />}
+    </HatContext.Provider>
   );
 }

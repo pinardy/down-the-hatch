@@ -77,6 +77,16 @@ export const sfx = {
     tone("square", 1500, 1900, 0.05, 0.05);
     tone("sine", 1900, 2300, 0.09, 0.09, 0.05);
   },
+  /** An egg landing on the win sheet: each a step higher. */
+  egg(n: number) {
+    const f = [660, 784, 988][Math.min(n, 2)];
+    tone("triangle", f * 1.2, f, 0.12, 0.14);
+  },
+  /** Cleared, but not at par: a smaller flourish than the fanfare. */
+  done() {
+    tone("triangle", 523, 523, 0.16, 0.12);
+    tone("triangle", 784, 784, 0.24, 0.12, 0.1);
+  },
   win() {
     [523, 659, 784, 1047].forEach((f, i) => tone("triangle", f, f, 0.22, 0.16, i * 0.11));
   },

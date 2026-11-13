@@ -75,6 +75,7 @@ const TUTORIAL: LevelDef[] = [
   {
     id: "scratch-patch",
     name: "Scratch patch",
+    tip: "Par is the fewest moves this coop can be cleared in. Match it for all three eggs.",
     rows: [".y..", "....", "rr.#", "ry.r", "y..."],
     hatches: [
       { color: "red", x: 2, y: 0, w: 2, cap: 2 },
@@ -86,6 +87,7 @@ const TUTORIAL: LevelDef[] = [
   {
     id: "changing-of-the-guard",
     name: "Changing of the guard",
+    tip: "Stuck? Hint shows the next slide. Clear a coop without one to earn a star.",
     rows: ["##...##", "bt.#.ry", "##...##"],
     hatches: [
       { color: "gold", x: 2, y: 0, cap: 1 },
