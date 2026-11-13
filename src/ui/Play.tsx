@@ -90,8 +90,8 @@ const COMMIT_DROP = 0.85;
 /** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
 const HINT_SEARCH = 300_000;
 const STUCK_SEARCH = 250_000;
-/** Rewind settles for the latest position proved winnable once this long has passed. */
-const REWIND_DEADLINE_MS = 2_000;
+/** Rewind settles for the latest position proved winnable once this long has passed (the worker keeps the board responsive meanwhile). */
+const REWIND_DEADLINE_MS = 4_000;
 /** A search shorter than this shows no "Thinking": the answer just appears. */
 const THINK_AFTER_MS = 180;
 const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";

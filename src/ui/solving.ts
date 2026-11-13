@@ -32,13 +32,18 @@ let nextId = 0;
 const queue: Job[] = [];
 let busy: Job | null = null;
 
-/** Without a worker, a quiet check gets a smaller search: on the main thread it holds up the board. */
+/**
+ * Without a worker, questions are answered on the main thread, which holds up the board: a
+ * quiet check gets a smaller search, and a rewind less time. A rewind cut short goes back
+ * further than it need, but never into a dead end.
+ */
 const QUIET_HERE = 40_000;
+const REWIND_TIME_HERE = 1_500;
 
 function answerHere(job: Job): Answer {
   const q = job.question;
   if (q.kind === "solve") return { id: job.id, kind: "solve", result: solve(q.level, q.state, job.quiet ? Math.min(q.maxStates, QUIET_HERE) : q.maxStates) };
-  return { id: job.id, kind: "rewind", index: lastWinnable(q.level, q.states, q.maxStates, q.known, q.deadlineMs) };
+  return { id: job.id, kind: "rewind", index: lastWinnable(q.level, q.states, q.maxStates, q.known, Math.min(q.deadlineMs, REWIND_TIME_HERE)) };
 }
 
 /** The answer for a question that was dropped: nothing learned. */
