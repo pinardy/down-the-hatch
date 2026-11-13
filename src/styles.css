@@ -2544,3 +2544,115 @@ html.contrast .hatch__mark {
 .goal__bar {
   margin-top: 0.25rem;
 }
+
+/* ── The main screen's tabs: a bar along the bottom ── */
+
+.home {
+  /* Room for the tab bar, so the last section can scroll clear of it. */
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+.home__tab-title {
+  font-size: clamp(1.9rem, 9vw, 2.4rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--title);
+  text-shadow: 0 3px 0 var(--title-shadow);
+  padding-right: 3rem; /* clear of the settings button */
+}
+.tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 15;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.25rem;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 0.4rem max(0.6rem, env(safe-area-inset-right, 0px)) calc(0.4rem + env(safe-area-inset-bottom, 0px)) max(0.6rem, env(safe-area-inset-left, 0px));
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  border-radius: 1.2rem 1.2rem 0 0;
+  box-shadow: 0 -4px 14px rgba(43, 26, 18, 0.12);
+}
+.tabs__tab {
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.35rem 0.2rem;
+  background: none;
+  border: 0;
+  border-radius: 0.9rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.tabs__tab--on {
+  color: var(--ink);
+  background: var(--straw);
+}
+.tabs__icon {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: currentColor;
+}
+.tabs__icon--line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+.tabs__cut {
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+.tabs__tab--on .tabs__cut {
+  stroke: var(--straw);
+}
+.endless__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 0.3rem;
+}
+.endless__actions .btn {
+  padding: 0.45em 0.4em;
+  font-size: 0.9rem;
+}
+.endless__choices {
+  align-items: stretch;
+}
+.endless__choice {
+  cursor: default;
+}
+.endless__choice:active {
+  transform: none;
+  box-shadow: 0 4px 0 var(--line);
+}
+.endless__count {
+  background: none;
+  color: var(--text-soft);
+  padding: 0;
+}
+/* The new-version banner sits above the tab bar. */
+.home .update {
+  bottom: calc(5.8rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* The volume slider: label above, slider full width. */
+.toggle--slider {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+.toggle--slider input[type="range"] {
+  width: 100%;
+  height: auto;
+  accent-color: var(--straw-deep);
+}

@@ -49,13 +49,16 @@ function ask(q: Omit<GrowAsk, "id">): Promise<LevelDef | null> {
   });
 }
 
-/** Grow one coop and write it as a share code (the same as a home-made one). Tries again if a search finds nothing. */
-async function growOne(level: EndlessLevel): Promise<string> {
+/**
+ * Grow one coop and write it as a share code (the same as a home-made one). Tries again if a
+ * search finds nothing. `quick` halves the time, for when the player is waiting on it.
+ */
+async function growOne(level: EndlessLevel, quick = false): Promise<string> {
   const plan = ENDLESS[level];
   for (let attempt = 0; attempt < 4; attempt++) {
     const seed = Math.floor(Math.random() * 2 ** 31);
     const tier = plan.tiers[seed % plan.tiers.length];
-    const def = await ask({ tier, seed, budgetMs: plan.budgetMs, target: plan.target });
+    const def = await ask({ tier, seed, budgetMs: quick ? plan.budgetMs / 2 : plan.budgetMs, target: plan.target });
     if (!def) continue;
     const name = `${FIRST[seed % FIRST.length]} ${SECOND[(seed >> 4) % SECOND.length]}`;
     return encodeLevel({ name, rows: def.rows, hatches: def.hatches, par: def.par });
@@ -67,7 +70,8 @@ const ahead = new Map<EndlessLevel, Promise<string>>();
 
 /** A freshly grown coop at this difficulty. Starts growing the one after it straight away. */
 export function nextCoop(level: EndlessLevel): Promise<string> {
-  const ready = ahead.get(level) ?? growOne(level);
+  // Nothing grown ahead: the player is waiting, so grow this one quickly.
+  const ready = ahead.get(level) ?? growOne(level, true);
   ahead.delete(level);
   void ready.then(
     () => ahead.set(level, growOne(level)),

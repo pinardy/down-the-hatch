@@ -4,17 +4,20 @@ import { eggsFor } from "./game/engine";
 import { CHAPTERS, LEVELS } from "./game/levels";
 import { decodeLevel, encodeLevel, findCode } from "./game/share";
 import type { SharedLevel } from "./game/share";
-import { setSoundEnabled, setVibrationEnabled } from "./sfx";
+import { setMusicEnabled, setSoundEnabled, setVibrationEnabled, setVolume, unlockAudio } from "./sfx";
 import { ENDLESS, nextCoop, prepareCoop } from "./ui/endless";
 import type { EndlessLevel } from "./ui/endless";
 import { Stats } from "./ui/Stats";
+import { specialPieces } from "./ui/Guide";
+import { loadMet, saveMet } from "./ui/storage";
 import { Editor, loadDraft } from "./ui/Editor";
 import { Home } from "./ui/Home";
+import type { HomeTab } from "./ui/Home";
 import { Play } from "./ui/Play";
 import { HatContext, wearing } from "./ui/rewards";
 import type { Reward, Tally } from "./ui/rewards";
 import { SettingsSheet } from "./ui/Settings";
-import { better, loadEndless, loadProgress, loadSettings, saveEndless, saveProgress, saveSettings } from "./ui/storage";
+import { better, endlessSaveId, loadCurrentCoops, loadEndless, loadProgress, loadSettings, saveCurrentCoop, saveEndless, saveInPlay, saveProgress, saveSettings } from "./ui/storage";
 import type { Cleared, Progress, Settings } from "./ui/storage";
 
 /**
@@ -75,8 +78,18 @@ export default function App() {
   const [lastPlayed, setLastPlayed] = useState<number | "daily" | null>(screen.kind === "level" ? screen.index : screen.kind === "daily" ? "daily" : null);
   const [progress, setProgress] = useState(() => loadProgress(ID_OF_NAME));
   const [settings, setSettings] = useState(loadSettings);
+  // Pieces the player has been told about. A player from before this was recorded has met
+  // every piece on the levels they have cleared, so start from those.
+  useState(() => {
+    if (loadMet()) return;
+    const met = new Set<string>();
+    for (const l of LEVELS) if (progress[l.id]) for (const p of specialPieces(l)) met.add(p.key);
+    saveMet(met);
+  });
   const [draft, setDraft] = useState(loadDraft);
   const [notice, setNotice] = useState<string | null>(null);
+  /** The main screen's tab: back from a level, it shows the tab the level was played from. */
+  const [tab, setTab] = useState<HomeTab>(() => (screen.kind === "daily" ? "daily" : screen.kind === "endless" ? "endless" : "levels"));
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Which day's coop is "today's". Looked at afresh whenever the level list comes up or the app
@@ -97,6 +110,18 @@ export default function App() {
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
   useEffect(() => setVibrationEnabled(settings.vibrate), [settings.vibrate]);
+  useEffect(() => setMusicEnabled(settings.music), [settings.music]);
+  useEffect(() => setVolume(settings.volume / 100), [settings.volume]);
+  // Browsers only allow sound after a tap: the first one anywhere starts it (and the music).
+  useEffect(() => {
+    const first = () => unlockAudio();
+    document.addEventListener("pointerdown", first, { once: true });
+    document.addEventListener("keydown", first, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", first);
+      document.removeEventListener("keydown", first);
+    };
+  }, []);
   // The stylesheet reads these off the root element.
   useEffect(() => {
     const root = document.documentElement;
@@ -110,6 +135,8 @@ export default function App() {
   // Endless mode: clears at each difficulty, and the coop being grown while the player waits.
   const [endless, setEndless] = useState(loadEndless);
   const [growing, setGrowing] = useState<EndlessLevel | null>(null);
+  /** The coop being played at each difficulty, until it is cleared: it can be resumed. */
+  const [current, setCurrent] = useState(loadCurrentCoops);
   const growTicket = useRef(0);
 
   const tally = tallyOf(progress);
@@ -162,6 +189,9 @@ export default function App() {
     }
     if (next.kind === "level") setLastPlayed(next.index);
     if (next.kind === "daily") setLastPlayed("daily");
+    // Wherever this was started from is where back lands.
+    const from: HomeTab | null = next.kind === "level" ? "levels" : next.kind === "daily" ? "daily" : next.kind === "endless" ? "endless" : next.kind === "stats" || next.kind === "editor" ? "you" : null;
+    if (from) setTab(from);
     setNotice(null);
     setScreen(next);
   };
@@ -213,6 +243,8 @@ export default function App() {
           saveEndless(next);
           return next;
         });
+        saveCurrentCoop(endlessLevel, null);
+        setCurrent(loadCurrentCoops());
         return;
       }
       // Home-made coops are played for fun: they leave no record.
@@ -230,14 +262,22 @@ export default function App() {
     [levelId, pastDay, endlessLevel],
   );
 
-  /** Grow a coop at this difficulty and play it. `replace` when going straight on from another. */
-  const playEndless = (which: EndlessLevel, replace = false) => {
+  /**
+   * Play a coop at this difficulty: the one left unfinished there, unless `fresh` asks for a new
+   * one, which is grown and replaces it. `replace` when going straight on from another coop.
+   */
+  const playEndless = (which: EndlessLevel, fresh = false, replace = false) => {
+    if (!fresh && current[which]) return go({ kind: "endless", level: which, code: current[which]! }, replace);
     const ticket = ++growTicket.current;
     setGrowing(which);
     nextCoop(which).then(
       (code) => {
         if (growTicket.current !== ticket) return; // cancelled
         setGrowing(null);
+        // A new coop at this difficulty: the old one's half-played board goes with it.
+        saveInPlay(endlessSaveId(which), null);
+        saveCurrentCoop(which, code);
+        setCurrent(loadCurrentCoops());
         go({ kind: "endless", level: which, code }, replace);
       },
       () => {
@@ -278,7 +318,17 @@ export default function App() {
         lastPlayed={lastPlayed}
         notice={notice}
         endless={endless}
-        onEndless={(which) => playEndless(which)}
+        endlessCurrent={current}
+        tab={tab}
+        onTab={(t) => {
+          setTab(t);
+          setNotice(null);
+        }}
+        onEndless={(which, fresh) => playEndless(which, fresh)}
+        onEndlessCount={(c) => {
+          setEndless(c);
+          saveEndless(c);
+        }}
         onStats={() => go({ kind: "stats" })}
         onPlay={play}
         onSettings={() => setSettingsOpen(true)}
@@ -302,7 +352,7 @@ export default function App() {
         level={level}
         where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : screen.kind === "endless" ? `Endless coop, ${ENDLESS[screen.level].name.toLowerCase()}` : level.chapter}
         best={levelId ? progress[levelId] : undefined}
-        saveId={levelId}
+        saveId={levelId ?? (screen.kind === "endless" ? endlessSaveId(screen.level) : undefined)}
         shareLink={(screen.kind === "shared" && !screen.test) || screen.kind === "endless" ? `${location.origin}${location.pathname}#play=${screen.code}` : undefined}
         finishesChapter={finishesChapter}
         finishesGame={finishesGame}
@@ -313,7 +363,7 @@ export default function App() {
         tally={tally}
         backLabel={screen.kind === "shared" && screen.test ? "Editor" : "Levels"}
         onCleared={cleared}
-        onNext={screen.kind === "endless" ? () => playEndless(screen.level, true) : next === null ? null : () => play(next)}
+        onNext={screen.kind === "endless" ? () => playEndless(screen.level, true, true) : next === null ? null : () => play(next)}
         nextLabel={screen.kind === "endless" ? "Next coop" : undefined}
         onLevels={back}
         onSettings={() => setSettingsOpen(true)}

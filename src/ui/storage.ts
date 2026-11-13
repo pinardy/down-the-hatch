@@ -22,6 +22,10 @@ export interface Settings {
   calm: boolean;
   /** Short buzzes when chickens drop and boards break. */
   vibrate: boolean;
+  /** The background tune. */
+  music: boolean;
+  /** Loudness of everything, 0 to 100. */
+  volume: number;
 }
 
 /** What is remembered about a level once it has been cleared. */
@@ -74,8 +78,9 @@ const isId = (v: string) => /^[a-z0-9-]{1,60}$/.test(v);
 
 export function loadSettings(): Settings {
   const saved = read(SETTINGS_KEY);
-  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", hard: false, contrast: false, calm: false, vibrate: true, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", hard: false, contrast: false, calm: false, vibrate: true, music: true, volume: 70, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
   if (s.theme !== "light" && s.theme !== "dark") s.theme = "system";
+  if (typeof s.volume !== "number" || !(s.volume >= 0 && s.volume <= 100)) s.volume = 70;
   return s;
 }
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);
@@ -127,11 +132,15 @@ export function mergeProgress(mine: Progress, theirs: Progress): Progress {
 // Progress as one line of text that can be copied out of one browser and pasted into another.
 // "DTH1." then base64url of a compact JSON object: { id: moves }, or { id: [moves, flags] } when
 // any flag is set: 1 solo, 2 late, 4 on the clock, 8 hard mode. Older codes only ever used [moves, 1].
+// Endless clears ride along under the key "~endless" as [easy, medium, hard], only when there are any.
 
 const CODE_PREFIX = "DTH1.";
 
-export function encodeProgress(progress: Progress): string {
-  const compact: Record<string, number | [number, number]> = {};
+const ENDLESS_IN_CODE = "~endless";
+
+export function encodeProgress(progress: Progress, endless?: EndlessCount): string {
+  const compact: Record<string, number | number[]> = {};
+  if (endless && endless.easy + endless.medium + endless.hard > 0) compact[ENDLESS_IN_CODE] = [endless.easy, endless.medium, endless.hard];
   for (const [id, r] of Object.entries(progress)) {
     const flags = (r.solo ? 1 : 0) | (r.late ? 2 : 0) | (r.clock ? 4 : 0) | (r.hard ? 8 : 0);
     compact[id] = flags ? [r.moves, flags] : r.moves;
@@ -141,19 +150,30 @@ export function encodeProgress(progress: Progress): string {
 
 /** Read a backup code. Returns null when the text is not one. */
 export function decodeProgress(code: string): Progress | null {
+  return decodeBackup(code)?.progress ?? null;
+}
+
+/** Read a backup code, endless clears included. Returns null when the text is not one. */
+export function decodeBackup(code: string): { progress: Progress; endless: EndlessCount } | null {
   const text = code.replace(/\s+/g, "");
   if (!text.startsWith(CODE_PREFIX)) return null;
   try {
     const compact: unknown = JSON.parse(atob(text.slice(CODE_PREFIX.length).replace(/-/g, "+").replace(/_/g, "/")));
     if (!isObject(compact)) return null;
     const out: Progress = {};
+    const endless: EndlessCount = { easy: 0, medium: 0, hard: 0 };
     for (const [id, v] of Object.entries(compact)) {
+      if (id === ENDLESS_IN_CODE) {
+        if (!Array.isArray(v) || v.length !== 3 || !v.every((n) => Number.isInteger(n) && n >= 0)) return null;
+        [endless.easy, endless.medium, endless.hard] = v as number[];
+        continue;
+      }
       const moves = Array.isArray(v) ? v[0] : v;
       if (!isId(id) || !isMoves(moves)) return null;
       const flags = Array.isArray(v) && Number.isInteger(v[1]) ? (v[1] as number) : 0;
       out[id] = record(moves, (flags & 1) !== 0, (flags & 4) !== 0, (flags & 2) !== 0, (flags & 8) !== 0);
     }
-    return out;
+    return { progress: out, endless };
   } catch {
     return null;
   }
@@ -224,3 +244,35 @@ export function loadEndless(): EndlessCount {
   return isObject(saved) ? { easy: n(saved.easy), medium: n(saved.medium), hard: n(saved.hard) } : { easy: 0, medium: 0, hard: 0 };
 }
 export const saveEndless = (c: EndlessCount) => write(ENDLESS_KEY, c);
+
+/** Two devices' endless clears, put together: the larger count at each difficulty. */
+export const mergeEndless = (a: EndlessCount, b: EndlessCount): EndlessCount => ({ easy: Math.max(a.easy, b.easy), medium: Math.max(a.medium, b.medium), hard: Math.max(a.hard, b.hard) });
+
+// The grown coop being played at each difficulty, as its share code, until it is cleared or
+// replaced by a fresh one. Its board, if left part-way, is kept like any level's under
+// `endlessSaveId`.
+const CURRENT_KEY = "down-the-hatch:endless-current:v1";
+export type CurrentCoops = Partial<Record<keyof EndlessCount, string>>;
+
+export function loadCurrentCoops(): CurrentCoops {
+  const saved = read(CURRENT_KEY);
+  const out: CurrentCoops = {};
+  if (isObject(saved)) for (const k of ["easy", "medium", "hard"] as const) if (typeof saved[k] === "string") out[k] = saved[k] as string;
+  return out;
+}
+export function saveCurrentCoop(level: keyof EndlessCount, code: string | null) {
+  const all = loadCurrentCoops();
+  if (code) all[level] = code;
+  else delete all[level];
+  write(CURRENT_KEY, all);
+}
+export const endlessSaveId = (level: keyof EndlessCount) => `endless-${level}`;
+
+// Pieces the player has been told about, so each is explained the first time it turns up.
+const MET_KEY = "down-the-hatch:met:v1";
+/** The pieces met so far, or null before anything has been recorded (an older save, or a new player). */
+export function loadMet(): Set<string> | null {
+  const saved = read(MET_KEY);
+  return Array.isArray(saved) ? new Set(saved.filter((x): x is string => typeof x === "string")) : null;
+}
+export const saveMet = (met: Set<string>) => write(MET_KEY, [...met]);

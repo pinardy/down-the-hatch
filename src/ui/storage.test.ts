@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { better, decodeProgress, encodeProgress, mergeProgress } from "./storage";
+import { better, decodeBackup, decodeProgress, encodeProgress, mergeEndless, mergeProgress } from "./storage";
 import type { Progress } from "./storage";
 
 describe("record flags", () => {
@@ -51,5 +51,19 @@ describe("merging progress", () => {
   it("never loses a level from either side", () => {
     const merged = mergeProgress({ a: { moves: 5 }, b: { moves: 3 } }, { b: { moves: 2, solo: true }, c: { moves: 8 } });
     expect(merged).toEqual({ a: { moves: 5 }, b: { moves: 2, solo: true }, c: { moves: 8 } });
+  });
+});
+
+describe("endless clears in backup codes", () => {
+  it("ride along with progress, and are left out when there are none", () => {
+    const progress: Progress = { "first-peck": { moves: 1 } };
+    const code = encodeProgress(progress, { easy: 3, medium: 0, hard: 2 });
+    expect(decodeBackup(code)).toEqual({ progress, endless: { easy: 3, medium: 0, hard: 2 } });
+    expect(decodeProgress(code)).toEqual(progress);
+    expect(encodeProgress(progress, { easy: 0, medium: 0, hard: 0 })).toBe(encodeProgress(progress));
+    expect(decodeBackup(encodeProgress(progress))!.endless).toEqual({ easy: 0, medium: 0, hard: 0 });
+  });
+  it("merge by keeping the larger count", () => {
+    expect(mergeEndless({ easy: 3, medium: 1, hard: 0 }, { easy: 1, medium: 4, hard: 2 })).toEqual({ easy: 3, medium: 4, hard: 2 });
   });
 });
