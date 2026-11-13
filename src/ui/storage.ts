@@ -5,6 +5,10 @@ export interface Settings {
   sound: boolean;
   /** Race a countdown on every level. Off by default: this is a thinking game. */
   clock: boolean;
+  /** Daylight or lamplight, or whichever the device is set to. */
+  theme: "system" | "light" | "dark";
+  /** Everything but the board a size larger. */
+  bigText: boolean;
 }
 
 /** What is remembered about a level once it has been cleared. */
@@ -46,7 +50,9 @@ const isId = (v: string) => /^[a-z0-9-]{1,60}$/.test(v);
 
 export function loadSettings(): Settings {
   const saved = read(SETTINGS_KEY);
-  return { sound: true, clock: false, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  if (s.theme !== "light" && s.theme !== "dark") s.theme = "system";
+  return s;
 }
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);
 

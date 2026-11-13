@@ -6,6 +6,7 @@ import { Board } from "./Board";
 import type { DropFx, HintFx, ShutFx } from "./Board";
 import { EggArt, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
+import { Guide } from "./Guide";
 import type { Cleared, Settings } from "./storage";
 
 interface Props {
@@ -93,6 +94,8 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
   const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(null);
   /** The level can no longer be won from here: Hint gives way to Rewind. */
   const [stuck, setStuck] = useState(false);
+  /** The piece guide is open. */
+  const [guide, setGuide] = useState(false);
   /** The solver has been asked something and is taking long enough to say so. */
   const [thinking, setThinking] = useState(false);
   const asking = useRef(false);
@@ -424,10 +427,11 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
 
   // The optional countdown starts on the first move.
   useEffect(() => {
-    if (!settings.clock || !started || phase !== "playing") return;
+    // Reading the piece guide doesn't cost time.
+    if (!settings.clock || !started || phase !== "playing" || guide) return;
     const id = window.setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
     return () => window.clearInterval(id);
-  }, [settings.clock, started, phase]);
+  }, [settings.clock, started, phase, guide]);
   useEffect(() => {
     if (settings.clock && secondsLeft === 0 && phase === "playing") {
       setPhase("timeup");
@@ -456,9 +460,14 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
   return (
     <main className="screen play">
       <header className="play__top">
-        <button type="button" className="btn btn--quiet" onClick={onLevels}>
-          Levels
-        </button>
+        <div className="play__nav">
+          <button type="button" className="btn btn--quiet" onClick={onLevels}>
+            Levels
+          </button>
+          <button type="button" className="btn btn--quiet play__help" onClick={() => setGuide(true)} aria-label="What the pieces do">
+            ?
+          </button>
+        </div>
         <h1 className="play__title">
           <span className="play__number">
             {where}
@@ -508,6 +517,8 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
           {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
         </button>
       </footer>
+
+      {guide && <Guide level={level} onClose={() => setGuide(false)} />}
 
       {phase !== "playing" && phase !== "replay" && (
         <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">

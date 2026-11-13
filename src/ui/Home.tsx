@@ -7,6 +7,7 @@ import type { Level } from "../game/types";
 import { unlockAudio } from "../sfx";
 import { useUpdateReady } from "../update";
 import { EggArt, SoloArt, TitleArt } from "./art";
+import { Guide } from "./Guide";
 import { decodeProgress, encodeProgress, mergeProgress } from "./storage";
 import type { Progress, Settings } from "./storage";
 
@@ -59,6 +60,7 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
   const dailyBest = progress[daily.id];
   const streak = dailyStreak((id) => progress[id] !== undefined, new Date());
   const updateReady = useUpdateReady();
+  const [guide, setGuide] = useState(false);
 
   return (
     <main className="screen home">
@@ -108,6 +110,7 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
           const won = chapter.levels.reduce((n, l) => n + eggsOn(l), 0);
           const isOpen = open.has(chapter.name);
           return (
+            // A finished chapter folds down to a thin row, so the list is mostly what is left to play.
             <section key={chapter.name} className={all ? "chapter chapter--done" : "chapter"}>
               <h2>
                 <button type="button" className="chapter__toggle" aria-expanded={isOpen} aria-controls={`chapter-${c}`} onClick={() => toggle(chapter.name)}>
@@ -117,9 +120,15 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
                       <span className={`grade grade--${chapter.difficulty.toLowerCase()}`}>{chapter.difficulty}</span>
                     </span>
                     <span className="chapter__tally">
-                      <span>
-                        {done} of {chapter.levels.length} cleared
-                      </span>
+                      {all ? (
+                        <span className="chapter__check" aria-label={`All ${chapter.levels.length} cleared`}>
+                          ✓
+                        </span>
+                      ) : (
+                        <span>
+                          {done} of {chapter.levels.length} cleared
+                        </span>
+                      )}
                       <span className="chapter__eggs">
                         <EggArt earned={won > 0} />
                         {won} of {chapter.levels.length * 3} eggs
@@ -182,7 +191,36 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
             <small>A countdown on every level. Off, there’s no rush.</small>
           </span>
         </label>
+        <label className="toggle">
+          <input type="checkbox" checked={settings.bigText} onChange={(e) => onSettings({ ...settings, bigText: e.target.checked })} />
+          <span>
+            Larger text
+            <small>Everything but the board, a size up.</small>
+          </span>
+        </label>
+        <fieldset className="toggle choice">
+          <legend>Look</legend>
+          <div className="choice__options">
+            {(
+              [
+                ["system", "Match device"],
+                ["light", "Daylight"],
+                ["dark", "Lamplight"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className={settings.theme === value ? "choice__option choice__option--on" : "choice__option"}>
+                <input type="radio" name="theme" value={value} checked={settings.theme === value} onChange={() => onSettings({ ...settings, theme: value })} />
+                {label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <button type="button" className="btn btn--quiet home__guide" onClick={() => setGuide(true)}>
+          What the pieces do
+        </button>
       </section>
+
+      {guide && <Guide level={null} onClose={() => setGuide(false)} />}
 
       <Keeping progress={progress} onProgress={onProgress} />
 
