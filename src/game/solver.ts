@@ -5,7 +5,7 @@
 // `npm run levels` searches for new levels, and the game asks it for hints and to notice
 // when a position can no longer be won.
 
-import { DELTA, DIRS } from "./types";
+import { COLORS, DELTA, DIRS } from "./types";
 import type { Dir, GameState, Level } from "./types";
 import { startState } from "./engine";
 
@@ -27,6 +27,7 @@ interface Node {
   alive: number[]; // chicken bitset, 30 bits per entry
   birds: number;
   key: boolean; // the key has been picked up
+  color: number[] | null; // each hatch's colour (index into COLORS), only when the board has paint
   broken: number; // cracked boards that have given way, one bit each
   last: number; // hatch moved last (for a chained pair, the lower id), -1 for none
   parent: Node | null;
@@ -44,6 +45,12 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
   const birdColor = level.chickens.map((c) => c.color);
   const flock = level.chickens.length;
   const keyAt = level.key ? level.key.y * w + level.key.x : -1;
+  // Paint (colour index, -1 for none), one-way squares (direction index, -1 for none), gates and plates.
+  const paintAt = Int8Array.from(level.paint, (c) => (c ? COLORS.indexOf(c) : -1));
+  const hasPaint = paintAt.some((c) => c >= 0);
+  const arrowAt = Int8Array.from(level.arrows, (a) => (a ? DIRS.indexOf(a) : -1));
+  const gateAt = Uint8Array.from(level.gates, (g) => (g ? 1 : 0));
+  const plates = level.plates.flatMap((p, k) => (p ? [k] : []));
   // Cracked boards, numbered so that which have given way fits in one integer.
   const crackAt = new Int8Array(w * h).fill(-1);
   let cracks = 0;
@@ -71,6 +78,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     alive: new Array(Math.ceil(Math.max(1, level.chickens.length) / BITS)).fill(0),
     birds: from.chickens.length,
     key: from.keyTaken,
+    color: hasPaint ? shape.map((t) => COLORS.indexOf(t.color)) : null,
     broken: from.broken.reduce((bits, k) => bits | (1 << crackAt[k]), 0),
     last: from.lastHatch ?? -1,
     parent: null,
@@ -79,6 +87,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
   for (const t of from.hatches) {
     start.pos[t.id] = t.y * w + t.x;
     start.left[t.id] = t.left;
+    if (start.color) start.color[t.id] = COLORS.indexOf(t.color);
   }
   for (const c of from.chickens) start.alive[(c.id / BITS) | 0] |= 1 << (c.id % BITS);
 
@@ -87,14 +96,22 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     for (let i = 0; i < n; i++) s += String.fromCharCode(node.left[i] ? node.pos[i] + 1 : 0, node.left[i]);
     for (const bits of node.alive) s += String.fromCharCode(bits & 0x7fff, bits >>> 15);
     if (cracks) s += String.fromCharCode(node.broken & 0x7fff, node.broken >>> 15);
+    if (node.color) for (let i = 0; i < n; i++) s += String.fromCharCode(node.left[i] ? node.color[i] : 0);
     return s;
   };
 
-  /** Does hatch `j`, where it stands in `node`, cover this square? */
-  const coversAt = (node: Node, j: number, cx: number, cy: number) => {
-    const ox = cx - (node.pos[j] % w);
-    const oy = cy - ((node.pos[j] / w) | 0);
+  /** Does hatch `j`, with its corner at `at`, cover this square? */
+  const coversFrom = (at: number, j: number, cx: number, cy: number) => {
+    const ox = cx - (at % w);
+    const oy = cy - ((at / w) | 0);
     return ox >= 0 && oy >= 0 && ox < shape[j].w && oy < shape[j].h && covers[j][oy * shape[j].w + ox];
+  };
+  /** Does hatch `j`, where it stands in `node`, cover this square? */
+  const coversAt = (node: Node, j: number, cx: number, cy: number) => coversFrom(node.pos[j], j, cx, cy);
+  /** Is some hatch still on the board standing on a plate? */
+  const pressed = (pos: number[], left: number[]) => {
+    for (const k of plates) for (let b = 0; b < n; b++) if (left[b] && coversFrom(pos[b], b, k % w, (k / w) | 0)) return true;
+    return false;
   };
 
   /**
@@ -112,6 +129,8 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     let left: number[] | null = null;
     let key = node.key;
     let birds = node.birds;
+    let color: number[] | null = null;
+    let intoGate = false;
     for (let m = 0; m < (j >= 0 ? 2 : 1); m++) {
       const a = m ? j : i;
       const other = m ? i : j; // the partner, or -1
@@ -122,6 +141,8 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
       if (t.axis === "v" && sideways) return null;
       const x0 = node.pos[a] % w;
       const y0 = (node.pos[a] / w) | 0;
+      const mine = node.color ? COLORS[node.color[a]] : t.color;
+      let fresh = -1; // the last paint newly covered
 
       let eaten = 0;
       for (const [ex, ey] of edges[a][d]) {
@@ -131,6 +152,9 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         const k = cy * w + cx;
         if (bales[k]) return null;
         if (crackAt[k] >= 0 && node.broken & (1 << crackAt[k])) return null;
+        if (arrowAt[k] >= 0 && arrowAt[k] !== d) return null;
+        if (gateAt[k]) intoGate = true;
+        if (paintAt[k] >= 0) fresh = paintAt[k];
         // A square the partner is sliding out of is free.
         if (other >= 0 && coversAt(node, other, cx, cy)) continue;
         for (let b = 0; b < n; b++) {
@@ -139,7 +163,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         }
         const bird = birdAt[k];
         if (bird >= 0 && (alive ?? node.alive)[(bird / BITS) | 0] & (1 << (bird % BITS))) {
-          if (birdColor[bird] !== t.color && birdColor[bird] !== "any") return null;
+          if (birdColor[bird] !== mine && birdColor[bird] !== "any") return null;
           alive ??= node.alive.slice();
           alive[(bird / BITS) | 0] &= ~(1 << (bird % BITS));
           eaten++;
@@ -152,11 +176,16 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         left[a] -= eaten;
         birds -= eaten;
       }
+      if (fresh >= 0 && node.color && fresh !== node.color[a]) {
+        color ??= node.color.slice();
+        color[a] = fresh;
+      }
     }
 
     const pos = node.pos.slice();
     pos[i] += dy * w + dx;
     if (j >= 0) pos[j] += dy * w + dx;
+    if (intoGate && !pressed(pos, left ?? node.left)) return null;
     // A cracked board gives way once nothing of the pair is standing on it any more.
     let broken = node.broken;
     if (cracks) {
@@ -173,7 +202,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         }
       }
     }
-    return { pos, left: left ?? node.left, alive: alive ?? node.alive, birds, key, broken, last: mover[i], parent: node, via: i * 4 + d };
+    return { pos, left: left ?? node.left, alive: alive ?? node.alive, birds, key, color: color ?? node.color, broken, last: mover[i], parent: node, via: i * 4 + d };
   };
 
   const done = new Set<string>();

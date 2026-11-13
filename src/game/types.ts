@@ -56,7 +56,10 @@ export interface LevelDef {
    * One string per row. `.` floor, `#` hay bale (never moves), `k` the key,
    * `~` a cracked board (it holds until a hatch slides off it, then it is a hole for good),
    * `r` `y` `t` `b` `p` a red, gold, teal, blue or plum chicken, `w` a white one that any hatch takes,
-   * `R` `Y` `T` `B` `P` `W` the same chicken still in its egg.
+   * `R` `Y` `T` `B` `P` `W` the same chicken still in its egg,
+   * `1` `2` `3` `4` `5` a puddle of red, gold, teal, blue or plum paint (a hatch that slides onto it takes that colour),
+   * `o` a pressure plate and `=` a gate square (gates can only be entered while a hatch stands on a plate),
+   * `<` `>` `^` `v` a one-way square (a hatch can only slide onto it moving the way the arrow points).
    */
   rows: string[];
   hatches: {
@@ -95,6 +98,14 @@ export interface Level {
   cracks: boolean[];
   /** Where the key lies, if the level has one. */
   key: { x: number; y: number } | null;
+  /** Row-major: the colour of the paint on each square, or null. */
+  paint: (Color | null)[];
+  /** Row-major, true where a pressure plate is. */
+  plates: boolean[];
+  /** Row-major, true where a gate square is. */
+  gates: boolean[];
+  /** Row-major: the only way a hatch may slide onto each square, or null where any way will do. */
+  arrows: (Dir | null)[];
   chickens: Chicken[];
   hatches: Hatch[];
   par: number;
@@ -126,4 +137,8 @@ export interface StepResult {
   broke: number[];
   /** This step picked up the key. */
   tookKey: boolean;
+  /** Hatches that slid onto paint and changed colour on this step (as they are now). */
+  painted: Hatch[];
+  /** The gates opened or closed on this step. */
+  gate: "opened" | "closed" | null;
 }

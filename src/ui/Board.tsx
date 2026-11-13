@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
-import { heldBy, partnerOf, thawIn } from "../game/engine";
+import { gatesOpen, heldBy, partnerOf, thawIn } from "../game/engine";
 import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
-import { BaleArt, ChainArt, ChickenArt, CrackArt, HandArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, SnowArt } from "./art";
+import { ArrowArt, BaleArt, ChainArt, ChickenArt, CrackArt, GateArt, HandArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, PaintArt, PlateArt, SnowArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -209,7 +209,8 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   const heldPartner = heldHatch && partnerOf(game, heldHatch);
   const takes = heldHatch ? new Set([heldHatch.color, heldPartner?.color]) : null;
   const wobble = bump?.why;
-  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" ? wobble.y * level.w + wobble.x : -1;
+  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" ? wobble.y * level.w + wobble.x : -1;
+  const open = gatesOpen(level, game.hatches);
 
   return (
     <div className="board" style={{ "--cell": `${cell}px` } as CSSProperties}>
@@ -218,6 +219,10 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
           {level.bales.map((bale, k) => (
             <div key={k} className={`${(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}${k === bumpedSquare ? " tile--wobble" : ""}`}>
               {bale && <BaleArt />}
+              {level.paint[k] && <PaintArt color={level.paint[k]!} />}
+              {level.plates[k] && <PlateArt down={open} />}
+              {level.gates[k] && <GateArt open={open} />}
+              {level.arrows[k] && <ArrowArt dir={level.arrows[k]!} />}
               {level.cracks[k] && (game.broken.includes(k) ? <HoleArt /> : <CrackArt />)}
             </div>
           ))}

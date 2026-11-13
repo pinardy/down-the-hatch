@@ -11,12 +11,20 @@
 //  - A cracked board holds while a hatch is on it. When the hatch slides off, it gives way
 //    and nothing can cross that square again.
 //  - Two hatches chained together slide as one. If either is blocked, neither moves.
+//  - A hatch that slides onto paint takes the paint's colour from then on. The chickens it
+//    drops on that same step are judged by the colour it had before.
+//  - Gate squares can only be entered while some hatch stands on a pressure plate (counting
+//    where every hatch is after the step). A hatch already in a gate may stay there.
+//  - A one-way square can only be entered by a hatch moving the way its arrow points.
 //  - Clear every chicken to win.
 
-import { DELTA } from "./types";
-import type { Chicken, Dir, Feather, GameState, Hatch, Level, LevelDef, StepResult } from "./types";
+import { COLORS, DELTA } from "./types";
+import type { Chicken, Color, Dir, Feather, GameState, Hatch, Level, LevelDef, StepResult } from "./types";
 
 const CHICKEN_CHARS: Record<string, Feather> = { r: "red", y: "gold", t: "teal", b: "blue", p: "plum", w: "any" };
+/** Paint puddles: `1` to `5`, in the order of COLORS. */
+export const PAINT_CHARS: Record<string, Color> = Object.fromEntries(COLORS.map((c, i) => [String(i + 1), c]));
+export const ARROW_CHARS: Record<string, Dir> = { "<": "left", ">": "right", "^": "up", v: "down" };
 
 /**
  * Read a level as written in levels.ts. Throws if it is not a fair level (see validate), unless
@@ -27,6 +35,10 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
   const w = def.rows[0].length;
   const bales: boolean[] = new Array(w * h).fill(false);
   const cracks: boolean[] = new Array(w * h).fill(false);
+  const paint: (Color | null)[] = new Array(w * h).fill(null);
+  const plates: boolean[] = new Array(w * h).fill(false);
+  const gates: boolean[] = new Array(w * h).fill(false);
+  const arrows: (Dir | null)[] = new Array(w * h).fill(null);
   const chickens: Chicken[] = [];
   let key: Level["key"] = null;
   def.rows.forEach((row, y) => {
@@ -36,6 +48,10 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
       if (ch === "#") bales[y * w + x] = true;
       else if (ch === "~") cracks[y * w + x] = true;
       else if (ch === "k") key = { x, y };
+      else if (PAINT_CHARS[ch]) paint[y * w + x] = PAINT_CHARS[ch];
+      else if (ch === "o") plates[y * w + x] = true;
+      else if (ch === "=") gates[y * w + x] = true;
+      else if (ARROW_CHARS[ch]) arrows[y * w + x] = ARROW_CHARS[ch];
       else if (color) chickens.push({ id: chickens.length, color, x, y, ...(ch !== ch.toLowerCase() ? { hidden: true } : {}) });
       else if (ch !== ".") throw new Error(`${def.name}: unknown square "${ch}" at ${x},${y}`);
     });
@@ -66,7 +82,7 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
     hatches[ids[0]].link = ids[1];
     hatches[ids[1]].link = ids[0];
   }
-  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, chickens, hatches, par: def.par, tip: def.tip };
+  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, chickens, hatches, par: def.par, tip: def.tip };
   if (check) validate(level);
   return level;
 }
@@ -91,9 +107,13 @@ export function validate(level: Level) {
       taken.add(k);
     }
   }
+  if (level.gates.some(Boolean) !== level.plates.some(Boolean)) fail("gates need a pressure plate, and a plate needs a gate");
   // Every chicken needs a hatch to go down, and every hatch must be able to fill. A white
-  // chicken can make up the numbers for any colour.
+  // chicken can make up the numbers for any colour. Paint can change a hatch's colour, so
+  // with paint on the board only the totals have to agree.
+  const painted = level.paint.some(Boolean);
   for (const color of new Set([...level.chickens.map((c) => c.color), ...level.hatches.map((t) => t.color)])) {
+    if (painted) break;
     if (color === "any") continue;
     const birds = level.chickens.filter((c) => c.color === color).length;
     const room = level.hatches.filter((t) => t.color === color).reduce((n, t) => n + t.left, 0);
@@ -129,6 +149,11 @@ export function heldBy(level: Level, state: GameState, hatch: Hatch): "ice" | "l
   return null;
 }
 
+/** Is some hatch standing on a pressure plate? Then the gates are open. */
+export function gatesOpen(level: Level, hatches: readonly Hatch[]): boolean {
+  return hatches.some((t) => t.cells.some(([cx, cy]) => level.plates[(t.y + cy) * level.w + t.x + cx]));
+}
+
 /** What a move by this hatch is counted under: its own id, or for a chained pair the lower of the two. */
 export const moverOf = (hatch: Hatch) => (hatch.link === undefined ? hatch.id : Math.min(hatch.id, hatch.link));
 
@@ -158,6 +183,7 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
   const dropped: Chicken[] = [];
   const eaten = new Map<number, number>();
   let tookKey = false;
+  let intoGate = false;
   for (const t of group) {
     let mine = 0;
     for (const [cx, cy] of t.cells) {
@@ -168,6 +194,8 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
       if (x < 0 || y < 0 || x >= level.w || y >= level.h) return null;
       const k = y * level.w + x;
       if (level.bales[k] || state.broken.includes(k)) return null;
+      if (level.arrows[k] && level.arrows[k] !== dir) return null;
+      if (level.gates[k]) intoGate = true;
       // ...and a square its chained partner is sliding out of is free.
       if (group.some((g) => g !== t && covers(g, x, y))) continue;
       if (state.hatches.some((other) => !group.includes(other) && covers(other, x, y))) return null;
@@ -183,8 +211,29 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
     eaten.set(t.id, mine);
   }
 
-  const moved = group.map((t): Hatch => ({ ...t, x: t.x + dx, y: t.y + dy, left: t.left - eaten.get(t.id)! }));
+  // Paint: the last puddle a hatch newly covers, in the order of its squares, gives its new colour.
+  const painted: Hatch[] = [];
+  const moved = group.map((t): Hatch => {
+    let color = t.color;
+    for (const [cx, cy] of t.cells) {
+      const x = t.x + cx + dx;
+      const y = t.y + cy + dy;
+      const fresh = level.paint[y * level.w + x];
+      if (fresh && !covers(t, x, y)) color = fresh;
+    }
+    const now = { ...t, x: t.x + dx, y: t.y + dy, left: t.left - eaten.get(t.id)!, color };
+    if (color !== t.color && now.left > 0) painted.push(now);
+    return now;
+  });
   const shut = moved.filter((t) => t.left === 0);
+  const after = state.hatches.flatMap((t) => {
+    const now = moved.find((m) => m.id === t.id);
+    return now ? (now.left === 0 ? [] : [now]) : [t];
+  });
+  // A gate can only be entered while a plate is held down, as things stand after the step.
+  const wasOpen = gatesOpen(level, state.hatches);
+  const isOpen = gatesOpen(level, after);
+  if (intoGate && !isOpen) return null;
   // A cracked board gives way once nothing is standing on it any more.
   const broke: number[] = [];
   for (const t of group) {
@@ -196,10 +245,7 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
   const mover = moverOf(hatch);
   return {
     state: {
-      hatches: state.hatches.flatMap((t) => {
-        const now = moved.find((m) => m.id === t.id);
-        return now ? (now.left === 0 ? [] : [now]) : [t];
-      }),
+      hatches: after,
       chickens: dropped.length ? state.chickens.filter((c) => !dropped.includes(c)) : state.chickens,
       broken: broke.length ? [...state.broken, ...broke].sort((a, b) => a - b) : state.broken,
       keyTaken: state.keyTaken || tookKey,
@@ -211,6 +257,8 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
     shut,
     broke,
     tookKey,
+    painted,
+    gate: wasOpen === isOpen ? null : isOpen ? "opened" : "closed",
   };
 }
 
@@ -237,7 +285,9 @@ export type Blocker =
   | { kind: "full"; hatch: number }
   | { kind: "ice"; hatch: number }
   | { kind: "lock"; hatch: number }
-  | { kind: "rail"; hatch: number };
+  | { kind: "rail"; hatch: number }
+  | { kind: "arrow"; x: number; y: number; dir: Dir }
+  | { kind: "gate"; x: number; y: number };
 
 /**
  * What stops this step, or null if nothing does. Follows the same rules as `step`, but says
@@ -258,6 +308,7 @@ export function blockedBy(level: Level, state: GameState, hatchId: number, dir: 
   }
   const { dx, dy } = DELTA[dir];
   const covers = (t: Hatch, x: number, y: number) => t.cells.some(([ox, oy]) => t.x + ox === x && t.y + oy === y);
+  let gate: { x: number; y: number } | null = null;
   for (const t of group) {
     let mine = 0;
     for (const [cx, cy] of t.cells) {
@@ -268,6 +319,9 @@ export function blockedBy(level: Level, state: GameState, hatchId: number, dir: 
       const k = y * level.w + x;
       if (level.bales[k]) return { kind: "bale", x, y };
       if (state.broken.includes(k)) return { kind: "hole", x, y };
+      const arrow = level.arrows[k];
+      if (arrow && arrow !== dir) return { kind: "arrow", x, y, dir: arrow };
+      if (level.gates[k] && !gate) gate = { x, y };
       if (group.some((g) => g !== t && covers(g, x, y))) continue;
       const other = state.hatches.find((o) => !group.includes(o) && covers(o, x, y));
       if (other) return { kind: "hatch", id: other.id };
@@ -279,5 +333,7 @@ export function blockedBy(level: Level, state: GameState, hatchId: number, dir: 
     }
     if (mine > t.left) return { kind: "full", hatch: t.id };
   }
+  // Everything else allows it: if the step still fails, a closed gate is what stops it.
+  if (gate && !step(level, state, hatchId, dir)) return { kind: "gate", ...gate };
   return null;
 }

@@ -5,9 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { parseLevel, startState, validate } from "../game/engine";
 import { encodeLevel, LIMITS } from "../game/share";
 import type { SharedLevel } from "../game/share";
-import { COLORS } from "../game/types";
-import type { Axis, Color, Feather, Level, LevelDef } from "../game/types";
-import { BaleArt, ChickenArt, CrackArt, KeyArt, Mark, PAINT } from "./art";
+import { COLORS, DIRS } from "../game/types";
+import type { Axis, Color, Dir, Feather, Level, LevelDef } from "../game/types";
+import { ArrowArt, BaleArt, ChickenArt, CrackArt, GateArt, KeyArt, Mark, PAINT, PaintArt, PlateArt } from "./art";
 import { Board } from "./Board";
 import { solveInBackground } from "./solving";
 
@@ -30,7 +30,7 @@ export interface Draft {
   name: string;
   w: number;
   h: number;
-  /** One character per square, row-major, as in levels.ts: . # ~ k r y t b p w R Y T B P W */
+  /** One character per square, row-major, as in levels.ts: . # ~ k r y t b p w R Y T B P W 1-5 o = < > ^ v */
   cells: string[];
   hatches: DraftHatch[];
 }
@@ -62,6 +62,8 @@ const isRect = (shape: string[]) => shape.every((r) => !r.includes("."));
 const cellsOf = (t: { x: number; y: number; shape: string[] }) => t.shape.flatMap((row, dy) => [...row].flatMap((c, dx) => (c === "x" ? [[t.x + dx, t.y + dy] as const] : [])));
 const CHAR: Record<Feather, string> = { red: "r", gold: "y", teal: "t", blue: "b", plum: "p", any: "w" };
 const FEATHER: Record<string, Feather> = { r: "red", y: "gold", t: "teal", b: "blue", p: "plum", w: "any" };
+const ARROW: Record<Dir, string> = { up: "^", down: "v", left: "<", right: ">" };
+const paintChar = (c: Color) => String(COLORS.indexOf(c) + 1);
 
 export function draftToDef(d: Draft): LevelDef {
   const rows = Array.from({ length: d.h }, (_, y) => d.cells.slice(y * d.w, (y + 1) * d.w).join(""));
@@ -91,7 +93,9 @@ function problems(d: Draft): string[] {
   if (!birds.length) out.push("Add some chickens.");
   if (birds.length > LIMITS.chickens) out.push(`At most ${LIMITS.chickens} chickens, please: there are ${birds.length}.`);
   if (d.hatches.length > LIMITS.hatches) out.push(`At most ${LIMITS.hatches} hatches, please.`);
-  for (const color of COLORS) {
+  // Paint can change a hatch's colour, so then only the totals have to add up.
+  const painted = d.cells.some((c) => /[1-5]/.test(c));
+  for (const color of painted ? [] : COLORS) {
     const n = birds.filter((c) => FEATHER[c.toLowerCase()] === color).length;
     const room = d.hatches.filter((t) => t.color === color).reduce((s, t) => s + t.cap, 0);
     if (n > room) out.push(room ? `${n} ${PAINT[color].name} chickens, but the ${PAINT[color].name} hatches only have room for ${room}.` : `${n} ${PAINT[color].name} ${n === 1 ? "chicken needs" : "chickens need"} a ${PAINT[color].name} hatch.`);
@@ -100,11 +104,13 @@ function problems(d: Draft): string[] {
   if (birds.length && room > birds.length) out.push(`The hatches have room for ${room}, but there ${birds.length === 1 ? "is" : "are"} only ${birds.length} ${birds.length === 1 ? "chicken" : "chickens"}. Lower a number, or add chickens (white ones fit any hatch).`);
   else if (room < birds.length && !out.some((p) => p.includes("room for") || p.includes("needs") || p.includes("need a"))) out.push(`${birds.length} chickens, but the hatches only have room for ${room}.`);
   if (d.hatches.some((t) => t.locked) && !d.cells.includes("k")) out.push("A padlocked hatch needs a key on the board.");
+  if (d.cells.includes("=") && !d.cells.includes("o")) out.push("A gate needs a pressure plate to open it.");
+  if (d.cells.includes("o") && !d.cells.includes("=")) out.push("A pressure plate needs a gate to open.");
   for (const t of d.hatches) if (t.ice && t.ice > birds.length - t.cap) out.push(`A frozen ${PAINT[t.color].name} hatch needs ${t.ice} other chickens to drop first, and there aren’t that many.`);
   return out;
 }
 
-type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch";
+type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow";
 type Check = { status: "idle" | "checking" } | { status: "solved"; par: number } | { status: "stuck" | "unknown" };
 
 interface Props {
@@ -120,6 +126,8 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const [feather, setFeather] = useState<Feather>("red");
   const [egg, setEgg] = useState(false);
   const [hatchColor, setHatchColor] = useState<Color>("red");
+  const [paintColor, setPaintColor] = useState<Color>("blue");
+  const [arrow, setArrow] = useState<Dir>("right");
   const [shape, setShape] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [linking, setLinking] = useState(false);
@@ -194,7 +202,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       setSelected(t.uid);
       return;
     }
-    const put = tool === "bale" ? "#" : tool === "crack" ? "~" : tool === "key" ? "k" : egg ? CHAR[feather].toUpperCase() : CHAR[feather];
+    const put =
+      tool === "bale" ? "#"
+      : tool === "crack" ? "~"
+      : tool === "key" ? "k"
+      : tool === "paint" ? paintChar(paintColor)
+      : tool === "plate" ? "o"
+      : tool === "gate" ? "="
+      : tool === "arrow" ? ARROW[arrow]
+      : egg ? CHAR[feather].toUpperCase()
+      : CHAR[feather];
     const cells = draft.cells.map((c, i) => (i === k ? (c === put ? "." : put) : tool === "key" && c === "k" ? "." : c));
     change({ ...draft, cells });
   };
@@ -403,12 +420,24 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
               ["bale", "Hay"],
               ["crack", "Crack"],
               ["key", "Key"],
+              ["paint", "Paint"],
+              ["plate", "Plate"],
+              ["gate", "Gate"],
+              ["arrow", "One-way"],
               ["select", "Select"],
               ["erase", "Erase"],
             ] as const
           ).map(([t, label]) => (
             <button key={t} type="button" className={chip(tool === t)} onClick={() => setTool(t)}>
-              {t === "bale" ? <BaleArt /> : t === "crack" ? <CrackArt /> : t === "key" ? <KeyArt /> : t === "chicken" ? <ChickenArt color={feather} /> : null}
+              {t === "bale" ? <BaleArt />
+                : t === "crack" ? <CrackArt />
+                : t === "key" ? <KeyArt />
+                : t === "chicken" ? <ChickenArt color={feather} />
+                : t === "paint" ? <span className="chip__floor"><PaintArt color={paintColor} /></span>
+                : t === "plate" ? <span className="chip__floor"><PlateArt down={false} /></span>
+                : t === "gate" ? <span className="chip__floor"><GateArt open={false} /></span>
+                : t === "arrow" ? <span className="chip__floor"><ArrowArt dir={arrow} /></span>
+                : null}
               {label}
             </button>
           ))}
@@ -423,6 +452,28 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
             <button type="button" className={chip(egg)} onClick={() => setEgg(!egg)}>
               In an egg
             </button>
+          </div>
+        )}
+        {tool === "paint" && (
+          <div className="editor__row">
+            {COLORS.map((c) => (
+              <button key={c} type="button" className={chip(paintColor === c)} onClick={() => setPaintColor(c)} aria-label={`${PAINT[c].name} paint`}>
+                <span className="chip__floor">
+                  <PaintArt color={c} />
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {tool === "arrow" && (
+          <div className="editor__row">
+            {DIRS.map((d) => (
+              <button key={d} type="button" className={chip(arrow === d)} onClick={() => setArrow(d)} aria-label={`One-way, ${d}`}>
+                <span className="chip__floor">
+                  <ArrowArt dir={d} />
+                </span>
+              </button>
+            ))}
           </div>
         )}
         {tool === "hatch" && (
@@ -448,7 +499,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
           </>
         )}
         <p className="editor__hint">
-          {tool === "hatch" ? "Tap a square to put the hatch’s top-left corner there. Tap a hatch to change it." : tool === "select" ? "Tap a hatch to change it." : tool === "erase" ? "Tap anything to remove it." : "Tap a square to place, tap again to remove."}
+          {tool === "hatch" ? "Tap a square to put the hatch’s top-left corner there. Tap a hatch to change it." : tool === "plate" || tool === "gate" ? "While a hatch stands on any plate, every gate is open. Tap a square to place, tap again to remove." : tool === "select" ? "Tap a hatch to change it." : tool === "erase" ? "Tap anything to remove it." : "Tap a square to place, tap again to remove."}
         </p>
       </section>
 

@@ -87,6 +87,16 @@ export const sfx = {
     tone("triangle", 523, 523, 0.16, 0.12);
     tone("triangle", 784, 784, 0.24, 0.12, 0.1);
   },
+  /** A hatch sliding into a puddle of paint. */
+  splash() {
+    tone("sine", 700, 260, 0.14, 0.12);
+    tone("triangle", 1200, 500, 0.1, 0.06, 0.04);
+  },
+  /** The gate swinging open, or dropping shut. */
+  gate(open: boolean) {
+    if (open) tone("square", 300, 520, 0.12, 0.06);
+    else tone("square", 420, 180, 0.14, 0.07);
+  },
   win() {
     [523, 659, 784, 1047].forEach((f, i) => tone("triangle", f, f, 0.22, 0.16, i * 0.11));
   },
