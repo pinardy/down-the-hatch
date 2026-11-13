@@ -83,3 +83,12 @@ describe("daily coop timing", () => {
     expect(earlierDays(new Date(2026, 10, 1, 9), 2).map(key)).toEqual(["2026-10-31", "2026-10-30"]);
   });
 });
+
+describe("longest streak", () => {
+  it("finds the longest run of consecutive days, across month ends", async () => {
+    const { longestStreak } = await import("./daily");
+    expect(longestStreak([])).toBe(0);
+    expect(longestStreak(["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-05", "2026-11-06"])).toBe(3);
+    expect(longestStreak(["2026-11-05"])).toBe(1);
+  });
+});

@@ -48,7 +48,7 @@ The chickens must exactly fill the hatches: no colour may have more chickens tha
 
 ## Generating levels
 
-`npm run levels` grows levels automatically: it builds random boards, then makes small changes (move a chicken, reshape a hatch, add a bale), keeping each change if the solver says the level is still winnable and needs at least as many moves. It prints the best as entries to paste into `levels.ts`.
+`npm run levels` grows levels automatically (the growing itself lives in `src/game/generate.ts`, which the game's endless mode uses too): it builds random boards, then makes small changes (move a chicken, reshape a hatch, add a bale), keeping each change if the solver says the level is still winnable and needs at least as many moves. It prints the best as entries to paste into `levels.ts`.
 
 `npm run levels -- shapes 42 120` searches the `shapes` tier with seed 42 for 120 seconds. A fourth number stops each board at that par instead of the tier's own target, which is how to grow gentler levels: `npm run levels -- ice 42 120 7`.
 

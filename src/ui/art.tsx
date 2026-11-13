@@ -306,6 +306,16 @@ export function ClockArt() {
   );
 }
 
+/** A flame: cleared in hard mode, with no undo, hint or rewind. */
+export function HardArt() {
+  return (
+    <svg className="hard-badge" viewBox="0 0 24 24" role="img" aria-label="Hard mode">
+      <path d="M12 2.5 c1 3.5 5.5 5.5 5.5 11 a5.5 5.5 0 0 1 -11 0 c0 -2.8 1.6 -4.3 2.6 -5.6 c0.3 1.6 1 2.6 2 3 c-0.4 -3.2 0 -5.8 0.9 -8.4 z" fill="#e8673a" stroke="#fff6e3" strokeWidth="1.4" strokeLinejoin="round" paintOrder="stroke" />
+      <path d="M12 13 c1.2 1.4 2.4 2.4 2.4 4 a2.4 2.4 0 0 1 -4.8 0 c0 -1.6 1.4 -2.6 2.4 -4 z" fill="#f0c24f" />
+    </svg>
+  );
+}
+
 /** A small calendar page, for rewards paid in daily coops. */
 export function DayArt() {
   return (

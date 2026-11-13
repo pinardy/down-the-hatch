@@ -8,7 +8,7 @@ import type { Dir, GameState, Hatch, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
 import type { BumpFx, DemoFx, DropFx, HintFx, ShutFx } from "./Board";
-import { ClockArt, EggArt, GearArt, PAINT, SoloArt } from "./art";
+import { ClockArt, EggArt, GearArt, HardArt, PAINT, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
 import { Guide } from "./Guide";
 import { newlyUnlocked, rewardName } from "./rewards";
@@ -44,8 +44,10 @@ interface Props {
    * `solo` when the level was cleared without a hint and without having watched the solution;
    * `clock` when it was cleared inside the time with Race the clock on.
    */
-  onCleared: (moves: number, solo: boolean, clock: boolean) => void;
+  onCleared: (moves: number, solo: boolean, clock: boolean, hard: boolean) => void;
   onNext: (() => void) | null;
+  /** What the way on is called, when it isn't "Next level". */
+  nextLabel?: string;
   onLevels: () => void;
   /** Open the settings and rewards sheet. */
   onSettings: () => void;
@@ -160,7 +162,7 @@ function whyBlocked(level: Level, game: GameState, why: Blocker): string | null 
   }
 }
 
-export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
+export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, nextLabel, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
   // Milestones as they stood when the level opened: winning changes the props that say them.
   const milestone = useRef({ chapter: finishesChapter, game: finishesGame }).current;
   // What was earned before this level was played: rewards between then and now are new.
@@ -229,8 +231,11 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   }, []);
   const markStuck = useCallback(() => {
     setStuck(true);
-    setNotice({ text: STUCK_NOTE, warn: true });
-  }, []);
+    setNotice({ text: settings.hard ? "There’s no way to clear the coop from here. Start over to try again." : STUCK_NOTE, warn: true });
+  }, [settings.hard]);
+  /** Undo or rewind used on this attempt: the clear doesn't count as a hard-mode clear. */
+  const helped = useRef(false);
+  const [wonHard, setWonHard] = useState(false);
   const [phase, setPhase] = useState<Phase>("playing");
   const [secondsLeft, setSecondsLeft] = useState(() => resumed?.saved.seconds || allowance(level));
   const secondsRef = useRef(secondsLeft);
@@ -326,21 +331,23 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       clearNote();
       if (isWon(out.state) && !replaying.current) {
         const solo = !hinted.current && !watched.current;
+        const hard = settings.hard && solo && !helped.current;
         const onTime = settings.clock && secondsRef.current > 0;
         if (saveId) saveInPlay(saveId, null);
         window.setTimeout(() => {
           setWonSolo(solo);
           setWonClock(onTime);
+          setWonHard(hard);
           setPhase("won");
           const earned = eggsFor(out.state.moves, level.par);
           for (let i = 0; i < earned; i++) window.setTimeout(() => sfx.egg(i), 320 + i * EGG_LAND_MS);
           window.setTimeout(() => (earned === 3 ? sfx.win() : sfx.done()), 320 + earned * EGG_LAND_MS);
-          onCleared(out.state.moves, solo, onTime);
+          onCleared(out.state.moves, solo, onTime, hard);
         }, DROP_MS + 120);
       }
       return true;
     },
-    [level, commit, onCleared, clearNote, saveId, settings.clock],
+    [level, commit, onCleared, clearNote, saveId, settings.clock, settings.hard],
   );
 
   /** A slide was refused: show what is in the way, once per grab and direction. */
@@ -454,6 +461,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const undo = () => {
     const prev = history.current.pop();
     if (!prev) return;
+    helped.current = true;
     trail.current.log.length = trail.current.marks.pop() ?? 0;
     commit(prev);
     hold(null);
@@ -465,6 +473,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const restart = () => {
     stopReplay();
     hinted.current = false;
+    helped.current = false;
     history.current = [];
     trail.current = { log: [], marks: [] };
     setCanUndo(false);
@@ -557,6 +566,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     if (!got) return;
     const states = [...history.current, got.now];
     const target = states[got.answer];
+    helped.current = true;
     history.current = states.slice(0, got.answer);
     if (got.answer < trail.current.marks.length) {
       trail.current.log.length = trail.current.marks[got.answer];
@@ -742,17 +752,29 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
         {notice?.text ?? standing}
       </p>
 
-      <footer className="play__bar">
-        <button type="button" className="btn" onClick={undo} disabled={!canUndo || phase !== "playing"}>
-          Undo
-        </button>
-        <button type="button" className="btn" onClick={restart} disabled={game.moves === 0 && phase === "playing"}>
-          {phase === "replay" ? "Stop" : "Start over"}
-        </button>
-        <button type="button" className="btn btn--straw" onClick={stuck ? rewind : showHint} disabled={phase !== "playing" || thinking} aria-busy={thinking}>
-          {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
-        </button>
-      </footer>
+      {settings.hard && phase !== "replay" ? (
+        // Hard mode: no undo, no hint, no rewind. Only starting over.
+        <footer className="play__bar play__bar--hard">
+          <span className="play__hard">
+            <HardArt /> Hard mode
+          </span>
+          <button type="button" className="btn" onClick={restart} disabled={game.moves === 0 && phase === "playing"}>
+            Start over
+          </button>
+        </footer>
+      ) : (
+        <footer className="play__bar">
+          <button type="button" className="btn" onClick={undo} disabled={!canUndo || phase !== "playing"}>
+            Undo
+          </button>
+          <button type="button" className="btn" onClick={restart} disabled={game.moves === 0 && phase === "playing"}>
+            {phase === "replay" ? "Stop" : "Start over"}
+          </button>
+          <button type="button" className="btn btn--straw" onClick={stuck ? rewind : showHint} disabled={phase !== "playing" || thinking} aria-busy={thinking}>
+            {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
+          </button>
+        </footer>
+      )}
 
       {guide && <Guide level={level} onClose={() => setGuide(false)} />}
 
@@ -796,8 +818,13 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
                 <p>
                   {game.moves} {game.moves === 1 ? "move" : "moves"}. {game.moves <= level.par ? "That’s par, the fewest possible." : `Par is ${level.par}.`}
                 </p>
-                {(wonSolo || wonClock) && (
+                {(wonSolo || wonClock || wonHard) && (
                   <p className="sheet__solo">
+                    {wonHard && (
+                      <>
+                        <HardArt /> Hard mode.
+                      </>
+                    )}
                     {wonSolo && (
                       <>
                         <SoloArt /> No hints used.
@@ -830,7 +857,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
                 <div className="sheet__actions">
                   {onNext && (
                     <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
-                      {nextChapter ? `On to ${nextChapter}` : "Next level"}
+                      {nextLabel ?? (nextChapter ? `On to ${nextChapter}` : "Next level")}
                     </button>
                   )}
                   {(daily || shareLink) && (
