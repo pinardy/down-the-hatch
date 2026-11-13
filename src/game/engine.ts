@@ -48,7 +48,7 @@ export function parseLevel(def: LevelDef, index: number, chapter = ""): Level {
       ...(d.locked ? { locked: true } : {}),
     };
   });
-  const level: Level = { index, name: def.name, chapter, w, h, bales, key, chickens, hatches, par: def.par, tip: def.tip };
+  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, key, chickens, hatches, par: def.par, tip: def.tip };
   validate(level);
   return level;
 }

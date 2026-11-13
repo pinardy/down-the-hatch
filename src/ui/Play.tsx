@@ -4,23 +4,24 @@ import type { Dir, GameState, Hatch, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
 import type { DropFx, HintFx, ShutFx } from "./Board";
-import { EggArt } from "./art";
+import { EggArt, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
-import type { Settings } from "./storage";
+import type { Cleared, Settings } from "./storage";
 
 interface Props {
   level: Level;
-  /** Where this level sits in its chapter, from 1, and how many the chapter has. */
-  place: number;
-  total: number;
-  best: number | undefined;
+  /** The line above the level's name: its chapter and place in it, or "Daily coop". */
+  where: string;
+  best: Cleared | undefined;
   settings: Settings;
-  onCleared: (moves: number) => void;
+  /** `solo` when the level was cleared without a hint and without having watched the solution. */
+  onCleared: (moves: number, solo: boolean) => void;
   onNext: (() => void) | null;
   onLevels: () => void;
 }
 
-type Phase = "playing" | "won" | "timeup";
+/** `replay` is the best solution playing itself out; `shown` is the sheet that follows it. */
+type Phase = "playing" | "won" | "timeup" | "replay" | "shown";
 
 /**
  * An egg cracks open when a hatch slides up beside it. Returns `seen` itself if this hatch,
@@ -58,13 +59,17 @@ const STUCK_SEARCH = 60_000;
 const THINK_AFTER_MS = 180;
 const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";
 
+/** The best solution, played back: the pause after each square, and the longer one before a different hatch moves. */
+const REPLAY_STEP_MS = 170;
+const REPLAY_TURN_MS = 430;
+
 const DROP_MS = 460;
 const SHUT_MS = 380;
 
 /** Seconds allowed when racing the clock: generous, and longer for longer puzzles. */
 const allowance = (level: Level) => 30 + level.par * 8;
 
-export function Play({ level, place, total, best, settings, onCleared, onNext, onLevels }: Props) {
+export function Play({ level, where, best, settings, onCleared, onNext, onLevels }: Props) {
   const [game, setGame] = useState<GameState>(() => startState(level));
   const gameRef = useRef(game);
   const history = useRef<GameState[]>([]);
@@ -98,6 +103,20 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
       alive.current = false;
     };
   }, []);
+  // Help taken. A hint counts against this run only; having watched the solution counts for as
+  // long as the level stays open.
+  const hinted = useRef(false);
+  const watched = useRef(false);
+  const [wonSolo, setWonSolo] = useState(false);
+  /** True while the best solution is playing itself: steps then leave no undo and win nothing. */
+  const replaying = useRef(false);
+  const replayTimer = useRef<number | null>(null);
+  const stopReplay = useCallback(() => {
+    if (replayTimer.current !== null) window.clearTimeout(replayTimer.current);
+    replayTimer.current = null;
+    replaying.current = false;
+  }, []);
+  useEffect(() => stopReplay, [stopReplay]);
   const clearNote = useCallback(() => {
     setNotice(null);
     setStuck(false);
@@ -138,7 +157,7 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
       const before = gameRef.current;
       const out = step(level, before, hatchId, dir);
       if (!out) return false;
-      if (fresh.current) {
+      if (fresh.current && !replaying.current) {
         history.current.push(before);
         setCanUndo(true);
         fresh.current = false;
@@ -174,11 +193,13 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
       }
       setHint(null);
       clearNote();
-      if (isWon(out.state)) {
+      if (isWon(out.state) && !replaying.current) {
+        const solo = !hinted.current && !watched.current;
         window.setTimeout(() => {
+          setWonSolo(solo);
           setPhase("won");
           sfx.win();
-          onCleared(out.state.moves);
+          onCleared(out.state.moves, solo);
         }, DROP_MS + 120);
       }
       return true;
@@ -281,6 +302,8 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
   };
 
   const restart = () => {
+    stopReplay();
+    hinted.current = false;
     history.current = [];
     setCanUndo(false);
     commit(startState(level));
@@ -329,7 +352,38 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
       y += s.dir === "up" ? -1 : s.dir === "down" ? 1 : 0;
       path.push({ x, y });
     }
+    hinted.current = true;
     setHint({ ghost: { ...hatch, x, y }, path: path.slice(0, -1) });
+  };
+
+  /** Put the board back to the start and play the best solution through, one slide at a time. */
+  const watch = async () => {
+    restart();
+    watched.current = true;
+    replaying.current = true;
+    streak.current = 0;
+    setPhase("replay");
+    const answer = await solveInBackground(level, startState(level), HINT_SEARCH * 2);
+    if (!alive.current || !replaying.current) return; // stopped, or left, while the solver was thinking
+    if (answer.status !== "solved") {
+      stopReplay();
+      setPhase("playing");
+      return setNotice({ text: "Couldn’t work out the best solution this time. Try a hint instead.", warn: true });
+    }
+    const steps = answer.steps;
+    let at = 0;
+    const tick = () => {
+      if (!alive.current || !replaying.current) return;
+      if (at === steps.length) {
+        replaying.current = false;
+        replayTimer.current = window.setTimeout(() => alive.current && setPhase("shown"), DROP_MS + 350);
+        return;
+      }
+      const s = steps[at++];
+      tryStep(s.hatch, s.dir);
+      replayTimer.current = window.setTimeout(tick, at < steps.length && steps[at].hatch !== s.hatch ? REPLAY_TURN_MS : REPLAY_STEP_MS);
+    };
+    replayTimer.current = window.setTimeout(tick, 600);
   };
 
   /** Undo as far as it takes to reach a position that can still be won, and no further. */
@@ -388,11 +442,13 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
   const eggs = eggsFor(game.moves, level.par);
   // What the line under the board says when nothing more pressing needs saying.
   const standing =
-    game.moves > level.par + 2
+    phase === "replay" || phase === "shown"
+      ? `The best solution: ${level.par} ${level.par === 1 ? "move" : "moves"}.`
+      : game.moves > level.par + 2
       ? "One egg from here. Start over to try for all three."
       : game.moves > level.par
         ? `Over par. Finish in ${level.par + 2} moves or fewer to keep two eggs.`
-        : (level.tip ?? (best !== undefined ? `Your best: ${best} ${best === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
+          : (level.tip ?? (best ? `Your best: ${best.moves} ${best.moves === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
   const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
@@ -403,7 +459,7 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
         </button>
         <h1 className="play__title">
           <span className="play__number">
-            {level.chapter}, {place} of {total}
+            {where}
           </span>
           {level.name}
           {/* The eggs this run would earn if it finished now. They go as the moves pass par. */}
@@ -444,14 +500,14 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
           Undo
         </button>
         <button type="button" className="btn" onClick={restart} disabled={game.moves === 0 && phase === "playing"}>
-          Start over
+          {phase === "replay" ? "Stop" : "Start over"}
         </button>
         <button type="button" className="btn btn--straw" onClick={stuck ? rewind : showHint} disabled={phase !== "playing" || thinking} aria-busy={thinking}>
           {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
         </button>
       </footer>
 
-      {phase !== "playing" && (
+      {phase !== "playing" && phase !== "replay" && (
         <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
           <div className="sheet__card">
             {phase === "won" ? (
@@ -465,6 +521,11 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
                 <p>
                   {game.moves} {game.moves === 1 ? "move" : "moves"}. {game.moves <= level.par ? "That’s par, the fewest possible." : `Par is ${level.par}.`}
                 </p>
+                {wonSolo && (
+                  <p className="sheet__solo">
+                    <SoloArt /> No hints used.
+                  </p>
+                )}
                 <div className="sheet__actions">
                   {onNext && (
                     <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
@@ -474,6 +535,31 @@ export function Play({ level, place, total, best, settings, onCleared, onNext, o
                   <button type="button" className="btn" onClick={restart}>
                     Play again
                   </button>
+                  {game.moves > level.par && (
+                    <button type="button" className="btn" onClick={watch}>
+                      Watch the best solution
+                    </button>
+                  )}
+                  <button type="button" className="btn btn--quiet" onClick={onLevels}>
+                    Levels
+                  </button>
+                </div>
+              </>
+            ) : phase === "shown" ? (
+              <>
+                <h2 id="sheet-title">That’s par</h2>
+                <p>
+                  {level.par} {level.par === 1 ? "move" : "moves"} is the fewest possible.{best ? ` Your best is ${best.moves}.` : ""} Now try it yourself.
+                </p>
+                <div className="sheet__actions">
+                  <button type="button" className="btn btn--straw btn--big" onClick={restart} autoFocus>
+                    Play again
+                  </button>
+                  {onNext && (
+                    <button type="button" className="btn" onClick={onNext}>
+                      Next level
+                    </button>
+                  )}
                   <button type="button" className="btn btn--quiet" onClick={onLevels}>
                     Levels
                   </button>

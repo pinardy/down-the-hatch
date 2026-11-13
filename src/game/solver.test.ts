@@ -6,7 +6,7 @@ import type { LevelDef } from "./types";
 
 describe("rules", () => {
   const def: LevelDef = {
-    name: "test",
+    id: "test", name: "test",
     rows: ["rrb", "..b", "#.."],
     hatches: [
       { color: "red", x: 0, y: 1, cap: 2 },
@@ -47,13 +47,13 @@ describe("rules", () => {
 describe("harder pieces", () => {
   it("slides an L-shaped hatch by its outline, not its box", () => {
     // The L covers (0,0), (0,1), (1,1). The bale sits in its notch at (1,0).
-    const level = parseLevel({ name: "L", rows: [".#..", "...r"], hatches: [{ color: "red", x: 0, y: 0, shape: ["x.", "xx"], cap: 1 }], par: 1 }, 0);
+    const level = parseLevel({ id: "L", name: "L", rows: [".#..", "...r"], hatches: [{ color: "red", x: 0, y: 0, shape: ["x.", "xx"], cap: 1 }], par: 1 }, 0);
     const s = startState(level);
     expect(step(level, s, 0, "down")).toBeNull(); // off the board
     const a = step(level, s, 0, "right");
     expect(a).toBeNull(); // the upright would hit the bale
     expect(solve(level).status).toBe("stuck");
-    const open = parseLevel({ name: "L2", rows: ["....", "...r"], hatches: [{ color: "red", x: 0, y: 0, shape: ["x.", "xx"], cap: 1 }], par: 1 }, 0);
+    const open = parseLevel({ id: "L2", name: "L2", rows: ["....", "...r"], hatches: [{ color: "red", x: 0, y: 0, shape: ["x.", "xx"], cap: 1 }], par: 1 }, 0);
     const r = solve(open);
     expect(r.status === "solved" && r.moves).toBe(1);
   });
@@ -61,7 +61,7 @@ describe("harder pieces", () => {
   it("keeps a frozen hatch still until enough chickens have dropped", () => {
     const level = parseLevel(
       {
-        name: "ice",
+        id: "ice", name: "ice",
         rows: ["..r", "..b"],
         hatches: [
           { color: "red", x: 0, y: 0, cap: 1, ice: 1 },
@@ -82,7 +82,7 @@ describe("harder pieces", () => {
   it("keeps a padlocked hatch still until the key is picked up", () => {
     const level = parseLevel(
       {
-        name: "lock",
+        id: "lock", name: "lock",
         rows: ["..r", ".kb"],
         hatches: [
           { color: "red", x: 0, y: 0, cap: 1, locked: true },
@@ -102,7 +102,7 @@ describe("harder pieces", () => {
   });
 
   it("treats an egg as a chicken of its colour", () => {
-    const level = parseLevel({ name: "egg", rows: [".R"], hatches: [{ color: "red", x: 0, y: 0, cap: 1 }], par: 1 }, 0);
+    const level = parseLevel({ id: "egg", name: "egg", rows: [".R"], hatches: [{ color: "red", x: 0, y: 0, cap: 1 }], par: 1 }, 0);
     expect(level.chickens[0]).toMatchObject({ color: "red", hidden: true });
     expect(step(level, startState(level), 0, "right")!.dropped).toHaveLength(1);
   });
@@ -113,7 +113,7 @@ describe("rewinding", () => {
   // second must take the chicken on the right. If it takes the left one instead, the level is lost.
   const level = parseLevel(
     {
-      name: "fork",
+      id: "fork", name: "fork",
       rows: ["...", "r.r"],
       hatches: [
         { color: "red", x: 0, y: 0, cap: 1, axis: "v" },
@@ -141,6 +141,12 @@ describe("rewinding", () => {
 });
 
 describe("levels", () => {
+  it("gives every level its own id", () => {
+    const ids = LEVELS.map((l) => l.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9-]+$/);
+  });
+
   it.each(LEVELS.map((l) => [l.index + 1, l.name, l] as const))("level %i (%s) is solvable at its par", (_n, _name, level) => {
     const r = solve(level, startState(level), 3_000_000);
     expect(r.status).toBe("solved");

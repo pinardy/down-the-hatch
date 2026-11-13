@@ -135,3 +135,12 @@ export function TitleArt() {
     </div>
   );
 }
+
+/** The mark for a level cleared without a hint. */
+export function SoloArt() {
+  return (
+    <svg className="solo" viewBox="0 0 24 24" role="img" aria-label="Cleared without hints">
+      <path d="M12 2.2 l2.9 6.3 l6.9 0.8 l-5.1 4.7 l1.4 6.8 l-6.1 -3.4 l-6.1 3.4 l1.4 -6.8 l-5.1 -4.7 l6.9 -0.8 z" />
+    </svg>
+  );
+}

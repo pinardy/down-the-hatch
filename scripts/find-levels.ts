@@ -169,7 +169,7 @@ function toDef(d: Draft): LevelDef | null {
   }
   const rows: string[] = [];
   for (let y = 0; y < d.h; y++) rows.push(grid.slice(y * d.w, (y + 1) * d.w).join(""));
-  return { name: "untitled", rows, hatches, par: 0 };
+  return { id: "untitled", name: "untitled", rows, hatches, par: 0 };
 }
 
 function build(tier: Tier, rnd: () => number): Draft | null {
@@ -326,7 +326,7 @@ for (const tier of which) {
     console.log(`  // par ${f.def.par}, ${f.explored} positions searched`);
     console.log(show(f.def));
     console.log(
-      `  { name: "untitled", rows: ${JSON.stringify(f.def.rows)}, par: ${f.def.par}, hatches: [${f.def.hatches
+      `  { id: "untitled", name: "untitled", rows: ${JSON.stringify(f.def.rows)}, par: ${f.def.par}, hatches: [${f.def.hatches
         .map((t) => JSON.stringify(t).replace(/"(\w+)":/g, "$1: "))
         .join(", ")}] },`,
     );
