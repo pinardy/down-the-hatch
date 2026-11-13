@@ -6,8 +6,10 @@ import type { Chapter } from "../game/levels";
 import type { Level } from "../game/types";
 import { unlockAudio } from "../sfx";
 import { useUpdateReady } from "../update";
-import { EggArt, SoloArt, TitleArt } from "./art";
+import { ChickenArt, EggArt, SoloArt, TitleArt } from "./art";
 import { Guide } from "./Guide";
+import { isUnlocked, nextReward, REWARDS, wearing } from "./rewards";
+import type { BoardTheme, Hat, Reward } from "./rewards";
 import { decodeProgress, encodeProgress, mergeProgress } from "./storage";
 import type { Progress, Settings } from "./storage";
 
@@ -18,14 +20,21 @@ interface Props {
   progress: Progress;
   settings: Settings;
   /** The level just played, if any: its chapter starts open. */
-  lastPlayed: Playing;
+  lastPlayed: Playing | null;
+  /** Eggs earned across the numbered levels. */
+  eggs: number;
+  /** Something to tell the player as the list comes up (a broken link, say). */
+  notice: string | null;
   onPlay: (which: number | "daily") => void;
   onSettings: (s: Settings) => void;
   /** Replace all saved progress (after restoring a backup, or erasing). */
   onProgress: (p: Progress) => void;
+  onEditor: () => void;
+  /** Open a home-made coop from a pasted code or link. False if it isn't one. */
+  onCode: (text: string) => boolean;
 }
 
-export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, onSettings, onProgress }: Props) {
+export function Home({ chapters, daily, progress, eggs: eggsEarned, settings, lastPlayed, notice, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
   const levels = chapters.flatMap((c) => c.levels);
   const eggsOn = (l: Level) => (progress[l.id] ? eggsFor(progress[l.id].moves, l.par) : 0);
   const next = levels.find((l) => !progress[l.id]);
@@ -61,6 +70,8 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
   const streak = dailyStreak((id) => progress[id] !== undefined, new Date());
   const updateReady = useUpdateReady();
   const [guide, setGuide] = useState(false);
+  const [pasted, setPasted] = useState("");
+  const [badCode, setBadCode] = useState(false);
 
   return (
     <main className="screen home">
@@ -77,6 +88,12 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
           {cleared} of {levels.length} levels cleared, {eggs} of {levels.length * 3} eggs
         </p>
       </header>
+
+      {notice && (
+        <p className="home__notice" role="alert">
+          {notice}
+        </p>
+      )}
 
       <button type="button" className={dailyBest ? "daily daily--done" : "daily"} onClick={() => play("daily")}>
         <span className="daily__text">
@@ -175,6 +192,42 @@ export function Home({ chapters, daily, progress, settings, lastPlayed, onPlay, 
           );
         })}
       </div>
+
+      <section className="own" aria-labelledby="own-title">
+        <h2 id="own-title">Make your own</h2>
+        <p className="keeping__about">Build a coop, let the game check it and set its par, then send it to someone as a link.</p>
+        <div className="keeping__actions">
+          <button type="button" className="btn btn--straw" onClick={onEditor}>
+            Level editor
+          </button>
+        </div>
+        <form
+          className="own__code"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setBadCode(!onCode(pasted));
+          }}
+        >
+          <input
+            value={pasted}
+            onChange={(e) => {
+              setPasted(e.target.value);
+              setBadCode(false);
+            }}
+            placeholder="Paste a coop link or code"
+            aria-label="Coop link or code"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <button type="submit" className="btn" disabled={!pasted.trim()}>
+            Play
+          </button>
+        </form>
+        {badCode && <p className="keeping__said keeping__said--warn">That isn’t a coop this game can read. Check that all of it was copied.</p>}
+      </section>
+
+      <Rewards eggs={eggsEarned} settings={settings} onSettings={onSettings} />
 
       <section className="home__settings" aria-label="Settings">
         <label className="toggle">
@@ -331,6 +384,48 @@ function Keeping({ progress, onProgress }: { progress: Progress; onProgress: (p:
       <p className={said?.warn ? "keeping__said keeping__said--warn" : "keeping__said"} role="status">
         {said?.text}
       </p>
+    </section>
+  );
+}
+
+/** What eggs buy: board themes and hats. Locked ones show how many eggs they need. */
+function Rewards({ eggs, settings, onSettings }: { eggs: number; settings: Settings; onSettings: (s: Settings) => void }) {
+  const next = nextReward(eggs);
+  const board = wearing("board", settings.board, eggs, "barn");
+  const hat = wearing("hat", settings.hat, eggs, "none");
+  const option = (r: Reward) => {
+    const open = isUnlocked(r, eggs);
+    const on = r.kind === "board" ? board === r.id : hat === r.id;
+    return (
+      <button
+        key={r.id}
+        type="button"
+        className={on ? "reward reward--on" : open ? "reward" : "reward reward--locked"}
+        disabled={!open}
+        aria-pressed={on}
+        aria-label={open ? r.name : `${r.name}, unlocks at ${r.eggs} eggs`}
+        onClick={() => onSettings(r.kind === "board" ? { ...settings, board: r.id as BoardTheme } : { ...settings, hat: r.id as Hat })}
+      >
+        <span className={r.kind === "board" ? `reward__swatch swatch--${r.id}` : "reward__swatch swatch--barn"}>{r.kind === "hat" && <ChickenArt color="gold" hat={r.id as Hat} />}</span>
+        <span className="reward__name">{r.name}</span>
+        {!open && (
+          <span className="reward__cost">
+            <EggArt earned={false} /> {r.eggs}
+          </span>
+        )}
+      </button>
+    );
+  };
+  return (
+    <section className="rewards" aria-labelledby="rewards-title">
+      <h2 id="rewards-title">Rewards</h2>
+      <p className="keeping__about">
+        {eggs} {eggs === 1 ? "egg" : "eggs"} so far. {next ? `${next.eggs - eggs} more for the ${next.name}${next.kind === "board" ? " board" : ""}.` : "Everything unlocked."}
+      </p>
+      <h3 className="rewards__kind">Board</h3>
+      <div className="rewards__grid">{REWARDS.filter((r) => r.kind === "board").map(option)}</div>
+      <h3 className="rewards__kind">Hat</h3>
+      <div className="rewards__grid">{REWARDS.filter((r) => r.kind === "hat").map(option)}</div>
     </section>
   );
 }

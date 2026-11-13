@@ -3,6 +3,8 @@
 // an egg-shaped body, a three-bump comb, a wedge beak and a dot eye, with no outlines.
 
 import type { Feather } from "../game/types";
+import { useHat } from "./rewards";
+import type { Hat } from "./rewards";
 
 export const PAINT: Record<Feather, { body: string; shade: string; frame: string; name: string }> = {
   red: { body: "#f58a70", shade: "#d9614a", frame: "#d4543d", name: "red" },
@@ -40,8 +42,47 @@ export function Mark({ color, cx, cy, r, fill }: { color: Feather; cx: number; c
   }
 }
 
-export function ChickenArt({ color, className }: { color: Feather; className?: string }) {
+/** Hats, drawn on the chicken's head (centred at 68,45, radius 22). */
+export function HatArt({ hat }: { hat: Hat }) {
+  switch (hat) {
+    case "none":
+      return null;
+    case "bow":
+      return (
+        <g>
+          <path d="M44 32 l12 7 l-12 7 z M68 32 l-12 7 l12 7 z" fill="#e8577c" />
+          <circle cx="56" cy="39" r="4" fill="#c23a5f" />
+        </g>
+      );
+    case "straw":
+      return (
+        <g>
+          <ellipse cx="68" cy="28" rx="30" ry="6" fill="#d9a441" />
+          <path d="M52 28 q0 -16 16 -16 q16 0 16 16 z" fill="#ebbd5c" />
+          <path d="M52 25 h32" stroke={BARN} strokeWidth="4" />
+        </g>
+      );
+    case "shades":
+      return (
+        <g>
+          <rect x="66" y="38" width="18" height="11" rx="5" fill={INK} />
+          <path d="M66 42 h-18" stroke={INK} strokeWidth="3" />
+          <path d="M70 41 l5 0" stroke="#fff" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+        </g>
+      );
+    case "crown":
+      return (
+        <g>
+          <path d="M52 30 l2 -18 l8 9 l6 -12 l6 12 l8 -9 l2 18 z" fill="#f0c24f" stroke="#c99a2a" strokeWidth="2" strokeLinejoin="round" />
+          <circle cx="68" cy="24" r="2.5" fill={BARN} />
+        </g>
+      );
+  }
+}
+
+export function ChickenArt({ color, className, hat }: { color: Feather; className?: string; hat?: Hat }) {
   const p = PAINT[color];
+  const worn = useHat();
   return (
     <svg className={className} viewBox="0 0 120 120" aria-hidden="true">
       {/* tail */}
@@ -60,6 +101,7 @@ export function ChickenArt({ color, className }: { color: Feather; className?: s
       <circle cx="76.4" cy="42.6" r="1.4" fill="#fff" />
       {/* wing, in the colour's own mark */}
       <Mark color={color} cx={46} cy={76} r={9} fill={p.shade} />
+      <HatArt hat={hat ?? worn} />
     </svg>
   );
 }

@@ -1,6 +1,8 @@
 // Progress and settings, kept in this browser. Every read and write is guarded:
 // storage can be missing or full, and the game must still play.
 
+import type { BoardTheme, Hat } from "./rewards";
+
 export interface Settings {
   sound: boolean;
   /** Race a countdown on every level. Off by default: this is a thinking game. */
@@ -9,6 +11,9 @@ export interface Settings {
   theme: "system" | "light" | "dark";
   /** Everything but the board a size larger. */
   bigText: boolean;
+  /** Looks bought with eggs (see rewards.ts). */
+  board: BoardTheme;
+  hat: Hat;
 }
 
 /** What is remembered about a level once it has been cleared. */
@@ -50,7 +55,7 @@ const isId = (v: string) => /^[a-z0-9-]{1,60}$/.test(v);
 
 export function loadSettings(): Settings {
   const saved = read(SETTINGS_KEY);
-  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
   if (s.theme !== "light" && s.theme !== "dark") s.theme = "system";
   return s;
 }

@@ -18,7 +18,11 @@ import type { Chicken, Dir, Feather, GameState, Hatch, Level, LevelDef, StepResu
 
 const CHICKEN_CHARS: Record<string, Feather> = { r: "red", y: "gold", t: "teal", b: "blue", p: "plum", w: "any" };
 
-export function parseLevel(def: LevelDef, index: number, chapter = ""): Level {
+/**
+ * Read a level as written in levels.ts. Throws if it is not a fair level (see validate), unless
+ * `check` is false: the level editor draws boards that are still being built.
+ */
+export function parseLevel(def: LevelDef, index: number, chapter = "", check = true): Level {
   const h = def.rows.length;
   const w = def.rows[0].length;
   const bales: boolean[] = new Array(w * h).fill(false);
@@ -63,11 +67,11 @@ export function parseLevel(def: LevelDef, index: number, chapter = ""): Level {
     hatches[ids[1]].link = ids[0];
   }
   const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, chickens, hatches, par: def.par, tip: def.tip };
-  validate(level);
+  if (check) validate(level);
   return level;
 }
 
-function validate(level: Level) {
+export function validate(level: Level) {
   const fail = (why: string) => {
     throw new Error(`${level.name}: ${why}`);
   };

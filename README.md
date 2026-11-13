@@ -32,6 +32,8 @@ Undo, Start over and Hint are always there, and if you slide into a dead end, Re
 - **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday, with a streak for playing on consecutive days.
 - **Stars:** clear a level without asking for a hint and its tile gets a star.
 - **Best solution:** finish over par and you can watch the fewest-moves solution play out.
+- **Rewards:** eggs unlock board themes and hats for the chickens.
+- **Level editor:** build your own coop; the game checks it can be cleared, sets its par, and gives you a link to send to anyone.
 - **Backups:** progress is saved in your browser. A backup code (under "Your progress" on the level list) carries it to another phone or browser.
 
 ## Development

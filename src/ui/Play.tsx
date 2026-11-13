@@ -7,6 +7,7 @@ import type { DropFx, HintFx, ShutFx } from "./Board";
 import { EggArt, SoloArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
 import { Guide } from "./Guide";
+import { newlyUnlocked } from "./rewards";
 import type { Cleared, Settings } from "./storage";
 
 interface Props {
@@ -15,6 +16,10 @@ interface Props {
   where: string;
   best: Cleared | undefined;
   settings: Settings;
+  /** Eggs earned across the numbered levels, for announcing rewards this win unlocks. */
+  eggs: number;
+  /** What the way out is called: back to the level list, or to the editor. */
+  backLabel?: string;
   /** `solo` when the level was cleared without a hint and without having watched the solution. */
   onCleared: (moves: number, solo: boolean) => void;
   onNext: (() => void) | null;
@@ -70,7 +75,10 @@ const SHUT_MS = 380;
 /** Seconds allowed when racing the clock: generous, and longer for longer puzzles. */
 const allowance = (level: Level) => 30 + level.par * 8;
 
-export function Play({ level, where, best, settings, onCleared, onNext, onLevels }: Props) {
+export function Play({ level, where, best, settings, eggs: eggsNow, backLabel = "Levels", onCleared, onNext, onLevels }: Props) {
+  // Eggs before this level was played: rewards between then and now are new.
+  const eggsAtStart = useRef(eggsNow).current;
+  const unlocked = newlyUnlocked(eggsAtStart, eggsNow);
   const [game, setGame] = useState<GameState>(() => startState(level));
   const gameRef = useRef(game);
   const history = useRef<GameState[]>([]);
@@ -462,7 +470,7 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
       <header className="play__top">
         <div className="play__nav">
           <button type="button" className="btn btn--quiet" onClick={onLevels}>
-            Levels
+            {backLabel}
           </button>
           <button type="button" className="btn btn--quiet play__help" onClick={() => setGuide(true)} aria-label="What the pieces do">
             ?
@@ -539,6 +547,11 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
                     <SoloArt /> No hints used.
                   </p>
                 )}
+                {unlocked.length > 0 && (
+                  <p className="sheet__reward">
+                    Unlocked: {unlocked.map((r) => `${r.name} ${r.kind === "board" ? "board" : ""}`.trim()).join(" and ")}! Choose it on the level list.
+                  </p>
+                )}
                 <div className="sheet__actions">
                   {onNext && (
                     <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
@@ -554,7 +567,7 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
                     </button>
                   )}
                   <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    Levels
+                    {backLabel}
                   </button>
                 </div>
               </>
@@ -574,7 +587,7 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
                     </button>
                   )}
                   <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    Levels
+                    {backLabel}
                   </button>
                 </div>
               </>
@@ -589,7 +602,7 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
                     Try again
                   </button>
                   <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    Levels
+                    {backLabel}
                   </button>
                 </div>
               </>
