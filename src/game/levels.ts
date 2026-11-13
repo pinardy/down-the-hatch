@@ -22,6 +22,7 @@ import type { Level, LevelDef } from "./types";
 const TUTORIAL: LevelDef[] = [
   {
     id: "first-peck",
+    demo: true,
     name: "First peck",
     tip: "Drag the hatch under the chickens.",
     rows: ["....", "..rr", "...."],
@@ -2059,6 +2060,7 @@ const BOILED: LevelDef[] = [
 const PAINTED: LevelDef[] = [
   {
     id: "fresh-coat",
+    demo: true,
     name: "Fresh coat",
     tip: "Slide a hatch onto paint and it takes that colour, and the chickens that go with it.",
     rows: ["4..b", "....", "...."],
@@ -2186,6 +2188,7 @@ const PAINTED: LevelDef[] = [
 const GATES: LevelDef[] = [
   {
     id: "hold-the-door",
+    demo: true,
     name: "Hold the door",
     tip: "A gate opens only while a hatch stands on the plate. Hold the door for the red hatch.",
     rows: ["r=.oy", "#...#"],
@@ -2312,6 +2315,7 @@ const GATES: LevelDef[] = [
 const ONE_WAY: LevelDef[] = [
   {
     id: "one-way-street",
+    demo: true,
     name: "One way street",
     tip: "Arrows are one-way: a hatch can only slide onto them the way they point.",
     rows: ["r.>..", "..>..", "....."],

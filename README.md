@@ -9,7 +9,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 📲 Installable · ✈️ Works offline · 🧩 200 levels
 
-<img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens and hay bales on a wooden board" width="320">
+<img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
 </div>
 

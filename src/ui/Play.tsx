@@ -27,6 +27,14 @@ interface Props {
   daily?: boolean;
   /** A past day's daily coop, caught up on late. */
   late?: boolean;
+  /** A link to this coop, for sharing a result on a home-made coop someone sent. */
+  shareLink?: string;
+  /** Clearing this level now finishes its chapter for the first time: the chapter's name and size. */
+  finishesChapter?: { name: string; levels: number } | null;
+  /** Clearing this level now clears every numbered level for the first time: how many there are. */
+  finishesGame?: { levels: number } | null;
+  /** The chapter the next level starts, when it is a different one. */
+  nextChapter?: string | null;
   settings: Settings;
   /** Everything earned so far, for announcing rewards this win unlocks. */
   tally: Tally;
@@ -79,7 +87,7 @@ const COMMIT_DROP = 0.85;
 
 /** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
 const HINT_SEARCH = 300_000;
-const STUCK_SEARCH = 60_000;
+const STUCK_SEARCH = 250_000;
 /** A search shorter than this shows no "Thinking": the answer just appears. */
 const THINK_AFTER_MS = 180;
 const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";
@@ -152,7 +160,9 @@ function whyBlocked(level: Level, game: GameState, why: Blocker): string | null 
   }
 }
 
-export function Play({ level, where, best, saveId, daily = false, late = false, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
+export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
+  // Milestones as they stood when the level opened: winning changes the props that say them.
+  const milestone = useRef({ chapter: finishesChapter, game: finishesGame }).current;
   // What was earned before this level was played: rewards between then and now are new.
   const tallyAtStart = useRef(tally).current;
   const unlocked = newlyUnlocked(tallyAtStart, tally);
@@ -564,27 +574,33 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     });
   };
 
-  // The very first level shows a hand making the first move, until the player has a go.
+  // Levels that introduce something show a hand making the first move, until the player has
+  // cleared them once, and only while the player hasn't touched the board.
   const [demo, setDemo] = useState<DemoFx | null>(null);
   useEffect(() => {
-    if (level.index !== 0) return;
+    if (!level.demo || best) return;
     let live = true;
     void solveInBackground(level, startState(level), 20_000).then((answer) => {
       if (!live || answer.status !== "solved" || !answer.steps.length) return;
       const first = answer.steps[0].hatch;
       const hatch = level.hatches.find((t) => t.id === first)!;
-      let { x, y } = hatch;
+      const [cx, cy] = hatch.cells[0];
+      let x = hatch.x + cx;
+      let y = hatch.y + cy;
+      const path = [{ x, y }];
       for (const st of answer.steps) {
         if (st.hatch !== first) break;
         x += st.dir === "left" ? -1 : st.dir === "right" ? 1 : 0;
         y += st.dir === "up" ? -1 : st.dir === "down" ? 1 : 0;
+        path.push({ x, y });
       }
-      const [cx, cy] = hatch.cells[0];
-      setDemo({ from: { x: hatch.x + cx, y: hatch.y + cy }, to: { x: x + cx, y: y + cy } });
+      setDemo({ path });
     });
     return () => {
       live = false;
     };
+    // `best` only matters as the level opens: clearing it mid-demo needn't restart anything.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level]);
 
   // A little after each move, check quietly whether the level can still be cleared.
@@ -637,7 +653,10 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   // Sharing a daily result: no board, no spoilers, just how it went.
   const [shared, setShared] = useState<string | null>(null);
   const share = async () => {
-    const text = [`Down the Hatch, daily coop ${level.name}`, `${game.moves} ${game.moves === 1 ? "move" : "moves"} (par ${level.par}) ${"🥚".repeat(eggs)}${"⚪".repeat(3 - eggs)}${wonSolo ? " ⭐ no hints" : ""}`, location.origin + location.pathname].join("\n");
+    const result = `${game.moves} ${game.moves === 1 ? "move" : "moves"} (par ${level.par}) ${"🥚".repeat(eggs)}${"⚪".repeat(3 - eggs)}${wonSolo ? " ⭐ no hints" : ""}`;
+    const text = shareLink
+      ? [`I cleared “${level.name}” in Down the Hatch: ${result}`, `Your turn: ${shareLink}`].join("\n")
+      : [`Down the Hatch, daily coop ${level.name}`, result, location.origin + location.pathname].join("\n");
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -742,7 +761,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
           <div className="sheet__card">
             {phase === "won" ? (
               <>
-                {eggs === 3 && (
+                {(eggs === 3 || milestone.chapter || milestone.game) && (
                   <div className="burst" aria-hidden="true">
                     {Array.from({ length: 14 }, (_, i) => (
                       <span key={i} style={{ "--a": `${(i * 360) / 14}deg`, "--d": `${(i % 3) * 60}ms` } as CSSProperties} />
@@ -756,6 +775,23 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
                     </span>
                   ))}
                 </div>
+                {milestone.game ? (
+                  <div className="sheet__milestone">
+                    <p className="sheet__kicker">Every coop cleared!</p>
+                    <p>
+                      That’s all {milestone.game.levels} levels. {tally.eggs} of {milestone.game.levels * 3} eggs and {tally.stars} stars so far. The daily coop is waiting tomorrow, and the level editor whenever you want to set a puzzle of your own.
+                    </p>
+                  </div>
+                ) : (
+                  milestone.chapter && (
+                    <div className="sheet__milestone">
+                      <p className="sheet__kicker">Chapter complete!</p>
+                      <p>
+                        All {milestone.chapter.levels} levels of {milestone.chapter.name} cleared.
+                      </p>
+                    </div>
+                  )
+                )}
                 <h2 id="sheet-title">Coop cleared</h2>
                 <p>
                   {game.moves} {game.moves === 1 ? "move" : "moves"}. {game.moves <= level.par ? "That’s par, the fewest possible." : `Par is ${level.par}.`}
@@ -794,10 +830,10 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
                 <div className="sheet__actions">
                   {onNext && (
                     <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
-                      Next level
+                      {nextChapter ? `On to ${nextChapter}` : "Next level"}
                     </button>
                   )}
-                  {daily && (
+                  {(daily || shareLink) && (
                     <button type="button" className="btn btn--straw btn--big" onClick={share} autoFocus>
                       Share result
                     </button>

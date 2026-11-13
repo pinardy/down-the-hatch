@@ -82,7 +82,7 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
     hatches[ids[0]].link = ids[1];
     hatches[ids[1]].link = ids[0];
   }
-  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, chickens, hatches, par: def.par, tip: def.tip };
+  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, chickens, hatches, par: def.par, tip: def.tip, ...(def.demo ? { demo: true } : {}) };
   if (check) validate(level);
   return level;
 }

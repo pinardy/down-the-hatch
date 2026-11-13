@@ -77,7 +77,7 @@ Prefer boards with traps, and play what the search finds before keeping it.
 
 The daily coop draws one board a day from `src/game/daily-pool.ts`. Nothing is fetched, so it works offline. Pool boards are written like levels but need no `id` or `name`.
 
-The week has a shape: the pool is sorted by par and cut into seven bands, Monday's the easiest and Sunday's the hardest. Each weekday works through its own band, one board a week, then starts it again. With 102 boards that is 14 or 15 weeks before a weekday repeats.
+The week has a shape: the pool is sorted by par and cut into seven bands, Monday's the easiest and Sunday's the hardest. Each weekday works through its own band, one board a week, then starts it again. With 120 boards that is 17 or 18 weeks before a weekday repeats.
 
 To add boards, run a mid-difficulty tier (`medium`, `large`, `shapes`, `ice`, `lock`, `mix`, `eggs`, `crack`, `wild` or `link`) and paste the best into the pool, anywhere. Adding boards moves the bands, so which board falls on which day changes from then on, today's included. `npm test` solves every pool board and checks its par.
 

@@ -242,6 +242,12 @@ export default function App() {
   } else {
     const chapter = CHAPTERS.find((c) => c.levels.includes(level));
     const next = chapter && level.index + 1 < LEVELS.length ? level.index + 1 : null;
+    const nextChapter = next !== null ? CHAPTERS.find((c) => c.levels.includes(LEVELS[next])) : undefined;
+    // Milestones this level would reach if cleared now: the last of a chapter, or of the game.
+    const firstClear = chapter !== undefined && !progress[level.id];
+    const othersDone = (levels: typeof LEVELS) => levels.every((l) => l === level || progress[l.id]);
+    const finishesChapter = firstClear && othersDone(chapter.levels) ? { name: chapter.name, levels: chapter.levels.length } : null;
+    const finishesGame = firstClear && othersDone(LEVELS) ? { levels: LEVELS.length } : null;
     view = (
       <Play
         key={level.id + (screen.kind === "shared" ? screen.code : "")}
@@ -249,6 +255,10 @@ export default function App() {
         where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : level.chapter}
         best={levelId ? progress[levelId] : undefined}
         saveId={levelId}
+        shareLink={screen.kind === "shared" && !screen.test ? `${location.origin}${location.pathname}#play=${screen.code}` : undefined}
+        finishesChapter={finishesChapter}
+        finishesGame={finishesGame}
+        nextChapter={nextChapter && nextChapter !== chapter ? nextChapter.name : null}
         daily={screen.kind === "daily"}
         late={pastDay !== null}
         settings={settings}
