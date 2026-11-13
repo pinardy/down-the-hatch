@@ -13,9 +13,23 @@ A sliding puzzle for your phone. Slide the hatches, drop the chickens, clear the
 - The number on a hatch is how many more chickens it can take. Full hatches leave the board.
 - Drop every chicken to clear the level. Match the par (fewest moves) for three eggs.
 
-82 levels: a twelve-level tutorial, then four chapters that add L- and T-shaped hatches, frozen hatches, padlocks and mystery eggs, then five much harder chapters that take 18 to 34 moves a level. Each chapter is tagged Easy, Medium, Hard or Expert on the level list. Undo, Start over and Hint are always there, and if you slide into a dead end, Rewind takes you back to the last position that can still be won.
+127 levels in 15 chapters, each tagged Easy, Medium, Hard or Expert on the level list. After the tutorial, each chapter adds one piece and works up to it gently:
 
-- **Daily coop:** one extra board a day, the same for everyone, with a streak for playing on consecutive days.
+| Piece | What it does |
+|---|---|
+| Bent hatches | L and T shapes that need room for every corner |
+| Frozen hatches | stuck until enough chickens have dropped |
+| Padlocked hatches | stuck until another hatch slides over the key |
+| Eggs | chickens whose colour is hidden until a hatch slides up beside them |
+| Cracked boards | hold for one crossing, then leave a hole nothing can cross |
+| White chickens | drop down any hatch, and take up room in it |
+| Chained hatches | two that slide together, or not at all |
+
+The hard chapters combine them and take 14 to 34 moves a level.
+
+Undo, Start over and Hint are always there, and if you slide into a dead end, Rewind takes you back to the last position that can still be won.
+
+- **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday, with a streak for playing on consecutive days.
 - **Stars:** clear a level without asking for a hint and its tile gets a star.
 - **Best solution:** finish over par and you can watch the fewest-moves solution play out.
 - **Backups:** progress is saved in your browser. A backup code (under "Your progress" on the level list) carries it to another phone or browser.
