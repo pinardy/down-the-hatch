@@ -50,6 +50,13 @@ export default function App() {
   }, [today]);
 
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
+  // The stylesheet reads both of these off the root element.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (settings.theme === "system") delete root.dataset.theme;
+    else root.dataset.theme = settings.theme;
+    root.classList.toggle("big-text", settings.bigText);
+  }, [settings.theme, settings.bigText]);
 
   const changeSettings = (s: Settings) => {
     setSettings(s);

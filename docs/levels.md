@@ -52,6 +52,7 @@ The chickens must exactly fill the hatches: no colour may have more chickens tha
 |---|---|
 | `tiny`, `small`, `medium`, `large` | plain boards of growing size |
 | `shapes`, `ice`, `lock`, `eggs`, `crack`, `wild`, `link` | boards that must use one of the later pieces |
+| `crack-ice`, `wild-eggs`, `link-lock`, `link-shapes` | two pieces at once: a later piece paired with an earlier one |
 | `mix` | bends, ice, padlocks and eggs together |
 | `xl`, `shapes-hard`, `ice-hard`, `lock-hard`, `mix-hard` | the same on bigger boards, climbed for much longer towards a par in the high twenties |
 | `medley` | cracked boards, white chickens and a chain together, hard |

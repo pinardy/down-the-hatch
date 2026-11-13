@@ -11,7 +11,8 @@
 // then xl, shapes-hard, ice-hard, lock-hard and mix-hard: the same on bigger boards, climbed
 // for much longer towards a much higher par.
 //
-// Then eggs, crack, wild and link, one for each of the later pieces, and medley for all three.
+// Then eggs, crack, wild and link, one for each of the later pieces; crack-ice, wild-eggs,
+// link-lock and link-shapes, which pair a later piece with an earlier one; and medley for all three.
 //
 // "Moves" here means the game's own count: how many times you have to change hatch. That is
 // only a rough stand-in for difficulty: a long level is not always a hard one. So each board
@@ -68,6 +69,10 @@ const TIERS: Tier[] = [
   { name: "crack", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [3, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 2], rail: 0, target: 12, crack: [2, 6] },
   { name: "wild", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [3, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 12, wild: 0.25 },
   { name: "link", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 12, link: true },
+  { name: "crack-ice", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 2], rail: 0, target: 14, crack: [2, 5], ice: true },
+  { name: "wild-eggs", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 14, wild: 0.2, eggs: 0.4 },
+  { name: "link-lock", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 14, link: true, lock: true },
+  { name: "link-shapes", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 3], rail: 0, target: 14, link: true, odd: 2 },
   { name: "medley", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 3], rail: 0, target: 22, crack: [2, 6], wild: 0.2, link: true, hard: true },
   { name: "xl", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: PLAIN, cap: [1, 3], bales: [1, 5], rail: 0.2, target: 26, hard: true },
   { name: "shapes-hard", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 7], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 26, odd: 3, hard: true },

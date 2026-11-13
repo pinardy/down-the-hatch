@@ -65,6 +65,10 @@
 html {
   scroll-padding-top: env(safe-area-inset-top, 0px);
 }
+/* "Larger text": every size here is in rem, so this scales the lot. The board sizes itself to the room it has. */
+html.big-text {
+  font-size: 118%;
+}
 *,
 *::before,
 *::after {
@@ -301,6 +305,36 @@ ol {
   font-size: 0.85rem;
   font-weight: 400;
   color: var(--text-soft);
+}
+/* A finished chapter: one thin row, set back from the ones still to play. */
+.chapter--done {
+  background: none;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.chapter--done .chapter__toggle {
+  min-height: 2.4rem;
+  padding-block: 0.3rem;
+}
+.chapter--done .chapter__head {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.chapter--done .chapter__tally {
+  flex-wrap: nowrap;
+  gap: 0.6rem;
+  white-space: nowrap;
+}
+.chapter__check {
+  font-weight: 700;
+  color: var(--text);
+}
+.chapter--done h2 {
+  font-size: 1rem;
+}
+.chapter--done .grade {
+  font-size: 0.65rem;
 }
 .chapter--done .chapter__tally {
   font-weight: 500;
@@ -1233,4 +1267,144 @@ ol {
   .hatch--shut {
     animation-duration: 160ms;
   }
+}
+
+/* ── Play: Levels and the piece guide, side by side ── */
+
+.play__nav {
+  grid-area: back;
+  display: flex;
+  gap: 0.5rem;
+}
+.play__help {
+  width: 2.6em;
+  padding-inline: 0;
+  font-weight: 700;
+}
+
+/* ── The piece guide ── */
+
+.guide {
+  width: min(100%, 26rem);
+  max-height: calc(100dvh - 2.4rem);
+  overflow-y: auto;
+  text-align: left;
+}
+.guide h2 {
+  font-size: 1.5rem;
+  text-align: center;
+}
+.guide__more {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.1rem 0 0;
+  color: var(--text-soft);
+}
+.guide__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.8rem 0 0;
+}
+.guide__item {
+  display: flex;
+  gap: 0.8rem;
+  align-items: flex-start;
+}
+.guide__item dt {
+  font-weight: 600;
+}
+.guide__item dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--text-soft);
+}
+/* Each piece on a square of floor, as on the board, so the white artwork shows by day too. */
+.guide__art {
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  padding: 0.3rem;
+  border-radius: 0.7rem;
+  background: var(--floor);
+}
+.guide__art > svg,
+.guide__art .crack-art,
+.guide__art .chicken__art {
+  width: 100%;
+  height: 100%;
+}
+.guide__art .hold-art {
+  width: 70%;
+  height: 70%;
+}
+.guide__pair {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+.guide__pair svg {
+  width: 50% !important;
+  height: 100%;
+}
+.guide__toggle {
+  display: block;
+  margin: 1rem auto 0;
+}
+.guide__close {
+  display: block;
+  margin: 1.2rem auto 0;
+}
+.home__guide {
+  justify-self: start;
+}
+
+/* ── A setting with a few choices ── */
+
+.choice {
+  display: block;
+  margin: 0;
+  border: 0;
+  cursor: default;
+}
+.choice legend {
+  float: left;
+  width: 100%;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+.choice__options {
+  clear: both;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.choice__option {
+  position: relative;
+  padding: 0.4em 0.9em;
+  font-size: 0.92rem;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 2px var(--line);
+  cursor: pointer;
+}
+.choice__option--on {
+  color: var(--ink);
+  background: var(--straw);
+  box-shadow: none;
+  font-weight: 600;
+}
+.choice__option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.choice__option:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
