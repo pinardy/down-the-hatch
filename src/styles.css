@@ -1200,7 +1200,7 @@ ol {
 }
 .hatch--wobble .hatch__label,
 .chicken--wobble .chicken__art,
-.tile--wobble > svg {
+.tile--wobble > svg:last-child {
   animation: shake 380ms ease-in-out;
 }
 @keyframes shake {
@@ -2169,4 +2169,34 @@ ol {
     flex-wrap: wrap;
     justify-content: center;
   }
+}
+
+/* ── Paint, plates, gates and one-way squares, drawn on the floor ── */
+
+.floor-art {
+  width: 100%;
+  height: 100%;
+}
+.gate-art__bars {
+  transition: transform 220ms cubic-bezier(0.3, 1.2, 0.5, 1), opacity 220ms;
+  transform-origin: 50% 0;
+}
+/* Open: the bars swing up out of the way. */
+.gate-art--open .gate-art__bars {
+  transform: scaleY(0.12);
+  opacity: 0.55;
+}
+
+/* The newer floor pieces sit on a square of floor in the editor's chips, as on the board. */
+.chip__floor {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.35rem;
+  background: var(--floor);
+}
+.chip__floor svg {
+  width: 100%;
+  height: 100%;
 }

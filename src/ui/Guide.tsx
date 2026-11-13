@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Level } from "../game/types";
-import { ChainArt, ChickenArt, CrackArt, KeyArt, LockArt, MysteryEggArt, SnowArt } from "./art";
+import { ArrowArt, ChainArt, ChickenArt, CrackArt, GateArt, KeyArt, LockArt, MysteryEggArt, PaintArt, PlateArt, SnowArt } from "./art";
 
 interface Piece {
   key: string;
@@ -112,6 +112,34 @@ const PIECES: Piece[] = [
     what: "Two hatches with a chain mark slide together, or not at all. When one shuts, the other goes free.",
     art: <ChainArt />,
     on: (l) => l.hatches.some((t) => t.link !== undefined),
+  },
+  {
+    key: "paint",
+    name: "Paint",
+    what: "A hatch that slides onto a puddle of paint takes that colour from then on, and with it the chickens it can take. The puddle never runs dry.",
+    art: <PaintArt color="blue" />,
+    on: (l) => l.paint.some(Boolean),
+  },
+  {
+    key: "plate",
+    name: "Pressure plate",
+    what: "While any hatch stands on a plate, every gate on the board is open.",
+    art: <PlateArt down={false} />,
+    on: (l) => l.plates.some(Boolean),
+  },
+  {
+    key: "gate",
+    name: "Gate",
+    what: "A hatch can only slide into a gate square while the gate is open. One already inside can stay when it shuts.",
+    art: <GateArt open={false} />,
+    on: (l) => l.gates.some(Boolean),
+  },
+  {
+    key: "arrow",
+    name: "One-way square",
+    what: "A hatch can only slide onto it moving the way the arrow points. Leaving is free.",
+    art: <ArrowArt dir="right" />,
+    on: (l) => l.arrows.some(Boolean),
   },
 ];
 

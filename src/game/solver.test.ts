@@ -169,6 +169,51 @@ describe("cracked boards", () => {
   });
 });
 
+describe("paint, gates and one-way squares", () => {
+  const level = (rows: string[], hatches: LevelDef["hatches"]) => parseLevel({ id: "t", name: "t", rows, hatches, par: 1 }, 0);
+
+  it("paint gives a hatch its colour from then on", () => {
+    const l = level([".4b"], [{ color: "red", x: 0, y: 0, cap: 1 }]);
+    const s1 = step(l, startState(l), 0, "right")!;
+    expect(s1.state.hatches[0].color).toBe("blue");
+    expect(s1.painted.map((t) => t.id)).toEqual([0]);
+    expect(step(l, s1.state, 0, "right")!.dropped.map((c) => c.color)).toEqual(["blue"]);
+  });
+
+  it("judges the chickens of the painting step by the old colour", () => {
+    // The tall hatch reaches the paint and a red chicken on the same step: red still drops.
+    const l = level(["..4", "..r"], [{ color: "red", x: 1, y: 0, h: 2, cap: 1 }]);
+    const s1 = step(l, startState(l), 0, "right")!;
+    expect(s1.dropped.map((c) => c.color)).toEqual(["red"]);
+  });
+
+  it("gates open only while a hatch stands on a plate", () => {
+    const l = level(["o.b..", "...=r"], [{ color: "red", x: 0, y: 1, cap: 1 }, { color: "blue", x: 1, y: 0, cap: 1 }]);
+    let s = startState(l);
+    s = step(l, s, 0, "right")!.state;
+    s = step(l, s, 0, "right")!.state;
+    expect(step(l, s, 0, "right")).toBeNull();
+    expect(blockedBy(l, s, 0, "right")).toEqual({ kind: "gate", x: 3, y: 1 });
+    const press = step(l, s, 1, "left")!;
+    expect(press.gate).toBe("opened");
+    const through = step(l, press.state, 0, "right")!;
+    expect(through.state.hatches.find((t) => t.id === 0)!.x).toBe(3);
+    // Leaving the plate shuts the gate behind the red hatch, which may stay where it is.
+    const off = step(l, through.state, 1, "right")!;
+    expect(off.gate).toBe("closed");
+    expect(step(l, off.state, 0, "right")!.dropped.map((c) => c.color)).toEqual(["red"]);
+  });
+
+  it("one-way squares can only be entered the way the arrow points", () => {
+    const l = level([".>.r", "...."], [{ color: "red", x: 0, y: 0, cap: 1 }]);
+    const s1 = step(l, startState(l), 0, "right")!;
+    expect(s1).not.toBeNull();
+    const back = step(l, step(l, s1.state, 0, "right")!.state, 0, "left");
+    expect(back).toBeNull();
+    expect(blockedBy(l, step(l, s1.state, 0, "right")!.state, 0, "left")).toEqual({ kind: "arrow", x: 1, y: 0, dir: "right" });
+  });
+});
+
 describe("chained hatches", () => {
   const pair = (rows: string[]) =>
     parseLevel(
@@ -243,7 +288,7 @@ describe("chained hatches", () => {
 
 /** The fewest moves by brute force, using nothing but the engine. Small boards only. */
 function referencePar(level: Level): number | null {
-  const keyOf = (s: GameState) => JSON.stringify([s.hatches.map((t) => [t.id, t.x, t.y, t.left]), s.chickens.map((c) => c.id), s.broken, s.keyTaken, s.lastHatch]);
+  const keyOf = (s: GameState) => JSON.stringify([s.hatches.map((t) => [t.id, t.x, t.y, t.left, t.color]), s.chickens.map((c) => c.id), s.broken, s.keyTaken, s.lastHatch]);
   const best = new Map<string, number>([[keyOf(startState(level)), 0]]);
   let frontier = [startState(level)];
   for (let cost = 0; frontier.length; cost++) {
@@ -277,6 +322,12 @@ describe("the solver and the engine agree", () => {
     { rows: ["..wr", "...y", "k~.b", "...."], hatches: [{ color: "red", x: 0, y: 0, w: 2, cap: 2, link: "z" }, { color: "blue", x: 0, y: 3, cap: 1, link: "z", locked: true }, { color: "gold", x: 3, y: 3, cap: 1 }] },
     { rows: ["W..~.", ".#.~.", "...yr", "~...."], hatches: [{ color: "gold", x: 4, y: 0, cap: 1, ice: 1 }, { color: "red", x: 0, y: 2, shape: ["x.", "xx"], cap: 1, link: "q" }, { color: "red", x: 3, y: 3, cap: 1, link: "q" }] },
     { rows: ["r~w~b", "..~..", "....."], hatches: [{ color: "red", x: 0, y: 2, cap: 2 }, { color: "blue", x: 4, y: 2, cap: 1, axis: "v" }] },
+    // Paint, gates and one-way squares, on their own and together.
+    { rows: ["r.4.b", ".....", "y.2.."], hatches: [{ color: "red", x: 0, y: 1, cap: 2 }, { color: "teal", x: 4, y: 1, cap: 1 }] },
+    { rows: ["o..=r", ".#.#b", "....."], hatches: [{ color: "red", x: 0, y: 2, cap: 1 }, { color: "blue", x: 1, y: 0, cap: 1 }] },
+    { rows: ["r.>.r", "..^..", "b...."], hatches: [{ color: "red", x: 0, y: 1, cap: 2 }, { color: "blue", x: 4, y: 2, cap: 1 }] },
+    { rows: ["o=2r", ".v..", "y..<", "...."], hatches: [{ color: "red", x: 0, y: 3, cap: 1, link: "a" }, { color: "blue", x: 2, y: 3, cap: 1, link: "a" }] },
+    { rows: ["b=..o", "1=.#.", "..v..", "r.<.."], hatches: [{ color: "blue", x: 2, y: 0, shape: ["xx", "x."], cap: 1 }, { color: "gold", x: 4, y: 2, h: 2, cap: 1 }] },
   ];
   it.each(boards.map((b, i) => [i + 1, b] as const))("board %i", (i, def) => {
     let level: Level;

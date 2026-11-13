@@ -26,6 +26,10 @@ More grid squares:
 | `~` | a cracked board: it holds while a hatch is on it, and is a hole for good once the hatch slides off |
 | `w` | a white chicken, which drops down any hatch and takes up room in it |
 | `R Y T B P W` | the same chickens, still in their eggs |
+| `1 2 3 4 5` | a puddle of red, gold, teal, blue or plum paint: a hatch that slides onto it takes that colour from then on (the chickens it drops on that same step are judged by its old colour) |
+| `o` | a pressure plate: while any hatch stands on one, the gates are open |
+| `=` | a gate square: a hatch can only slide into it while the gates are open, and one already inside may stay when they shut |
+| `< > ^ v` | a one-way square: a hatch can only slide onto it moving the way the arrow points; leaving is free |
 
 A hatch can also take:
 
@@ -40,7 +44,7 @@ A hatch can also take:
 
 Levels live in chapters in `src/game/levels.ts`; add a level to a chapter's list, or add a chapter to `BOOK`.
 
-The chickens must exactly fill the hatches: no colour may have more chickens than its hatches have room for, and white chickens make up the difference. `npm test` fails if a level cannot be solved or its `par` is not the true minimum, so you can write a level by hand, guess the par, and let the test tell you the real number.
+The chickens must exactly fill the hatches: no colour may have more chickens than its hatches have room for, and white chickens make up the difference. With paint on the board a hatch can change colour, so then only the totals have to agree. Gates need a plate, and a plate needs a gate. `npm test` fails if a level cannot be solved or its `par` is not the true minimum, so you can write a level by hand, guess the par, and let the test tell you the real number.
 
 ## Generating levels
 
@@ -56,6 +60,10 @@ The chickens must exactly fill the hatches: no colour may have more chickens tha
 | `mix` | bends, ice, padlocks and eggs together |
 | `xl`, `shapes-hard`, `ice-hard`, `lock-hard`, `mix-hard` | the same on bigger boards, climbed for much longer towards a par in the high twenties |
 | `medley` | cracked boards, white chickens and a chain together, hard |
+| `paint`, `gate`, `arrow` | boards that must use paint, a gate and plate, or one-way squares |
+| `workshop` | paint, gates and one-way squares on one big board, hard |
+
+The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration.
 
 The hard tiers take about two minutes a board, so give them several minutes.
 

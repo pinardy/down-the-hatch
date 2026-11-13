@@ -2,7 +2,7 @@
 // The chickens follow the round, flat style of the Exploding Chickens logo:
 // an egg-shaped body, a three-bump comb, a wedge beak and a dot eye, with no outlines.
 
-import type { Feather } from "../game/types";
+import type { Color, Dir, Feather } from "../game/types";
 import { useHat } from "./rewards";
 import type { Hat } from "./rewards";
 
@@ -168,6 +168,60 @@ export function ChainArt() {
     <svg className="hold-art" viewBox="0 0 24 24" aria-hidden="true">
       <rect x="2.5" y="8" width="11" height="8" rx="4" fill="none" stroke="#fff6e3" strokeWidth="2.6" />
       <rect x="10.5" y="8" width="11" height="8" rx="4" fill="none" stroke="#f0c24f" strokeWidth="2.6" />
+    </svg>
+  );
+}
+
+/** A puddle of paint: a hatch that slides onto it takes its colour. It carries the colour's mark too. */
+export function PaintArt({ color }: { color: Color }) {
+  const p = PAINT[color];
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M50 14 c14 0 18 10 28 12 c10 2 12 14 6 22 c-6 8 4 14 -2 24 c-6 10 -18 6 -26 12 c-8 6 -22 4 -26 -6 c-4 -10 -16 -10 -14 -22 c2 -12 10 -12 10 -22 c0 -12 10 -20 24 -20 z" fill={p.frame} />
+      <path d="M38 26 c6 -4 14 -4 18 0" stroke="#fff" strokeOpacity="0.45" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <circle cx="84" cy="16" r="5" fill={p.frame} />
+      <circle cx="14" cy="84" r="4" fill={p.frame} />
+      <Mark color={color} cx={50} cy={54} r={11} fill={p.body} />
+    </svg>
+  );
+}
+
+/** A pressure plate: while a hatch stands on it, the gates are open. */
+export function PlateArt({ down }: { down: boolean }) {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="14" y="14" width="72" height="72" rx="16" fill="#3a2014" />
+      <rect x="20" y={down ? 24 : 18} width="60" height="60" rx="13" fill={down ? "#9a6a3a" : "#c99a2a"} />
+      <rect x="20" y={down ? 24 : 18} width="60" height="12" rx="6" fill="#fff6e3" opacity={down ? 0.15 : 0.35} />
+      <circle cx="50" cy={down ? 54 : 48} r="9" fill="#3a2014" opacity="0.5" />
+    </svg>
+  );
+}
+
+/** A gate square: barred while no plate is held down, open while one is. */
+export function GateArt({ open }: { open: boolean }) {
+  return (
+    <svg className={open ? "floor-art gate-art gate-art--open" : "floor-art gate-art"} viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="6" y="8" width="12" height="84" rx="4" fill="#5a3421" />
+      <rect x="82" y="8" width="12" height="84" rx="4" fill="#5a3421" />
+      <g className="gate-art__bars">
+        <rect x="12" y="24" width="76" height="14" rx="5" fill="#d9a441" />
+        <rect x="12" y="62" width="76" height="14" rx="5" fill="#d9a441" />
+        <path d="M18 38 L82 62" stroke="#b9852b" strokeWidth="10" strokeLinecap="round" />
+      </g>
+    </svg>
+  );
+}
+
+const TURN: Record<Dir, number> = { right: 0, down: 90, left: 180, up: 270 };
+
+/** A one-way square: a hatch can only slide onto it the way the arrow points. */
+export function ArrowArt({ dir }: { dir: Dir }) {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <g transform={`rotate(${TURN[dir]} 50 50)`}>
+        <path d="M22 30 L46 50 L22 70 M50 30 L74 50 L50 70" fill="none" stroke="#fff6e3" strokeOpacity="0.75" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
     </svg>
   );
 }

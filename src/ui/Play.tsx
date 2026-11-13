@@ -143,6 +143,10 @@ function whyBlocked(level: Level, game: GameState, why: Blocker): string | null 
     }
     case "hole":
       return "That board has given way. Nothing can cross it now.";
+    case "arrow":
+      return `That square is one-way: a hatch can only slide onto it moving ${why.dir === "up" ? "up" : why.dir === "down" ? "down" : `to the ${why.dir}`}.`;
+    case "gate":
+      return "The gate is shut. It opens while a hatch stands on a pressure plate.";
     default:
       return null;
   }
@@ -296,6 +300,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
         buzz(20);
       }
       if (out.tookKey) sfx.key();
+      if (out.painted.length) sfx.splash();
+      if (out.gate) window.setTimeout(() => sfx.gate(out.gate === "opened"), 60);
       // Anything that was frozen or padlocked and now is not has just come free.
       if (out.state.hatches.some((t) => !heldBy(level, out.state, t) && heldBy(level, before, t))) window.setTimeout(() => sfx.free(), 140);
       commit(out.state);

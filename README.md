@@ -34,6 +34,9 @@ Slide the hatches, drop the chickens, clear the coop.
 | 🪵 | **Cracked boards** | hold for one crossing, then leave a hole nothing can cross |
 | 🤍 | **White chickens** | drop down any hatch, and take up room in it |
 | ⛓️ | **Chained hatches** | two that slide together, or not at all |
+| 🎨 | **Paint** | a hatch that slides through a puddle takes its colour |
+| 🚪 | **Gates and plates** | a gate opens only while a hatch stands on a pressure plate |
+| ➡️ | **One-way squares** | can only be crossed the way the arrow points |
 
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them all and take 14 to 34 moves a level.
 
