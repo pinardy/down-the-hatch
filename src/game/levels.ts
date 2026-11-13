@@ -413,7 +413,81 @@ const RANGE: LevelDef[] = [
     par: 18,
   },
   {
+    name: "Cross-coop traffic",
+    rows: ["b.p.yt", "....r#", "......", ".....p", "b...t.", "..b.t."],
+    hatches: [
+      { color: "red", x: 1, y: 3, w: 2, h: 2, cap: 1 },
+      { color: "gold", x: 1, y: 2, w: 3, cap: 1 },
+      { color: "teal", x: 1, y: 1, w: 3, cap: 3 },
+      { color: "blue", x: 3, y: 4, h: 2, cap: 2, axis: "h" },
+      { color: "plum", x: 0, y: 1, h: 3, cap: 2 },
+      { color: "blue", x: 5, y: 4, h: 2, cap: 1 },
+    ],
+    par: 18,
+  },
+  {
     name: "No through road",
+    rows: ["....p.", "t.bp..", "t.y..p", "#.....", ".p..p#", "yy....", ".tp..."],
+    hatches: [
+      { color: "plum", x: 3, y: 2, w: 2, h: 2, cap: 3, axis: "v" },
+      { color: "blue", x: 3, y: 4, h: 3, cap: 1 },
+      { color: "teal", x: 4, y: 5, w: 2, h: 2, cap: 3 },
+      { color: "gold", x: 1, y: 1, h: 3, cap: 3 },
+      { color: "plum", x: 1, y: 0, w: 3, cap: 3 },
+    ],
+    par: 20,
+  },
+  {
+    name: "Roundabout",
+    rows: ["by...p", "tt....", "p...r#", "....tr", "t..r..", "b....."],
+    hatches: [
+      { color: "gold", x: 1, y: 5, w: 3, cap: 1 },
+      { color: "plum", x: 2, y: 0, w: 3, cap: 2 },
+      { color: "red", x: 2, y: 2, h: 3, cap: 3 },
+      { color: "blue", x: 3, y: 2, h: 2, cap: 2 },
+      { color: "teal", x: 4, y: 4, w: 2, h: 2, cap: 4 },
+    ],
+    par: 20,
+  },
+  {
+    name: "Long way round",
+    rows: ["t....b", "rpt..p", ".b...#", "......", "......", "r..#p."],
+    hatches: [
+      { color: "blue", x: 4, y: 2, h: 2, cap: 2 },
+      { color: "plum", x: 1, y: 3, w: 3, cap: 2 },
+      { color: "teal", x: 1, y: 4, w: 2, h: 2, cap: 2 },
+      { color: "red", x: 3, y: 0, w: 2, h: 2, cap: 2 },
+      { color: "plum", x: 5, y: 3, h: 3, cap: 1 },
+    ],
+    par: 24,
+  },
+  {
+    name: "Barn dance",
+    rows: ["b..b.b", ".p.#..", ".p#r..", "...r..", ".b....", ".b.y..", "tr.b.#"],
+    hatches: [
+      { color: "blue", x: 3, y: 4, w: 2, cap: 6 },
+      { color: "red", x: 4, y: 2, w: 2, h: 2, cap: 3 },
+      { color: "gold", x: 0, y: 2, h: 3, cap: 1 },
+      { color: "plum", x: 2, y: 3, h: 3, cap: 2 },
+      { color: "teal", x: 4, y: 0, h: 2, cap: 1 },
+    ],
+    par: 25,
+  },
+  {
+    name: "Musical chairs",
+    rows: ["#..yp#", "rrpy..", "pp.#by", "#y..#.", "......", "...y.."],
+    hatches: [
+      { color: "plum", x: 4, y: 4, w: 2, h: 2, cap: 2 },
+      { color: "red", x: 0, y: 4, w: 2, cap: 2 },
+      { color: "blue", x: 1, y: 0, w: 2, cap: 1 },
+      { color: "gold", x: 2, y: 4, w: 2, cap: 3 },
+      { color: "gold", x: 2, y: 2, h: 2, cap: 2 },
+      { color: "plum", x: 1, y: 5, w: 2, cap: 2 },
+    ],
+    par: 26,
+  },
+  {
+    name: "Fox in the henhouse",
     rows: [".....#", "yb....", ".....p", "b#....", ".##.rp", "p..pry", "...t.."],
     hatches: [
       { color: "gold", x: 3, y: 3, h: 2, cap: 2 },
@@ -423,6 +497,18 @@ const RANGE: LevelDef[] = [
       { color: "plum", x: 1, y: 0, w: 3, cap: 4 },
     ],
     par: 27,
+  },
+  {
+    name: "Wing and a prayer",
+    rows: [".....y", "rt..p.", "pr....", ".br...", ".rt...", "#r#py."],
+    hatches: [
+      { color: "gold", x: 2, y: 1, w: 2, cap: 2 },
+      { color: "red", x: 5, y: 2, h: 3, cap: 5 },
+      { color: "plum", x: 2, y: 0, w: 3, cap: 3 },
+      { color: "teal", x: 0, y: 0, w: 2, cap: 2 },
+      { color: "blue", x: 4, y: 2, h: 3, cap: 1 },
+    ],
+    par: 29,
   },
 ];
 
