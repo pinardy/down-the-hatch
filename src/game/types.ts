@@ -1,6 +1,8 @@
 // The whole game model. Plain data, no React, no timers.
 
 export type Color = "red" | "gold" | "teal" | "blue" | "plum";
+/** What a chicken can be: one of the colours, or "any", a white chicken that will drop down any hatch. */
+export type Feather = Color | "any";
 export type Dir = "up" | "down" | "left" | "right";
 /** A railed hatch only slides along one axis. */
 export type Axis = "h" | "v";
@@ -32,11 +34,13 @@ export interface Hatch {
   ice?: number;
   /** Padlocked: it will not budge until some hatch has picked up the key. */
   locked?: boolean;
+  /** Chained to this other hatch (its id): the two slide together, or not at all, until one of them shuts. */
+  link?: number;
 }
 
 export interface Chicken {
   id: number;
-  color: Color;
+  color: Feather;
   x: number;
   y: number;
   /** Still in its egg: its colour stays secret until a hatch slides up beside it. */
@@ -50,8 +54,9 @@ export interface LevelDef {
   name: string;
   /**
    * One string per row. `.` floor, `#` hay bale (never moves), `k` the key,
-   * `r` `y` `t` `b` `p` a red, gold, teal, blue or plum chicken,
-   * `R` `Y` `T` `B` `P` the same chicken still in its egg.
+   * `~` a cracked board (it holds until a hatch slides off it, then it is a hole for good),
+   * `r` `y` `t` `b` `p` a red, gold, teal, blue or plum chicken, `w` a white one that any hatch takes,
+   * `R` `Y` `T` `B` `P` `W` the same chicken still in its egg.
    */
   rows: string[];
   hatches: {
@@ -67,6 +72,8 @@ export interface LevelDef {
     axis?: Axis;
     ice?: number;
     locked?: boolean;
+    /** Two hatches with the same tag here are chained together. */
+    link?: string;
   }[];
   /** Fewest moves that clear the level, as found by the solver. Checked by the test suite. */
   par: number;
@@ -84,6 +91,8 @@ export interface Level {
   h: number;
   /** Row-major, true where a hay bale sits. */
   bales: boolean[];
+  /** Row-major, true where the floor is a cracked board. */
+  cracks: boolean[];
   /** Where the key lies, if the level has one. */
   key: { x: number; y: number } | null;
   chickens: Chicken[];
@@ -95,10 +104,13 @@ export interface Level {
 export interface GameState {
   hatches: Hatch[];
   chickens: Chicken[];
+  /** Cracked boards that have given way, as row-major squares in ascending order. */
+  broken: readonly number[];
   /** True once the key has been picked up (and from the start when there is no key). */
   keyTaken: boolean;
-  /** A move is one unbroken run of sliding the same hatch. */
+  /** A move is one unbroken run of sliding the same hatch (or the same chained pair). */
   moves: number;
+  /** The hatch moved last; for a chained pair, the lower of their two ids. */
   lastHatch: number | null;
 }
 
@@ -106,8 +118,12 @@ export interface StepResult {
   state: GameState;
   /** Chickens that dropped on this step. */
   dropped: Chicken[];
-  /** The hatch that filled up and shut on this step, if any (as it was just before shutting). */
-  shut: Hatch | null;
+  /** Every hatch that slid on this step, where it ended up: one, or two when they are chained. */
+  moved: Hatch[];
+  /** Those of them that filled up and shut (as they were just before shutting). */
+  shut: Hatch[];
+  /** Cracked boards that gave way on this step, as row-major squares. */
+  broke: number[];
   /** This step picked up the key. */
   tookKey: boolean;
 }

@@ -1,8 +1,8 @@
 import { useRef } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
-import { heldBy, thawIn } from "../game/engine";
+import { heldBy, partnerOf, thawIn } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
-import { BaleArt, ChickenArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, SnowArt } from "./art";
+import { BaleArt, ChainArt, ChickenArt, CrackArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, SnowArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -55,7 +55,7 @@ const at = (x: number, y: number): CSSProperties => ({ left: `calc(var(--cell) *
  * square of the same hatch, and leaves those sides open, so the squares join into one piece
  * with one continuous pit: a bar, a block, an L, a T.
  */
-function HatchFace({ hatch, stuck = null, thaw = 0 }: { hatch: Hatch; stuck?: "ice" | "lock" | null; thaw?: number }) {
+function HatchFace({ hatch, stuck = null, thaw = 0, chained = false }: { hatch: Hatch; stuck?: "ice" | "lock" | null; thaw?: number; chained?: boolean }) {
   const paint = PAINT[hatch.color];
   const has = (x: number, y: number) => hatch.cells.some(([cx, cy]) => cx === x && cy === y);
   const joins = ([cx, cy]: readonly [number, number]) => [has(cx, cy - 1), has(cx + 1, cy), has(cx, cy + 1), has(cx - 1, cy)];
@@ -103,6 +103,11 @@ function HatchFace({ hatch, stuck = null, thaw = 0 }: { hatch: Hatch; stuck?: "i
         {stuck === "lock" && (
           <span className="hatch__hold">
             <LockArt />
+          </span>
+        )}
+        {chained && (
+          <span className="hatch__hold">
+            <ChainArt />
           </span>
         )}
       </span>
@@ -156,6 +161,7 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
           {level.bales.map((bale, k) => (
             <div key={k} className={(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}>
               {bale && <BaleArt />}
+              {level.cracks[k] && (game.broken.includes(k) ? <HoleArt /> : <CrackArt />)}
             </div>
           ))}
         </div>
@@ -178,7 +184,9 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
         )}
 
         {game.hatches.map((hatch) => {
-          const mine = held?.id === hatch.id ? held : null;
+          // A chained hatch is drawn wherever its partner is being dragged to, as well as its own.
+          const partner = partnerOf(game, hatch);
+          const mine = held && (held.id === hatch.id || held.id === partner?.id) ? held : null;
           const stuck = heldBy(level, game, hatch);
           const thaw = thawIn(level, game, hatch);
           const about = [
@@ -186,6 +194,7 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
             hatch.axis ? (hatch.axis === "h" ? "slides sideways only" : "slides up and down only") : "",
             stuck === "ice" ? `frozen until ${thaw} more ${thaw === 1 ? "chicken drops" : "chickens drop"}` : "",
             stuck === "lock" ? "padlocked until the key is picked up" : "",
+            partner ? `chained to the ${PAINT[partner.color].name} hatch, they slide together` : "",
           ].filter(Boolean);
           return (
             <button
@@ -202,7 +211,7 @@ export function Board({ level, game, cell, drops, shuts, hint, seen, locked, hel
               onLostPointerCapture={up}
               onKeyDown={(e) => key(e, hatch)}
             >
-              <HatchFace hatch={hatch} stuck={stuck} thaw={thaw} />
+              <HatchFace hatch={hatch} stuck={stuck} thaw={thaw} chained={partner !== undefined} />
             </button>
           );
         })}

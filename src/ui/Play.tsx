@@ -173,19 +173,21 @@ export function Play({ level, where, best, settings, onCleared, onNext, onLevels
       } else {
         sfx.slide();
       }
-      if (out.shut) {
+      for (const hatch of out.shut) {
         const shutKey = ++fxKey.current;
-        const hatch = out.shut;
         setShuts((s) => [...s, { key: shutKey, hatch }]);
         window.setTimeout(() => setShuts((s) => s.filter((x) => x.key !== shutKey)), SHUT_MS);
         window.setTimeout(() => sfx.shut(), 120);
+      }
+      if (out.broke.length) {
+        sfx.crack();
+        buzz(20);
       }
       if (out.tookKey) sfx.key();
       // Anything that was frozen or padlocked and now is not has just come free.
       if (out.state.hatches.some((t) => !heldBy(level, out.state, t) && heldBy(level, before, t))) window.setTimeout(() => sfx.free(), 140);
       commit(out.state);
-      const moved = out.shut ?? out.state.hatches.find((t) => t.id === hatchId);
-      const now = moved ? peek(out.state, moved, seenRef.current) : seenRef.current;
+      const now = out.moved.reduce((seen, hatch) => peek(out.state, hatch, seen), seenRef.current);
       if (now !== seenRef.current) {
         seenRef.current = now;
         setSeen(now);

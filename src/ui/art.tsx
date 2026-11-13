@@ -2,14 +2,16 @@
 // The chickens follow the round, flat style of the Exploding Chickens logo:
 // an egg-shaped body, a three-bump comb, a wedge beak and a dot eye, with no outlines.
 
-import type { Color } from "../game/types";
+import type { Feather } from "../game/types";
 
-export const PAINT: Record<Color, { body: string; shade: string; frame: string; name: string }> = {
+export const PAINT: Record<Feather, { body: string; shade: string; frame: string; name: string }> = {
   red: { body: "#f58a70", shade: "#d9614a", frame: "#d4543d", name: "red" },
   gold: { body: "#f8d568", shade: "#dfae36", frame: "#e2a92a", name: "gold" },
   teal: { body: "#63d0bb", shade: "#37a892", frame: "#2f9c87", name: "teal" },
   blue: { body: "#7fb4f5", shade: "#4f8bd9", frame: "#437fd2", name: "blue" },
   plum: { body: "#c19cee", shade: "#966dcd", frame: "#8a5fc4", name: "plum" },
+  // The white chicken, which any hatch will take. There is no white hatch, so no frame is ever drawn in it.
+  any: { body: "#fff6e3", shade: "#d9c7a0", frame: "#d9c7a0", name: "white" },
 };
 
 const BARN = "#b5392c";
@@ -20,8 +22,11 @@ const INK = "#2b1a12";
  * Each colour also has its own mark, worn as the chicken's wing and stamped on the hatch,
  * so the pairs can be told apart without relying on colour.
  */
-export function Mark({ color, cx, cy, r, fill }: { color: Color; cx: number; cy: number; r: number; fill: string }) {
+export function Mark({ color, cx, cy, r, fill }: { color: Feather; cx: number; cy: number; r: number; fill: string }) {
   switch (color) {
+    case "any":
+      // A ring: room for any of the marks.
+      return <circle cx={cx} cy={cy} r={r * 0.85} fill="none" stroke={fill} strokeWidth={r * 0.5} />;
     case "red":
       return <circle cx={cx} cy={cy} r={r} fill={fill} />;
     case "gold":
@@ -35,7 +40,7 @@ export function Mark({ color, cx, cy, r, fill }: { color: Color; cx: number; cy:
   }
 }
 
-export function ChickenArt({ color, className }: { color: Color; className?: string }) {
+export function ChickenArt({ color, className }: { color: Feather; className?: string }) {
   const p = PAINT[color];
   return (
     <svg className={className} viewBox="0 0 120 120" aria-hidden="true">
@@ -94,6 +99,37 @@ export function KeyArt() {
         <path d="M46 50 h40 M70 50 v14 M84 50 v12" stroke="#f0c24f" strokeWidth="10" strokeLinecap="round" fill="none" />
         <path d="M18 43 a14 14 0 0 1 18 -8" stroke="#fff6e3" strokeWidth="4" strokeLinecap="round" fill="none" />
       </g>
+    </svg>
+  );
+}
+
+/** Two links of chain: this hatch slides with another. */
+export function ChainArt() {
+  return (
+    <svg className="hold-art" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="2.5" y="8" width="11" height="8" rx="4" fill="none" stroke="#fff6e3" strokeWidth="2.6" />
+      <rect x="10.5" y="8" width="11" height="8" rx="4" fill="none" stroke="#f0c24f" strokeWidth="2.6" />
+    </svg>
+  );
+}
+
+/** A cracked board: it will hold for one crossing. */
+export function CrackArt() {
+  return (
+    <svg className="crack-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="7" y="7" width="86" height="86" rx="12" fill="#b98a5e" />
+      <path d="M7 36 h86 M7 66 h86" stroke="#8a5f3c" strokeWidth="3" />
+      <path d="M22 8 l10 20 l-9 14 l15 16 l-6 16 l12 18 M78 92 l-8 -16 l9 -12 l-13 -15 l5 -13 l-9 -14" fill="none" stroke="#3a2014" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Where a cracked board used to be. */
+export function HoleArt() {
+  return (
+    <svg className="hole-art" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M10 14 l14 -6 l12 5 l16 -6 l14 6 l14 -4 l10 9 l-3 16 l5 14 l-6 14 l5 16 l-9 12 l-16 -3 l-14 6 l-14 -5 l-16 4 l-10 -10 l4 -16 l-6 -14 l5 -16 z" fill="#1d100a" />
+      <path d="M22 24 l12 -4 l12 4 l14 -5 l14 6 l8 -2 l-2 12 l4 12 l-5 12 l3 12 l-8 6 l-12 -3 l-12 5 l-12 -4 l-12 3 l-5 -8 l3 -12 l-5 -12 z" fill="#0f0704" />
     </svg>
   );
 }

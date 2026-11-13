@@ -25,13 +25,26 @@ describe("daily coop", () => {
     if (DAILY_POOL.length > 1) expect(tomorrow.chickens).not.toEqual(morning.chickens);
   });
 
-  it("walks through the whole pool before repeating", () => {
-    const boards = new Set<string>();
-    for (let i = 0; i < DAILY_POOL.length; i++) {
-      const l = dailyLevel(new Date(2026, 0, 1 + i, 12));
-      boards.add(JSON.stringify([l.chickens, l.hatches, l.bales]));
+  it("gets harder through the week, from Monday to Sunday", () => {
+    // 2 November 2026 is a Monday. Check a run of weeks: within each, par never falls.
+    expect(new Date(2026, 10, 2, 12).getDay()).toBe(1);
+    for (let week = 0; week < 20; week++) {
+      const pars = Array.from({ length: 7 }, (_, d) => dailyLevel(new Date(2026, 10, 2 + week * 7 + d, 12)).par);
+      expect([...pars].sort((a, b) => a - b)).toEqual(pars);
     }
-    expect(boards.size).toBe(DAILY_POOL.length);
+    const monday = dailyLevel(new Date(2026, 10, 2, 12)).par;
+    const sunday = dailyLevel(new Date(2026, 10, 8, 12)).par;
+    expect(sunday).toBeGreaterThan(monday);
+  });
+
+  it("does not repeat a weekday's board until that weekday has used all of its own", () => {
+    const perDay = Math.floor(DAILY_POOL.length / 7);
+    const mondays = new Set<string>();
+    for (let week = 0; week < perDay; week++) {
+      const l = dailyLevel(new Date(2026, 10, 2 + week * 7, 12));
+      mondays.add(JSON.stringify([l.chickens, l.hatches, l.bales]));
+    }
+    expect(mondays.size).toBe(perDay);
   });
 
   it("counts a streak back from today, or from yesterday if today is still to play", () => {
