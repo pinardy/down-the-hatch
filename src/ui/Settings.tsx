@@ -48,20 +48,31 @@ export function SettingsSheet({ settings, tally, onSettings, onClose }: { settin
               <small>Clucks, thunks and a fanfare.</small>
             </span>
           </label>
+          {settings.sound && (
+            <label className="toggle toggle--slider" htmlFor="volume">
+              <span>
+                Effects volume
+                <small>{settings.volume === 0 ? "Silent" : `${settings.volume}%`}</small>
+              </span>
+              <input id="volume" type="range" min={0} max={100} step={5} value={settings.volume} onChange={(e) => onSettings({ ...settings, volume: Number(e.target.value) })} />
+            </label>
+          )}
           <label className="toggle">
             <input type="checkbox" checked={settings.music} onChange={(e) => onSettings({ ...settings, music: e.target.checked })} />
             <span>
               Music
-              <small>A gentle tune, made up afresh each time it starts.</small>
+              <small>Gentle tunes that change with where you are, made up afresh as they go.</small>
             </span>
           </label>
-          <label className="toggle toggle--slider" htmlFor="volume">
-            <span>
-              Volume
-              <small>{settings.volume === 0 ? "Silent" : `${settings.volume}%`}, for music and effects together.</small>
-            </span>
-            <input id="volume" type="range" min={0} max={100} step={5} value={settings.volume} onChange={(e) => onSettings({ ...settings, volume: Number(e.target.value) })} />
-          </label>
+          {settings.music && (
+            <label className="toggle toggle--slider" htmlFor="music-volume">
+              <span>
+                Music volume
+                <small>{settings.musicVolume === 0 ? "Silent" : `${settings.musicVolume}%`}</small>
+              </span>
+              <input id="music-volume" type="range" min={0} max={100} step={5} value={settings.musicVolume} onChange={(e) => onSettings({ ...settings, musicVolume: Number(e.target.value) })} />
+            </label>
+          )}
           <label className="toggle">
             <input type="checkbox" checked={settings.clock} onChange={(e) => onSettings({ ...settings, clock: e.target.checked })} />
             <span>

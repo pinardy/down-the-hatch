@@ -24,8 +24,10 @@ export interface Settings {
   vibrate: boolean;
   /** The background tune. */
   music: boolean;
-  /** Loudness of everything, 0 to 100. */
+  /** Loudness of the sound effects, 0 to 100. */
   volume: number;
+  /** Loudness of the music, 0 to 100. */
+  musicVolume: number;
 }
 
 /** What is remembered about a level once it has been cleared. */
@@ -78,9 +80,12 @@ const isId = (v: string) => /^[a-z0-9-]{1,60}$/.test(v);
 
 export function loadSettings(): Settings {
   const saved = read(SETTINGS_KEY);
-  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", hard: false, contrast: false, calm: false, vibrate: true, music: true, volume: 70, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
+  const s: Settings = { sound: true, clock: false, theme: "system", bigText: false, board: "barn", hat: "none", hard: false, contrast: false, calm: false, vibrate: true, music: true, volume: 70, musicVolume: 70, ...(isObject(saved) ? (saved as Partial<Settings>) : {}) };
   if (s.theme !== "light" && s.theme !== "dark") s.theme = "system";
-  if (typeof s.volume !== "number" || !(s.volume >= 0 && s.volume <= 100)) s.volume = 70;
+  const level = (v: unknown) => typeof v === "number" && v >= 0 && v <= 100;
+  if (!level(s.volume)) s.volume = 70;
+  // Before music had a volume of its own, one slider set both: start the music where that was.
+  if (!isObject(saved) || !level(saved.musicVolume)) s.musicVolume = s.volume;
   return s;
 }
 export const saveSettings = (s: Settings) => write(SETTINGS_KEY, s);

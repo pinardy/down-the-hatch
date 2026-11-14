@@ -4,7 +4,8 @@ import { eggsFor } from "./game/engine";
 import { CHAPTERS, LEVELS } from "./game/levels";
 import { decodeLevel, encodeLevel, findCode } from "./game/share";
 import type { SharedLevel } from "./game/share";
-import { setMusicEnabled, setSoundEnabled, setVibrationEnabled, setVolume, unlockAudio } from "./sfx";
+import { moodFor } from "./music";
+import { setEffectsVolume, setMusicEnabled, setMusicMood, setMusicVolume, setSoundEnabled, setVibrationEnabled, unlockAudio } from "./sfx";
 import { ENDLESS, nextCoop, prepareCoop } from "./ui/endless";
 import type { EndlessLevel } from "./ui/endless";
 import { Stats } from "./ui/Stats";
@@ -111,7 +112,18 @@ export default function App() {
   useEffect(() => setSoundEnabled(settings.sound), [settings.sound]);
   useEffect(() => setVibrationEnabled(settings.vibrate), [settings.vibrate]);
   useEffect(() => setMusicEnabled(settings.music), [settings.music]);
-  useEffect(() => setVolume(settings.volume / 100), [settings.volume]);
+  useEffect(() => setEffectsVolume(settings.volume / 100), [settings.volume]);
+  useEffect(() => setMusicVolume(settings.musicVolume / 100), [settings.musicVolume]);
+  // The music follows where the player is. The main screen, stats and the editor keep whatever
+  // was playing, so popping back to the list between levels doesn't keep changing the tune.
+  useEffect(() => {
+    if (screen.kind === "level") {
+      const chapter = CHAPTERS.findIndex((c) => c.levels.some((l) => l.index === screen.index));
+      if (chapter >= 0) setMusicMood(moodFor({ kind: "level", difficulty: CHAPTERS[chapter].difficulty, chapter }));
+    } else if (screen.kind === "daily") setMusicMood(moodFor({ kind: "daily" }));
+    else if (screen.kind === "endless") setMusicMood(moodFor({ kind: "endless", level: screen.level }));
+    else if (screen.kind === "shared") setMusicMood(moodFor({ kind: "coop" }));
+  }, [screen]);
   // Browsers only allow sound after a tap: the first one anywhere starts it (and the music).
   useEffect(() => {
     const first = () => unlockAudio();

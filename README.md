@@ -55,7 +55,7 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 - 🧭 **Four tabs:** Levels, Daily, Endless and You, along the bottom of the main screen.
 - ♾️ **Endless coop:** fresh puzzles grown on your phone on the spot, Easy, Medium or Hard, as many as you like. Each is checked so it can be cleared, preferring ones that can go wrong, and can be shared as a link. Leave one part-way and resume it later.
 - 💡 **First meetings:** the first time a piece turns up (in the daily, say, before its chapter), a line under the board says what it does.
-- 🎵 **Music:** a gentle background tune, made up afresh each time, with a volume control for music and effects.
+- 🎵 **Music:** gentle tunes that change with where you are (the daily coop, the hard chapters and so on) and are made up afresh as they go, with separate volumes for music and sound effects.
 - ⭐ **Stars:** clear a level without a hint and its tile gets a star.
 - 🎬 **Best solution:** finish over par and watch the fewest-moves solution play out.
 - ⏱️ **Race the clock:** an optional countdown; beat it for a clock badge on the level.
@@ -77,6 +77,7 @@ npm run build    # bundle to dist/
 ```
 
 - ⚙️ The game engine lives in `src/game/`: plain TypeScript, with a solver for par and hints.
-- 🎨 The React UI lives in `src/ui/`.
+- 🎨 The React UI lives in `src/ui/` (the play screen's parts in `src/ui/play/`), and the styles in `src/styles/`, one file per area.
+- 🎵 Sound is synthesised: `src/music.ts` works out what the music plays, `src/sfx.ts` makes the sound.
 - 🧱 See [docs/levels.md](docs/levels.md) to add or generate levels.
 - 🚀 Pushes to `main` are tested, built and deployed to GitHub Pages by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
