@@ -67,3 +67,20 @@ describe("endless clears in backup codes", () => {
     expect(mergeEndless({ easy: 3, medium: 1, hard: 0 }, { easy: 1, medium: 4, hard: 2 })).toEqual({ easy: 3, medium: 4, hard: 2 });
   });
 });
+
+describe("settings", () => {
+  const withSaved = async (saved: unknown) => {
+    const store = new Map<string, string>(saved === undefined ? [] : [["down-the-hatch:settings:v1", JSON.stringify(saved)]]);
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) };
+    const { loadSettings } = await import("./storage");
+    const s = loadSettings();
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+    return s;
+  };
+  it("start the music volume where the single old slider was", async () => {
+    expect((await withSaved({ volume: 35 })).musicVolume).toBe(35);
+    expect((await withSaved({ volume: 35, musicVolume: 80 })).musicVolume).toBe(80);
+    expect((await withSaved(undefined)).musicVolume).toBe(70);
+    expect((await withSaved({ volume: 900, musicVolume: -3 })).musicVolume).toBe(70);
+  });
+});

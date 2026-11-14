@@ -1,26 +1,39 @@
-// Tiny synthesized sound effects and a little background tune, generated with the Web Audio API
-// so there is nothing to download. Everything goes through one master volume.
+// Tiny synthesized sound effects and background music, generated with the Web Audio API so
+// there is nothing to download. Effects and music each have a volume of their own. What the
+// music plays is worked out in music.ts; this file makes the sound.
+
+import { compose, EIGHTHS, hz, MOODS } from "./music";
+import type { Mood, MoodName } from "./music";
 
 let ctx: AudioContext | null = null;
 let enabled = true;
-let master: GainNode | null = null;
-let volume = 0.7;
 
-/** Where every sound goes: the master volume, made on first use. */
-function out(): AudioNode {
-  if (!master) {
-    master = ctx!.createGain();
-    master.gain.value = volume;
-    master.connect(ctx!.destination);
-  }
-  return master;
+/** A volume control that sounds are routed through: made on first use, once there is a context. */
+function bus(initial: number) {
+  let node: GainNode | null = null;
+  let level = initial;
+  return {
+    out(): AudioNode {
+      if (!node) {
+        node = ctx!.createGain();
+        node.gain.value = level;
+        node.connect(ctx!.destination);
+      }
+      return node;
+    },
+    set(v: number) {
+      level = Math.max(0, Math.min(1, v));
+      if (ctx && node) node.gain.setTargetAtTime(level, ctx.currentTime, 0.05);
+    },
+  };
 }
+const effects = bus(0.7);
+const music = bus(0.7);
 
-/** Overall loudness, from 0 to 1, for effects and music alike. */
-export function setVolume(v: number) {
-  volume = Math.max(0, Math.min(1, v));
-  if (ctx && master) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.05);
-}
+/** How loud the sound effects are, from 0 to 1. */
+export const setEffectsVolume = (v: number) => effects.set(v);
+/** How loud the music is, from 0 to 1. */
+export const setMusicVolume = (v: number) => music.set(v);
 
 export function setSoundEnabled(on: boolean) {
   enabled = on;
@@ -50,49 +63,24 @@ function tone(wave: OscillatorType, from: number, to: number, dur: number, gain:
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  osc.connect(g).connect(out());
+  osc.connect(g).connect(effects.out());
   osc.start(t0);
   osc.stop(t0 + dur + 0.03);
 }
 
 // ── Music ──
-// A gentle loop in C major: a bass on the first and third beats, and a plucked tune over the
-// chords C, Am, F, G, one bar each. The tune is two four-bar phrases, made up afresh from a
-// pentatonic scale each time the music starts, so it doesn't wear thin.
-
-const BPM = 96;
-const EIGHTH = 60 / BPM / 2;
-/** Chord roots (MIDI) and their tones, one per bar. */
-const BARS = [
-  { root: 48, tones: [60, 64, 67] }, // C
-  { root: 45, tones: [57, 60, 64] }, // Am
-  { root: 41, tones: [53, 57, 60] }, // F
-  { root: 43, tones: [55, 59, 62] }, // G
-];
-const SCALE = [72, 74, 76, 79, 81, 84]; // C D E G A C, an octave up
-const hz = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
+// A bass on a few beats of the bar and a plucked tune over four chords, in the mood of wherever
+// the player is (see music.ts). The tune is made up afresh each time it starts, and again each
+// time it comes round, so a long sitting doesn't hear the same sixteen bars over and over.
 
 let musicOn = false;
+let moodName: MoodName = "morning";
+let mood: Mood = MOODS[moodName];
 let timer: number | null = null;
 let musicGain: GainNode | null = null;
 let nextTime = 0;
 let stepAt = 0;
 let tune: (number | null)[] = [];
-
-/** Two four-bar phrases of eighth notes: chord tones on strong beats, scale steps between, some rests. */
-function compose(): (number | null)[] {
-  const phrase = () =>
-    BARS.flatMap((bar) =>
-      Array.from({ length: 8 }, (_, i) => {
-        if (Math.random() < (i % 2 ? 0.55 : 0.25)) return null;
-        if (i % 4 === 0) return bar.tones[Math.floor(Math.random() * 3)] + 12;
-        return SCALE[Math.floor(Math.random() * SCALE.length)];
-      }),
-    );
-  const a = phrase();
-  const b = phrase();
-  return [...a, ...b, ...a, ...b.slice(0, 24), ...a.slice(24)];
-}
 
 function pluck(midi: number, at: number, dur: number, wave: OscillatorType, gain: number) {
   const osc = ctx!.createOscillator();
@@ -110,13 +98,18 @@ function pluck(midi: number, at: number, dur: number, wave: OscillatorType, gain
 /** Line up the notes due in the next moment. Runs every 25 ms while the music plays. */
 function schedule() {
   if (!ctx || !musicGain) return;
+  const eighth = 60 / mood.bpm / 2;
   while (nextTime < ctx.currentTime + 0.15) {
-    const step = stepAt % tune.length;
-    const bar = BARS[Math.floor(step / 8) % BARS.length];
-    if (step % 4 === 0) pluck(bar.root, nextTime, EIGHTH * 3.5, "triangle", 0.16);
-    const note = tune[step];
-    if (note !== null) pluck(note, nextTime, EIGHTH * 1.6, "sine", 0.09);
-    nextTime += EIGHTH;
+    if (stepAt === tune.length) {
+      // Round again, with a new tune.
+      tune = compose(mood);
+      stepAt = 0;
+    }
+    const bar = mood.bars[Math.floor(stepAt / EIGHTHS) % mood.bars.length];
+    if (mood.bass.includes(stepAt % EIGHTHS)) pluck(bar.root, nextTime, eighth * 3.5, mood.voice.bass, 0.16);
+    const note = tune[stepAt];
+    if (note !== null) pluck(note, nextTime, eighth * 1.6, mood.voice.tune, 0.09);
+    nextTime += eighth;
     stepAt++;
   }
 }
@@ -126,8 +119,9 @@ function startMusic() {
   musicGain = ctx.createGain();
   musicGain.gain.setValueAtTime(0.0001, ctx.currentTime);
   musicGain.gain.exponentialRampToValueAtTime(0.55, ctx.currentTime + 1.5);
-  musicGain.connect(out());
-  tune = compose();
+  musicGain.connect(music.out());
+  mood = MOODS[moodName];
+  tune = compose(mood);
   nextTime = ctx.currentTime + 0.1;
   stepAt = 0;
   timer = window.setInterval(schedule, 25);
@@ -149,6 +143,15 @@ export function setMusicEnabled(on: boolean) {
   musicOn = on;
   if (on) startMusic();
   else stopMusic();
+}
+
+/** Change what the music plays. The old tune fades out as the new one fades in. */
+export function setMusicMood(name: MoodName) {
+  if (name === moodName) return;
+  moodName = name;
+  if (timer === null) return; // not playing: it will start in the new mood
+  stopMusic();
+  startMusic();
 }
 
 // No music while the game is out of sight.

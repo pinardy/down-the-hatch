@@ -1,0 +1,143 @@
+/* The stats and achievements page. */
+
+/* ── Stats ── */
+
+.stats-page {
+  overflow-y: auto;
+  padding: 1rem 1.1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+.stats-page__top {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+.stats-page__top h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--title);
+}
+.stats-page h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.stats-page__count {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-soft);
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+.stats-tile {
+  padding: 0.6rem 0.5rem;
+  border-radius: 0.9rem;
+  background: var(--tile);
+  text-align: center;
+}
+.stats-tile dd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.stats-tile dt {
+  font-size: 0.78rem;
+  color: var(--text-soft);
+  line-height: 1.2;
+}
+.stats-tile .egg {
+  width: 0.9rem;
+  height: 1.1rem;
+}
+.stats-chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.stats-chapters li {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.85rem;
+}
+.stats-chapters__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stats-chapters__bar,
+.goal__bar {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.stats-chapters__bar span,
+.goal__bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--straw-deep);
+}
+.stats-chapters__eggs {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-soft);
+}
+.goals {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+.goal {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.9rem;
+  background: var(--tile);
+}
+.goal__mark {
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.goal--done .goal__mark {
+  background: var(--straw);
+  box-shadow: none;
+}
+.goal__text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.goal__name {
+  font-weight: 600;
+}
+.goal__about {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+.goal__bar {
+  margin-top: 0.25rem;
+}

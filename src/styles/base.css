@@ -1,0 +1,203 @@
+/* Down the Hatch. Palette and type follow the Exploding Chickens art: coop browns,
+   straw gold, cream, barn red, and Fredoka throughout. */
+
+:root {
+  /* Daylight: straw yard. */
+  --bg: #f3deaa;
+  --bg-glow: #fbf0cf;
+  --panel: #e8cd92;
+  --tile: #e8cd92;
+  --text: #2b1a12;
+  --text-soft: #6b4f3c;
+  --title: #5a3421;
+  --title-shadow: rgba(90, 52, 33, 0.18);
+  --line: rgba(43, 26, 18, 0.2);
+  --focus: #5a3421;
+  --warn: #9c2c20;
+  /* The same in either light. */
+  --straw: #f0c24f;
+  --straw-deep: #c99a2a;
+  --cream: #fff6e3;
+  --cream-deep: #e2cfa8;
+  --ink: #2b1a12;
+  --barn: #b5392c;
+  --fence: #3a2014;
+  --floor: #8b5a3a;
+  --floor-alt: #815234;
+  --font: "Fredoka", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Lamplight: inside the coop. */
+    --bg: #2f1910;
+    --bg-glow: #5a3421;
+    --panel: #4a2a1b;
+    --tile: #63392a;
+    --text: #fff6e3;
+    --text-soft: #dcc3a0;
+    --title: #f0c24f;
+    --title-shadow: rgba(0, 0, 0, 0.35);
+    --line: rgba(255, 246, 227, 0.18);
+    --focus: #f0c24f;
+    --warn: #ffb3a3;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #2f1910;
+  --bg-glow: #5a3421;
+  --panel: #4a2a1b;
+  --tile: #63392a;
+  --text: #fff6e3;
+  --text-soft: #dcc3a0;
+  --title: #f0c24f;
+  --title-shadow: rgba(0, 0, 0, 0.35);
+  --line: rgba(255, 246, 227, 0.18);
+  --focus: #f0c24f;
+  --warn: #ffb3a3;
+  color-scheme: dark;
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+/* "Larger text": every size here is in rem, so this scales the lot. The board sizes itself to the room it has. */
+html.big-text {
+  font-size: 118%;
+}
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg);
+  background-image: radial-gradient(circle at 50% 22%, var(--bg-glow) 0%, var(--bg) 72%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+h1,
+h2,
+p,
+ol,
+dl,
+dd {
+  margin: 0;
+}
+ol {
+  padding: 0;
+  list-style: none;
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* ── Buttons: chunky pills with a hard shadow, as in the reference art ── */
+
+.btn {
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--cream);
+  border: 0;
+  border-radius: 999px;
+  padding: 0.62em 1.15em;
+  box-shadow: 0 4px 0 var(--cream-deep);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 80ms, box-shadow 80ms;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--cream-deep);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn--straw {
+  background: var(--straw);
+  box-shadow: 0 4px 0 var(--straw-deep);
+}
+.btn--straw:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--straw-deep);
+}
+.btn--big {
+  font-size: 1.2rem;
+  padding: 0.7em 1.6em;
+}
+.btn--quiet {
+  background: transparent;
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.btn--quiet:active:not(:disabled) {
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.btn--warn {
+  color: var(--cream);
+  background: var(--barn);
+  box-shadow: 0 4px 0 #7e2219;
+}
+.btn--warn:active:not(:disabled) {
+  box-shadow: 0 1px 0 #7e2219;
+}
+
+.screen {
+  height: 100%;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+/* ── Icons ── */
+
+.gear-art {
+  width: 1.2em;
+  height: 1.2em;
+  display: block;
+  margin: auto;
+}
+.clock-badge,
+.day-art {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  color: var(--ink);
+}
+.reward__cost .solo,
+.reward__cost .day-art {
+  width: 0.85rem;
+  height: 0.85rem;
+  color: var(--text-soft);
+}
+
+/* Read by screen readers, not shown. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

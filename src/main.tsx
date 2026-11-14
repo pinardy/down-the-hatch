@@ -1,7 +1,17 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import "./styles.css";
+// The stylesheet, by area. Order matters: later files win ties, and modes.css (landscape,
+// reduced motion, high contrast) overrides the rest, so it comes last.
+import "./styles/base.css";
+import "./styles/home.css";
+import "./styles/play.css";
+import "./styles/board.css";
+import "./styles/sheets.css";
+import "./styles/settings.css";
+import "./styles/editor.css";
+import "./styles/stats.css";
+import "./styles/modes.css";
 import { watchForUpdates } from "./update";
 
 createRoot(document.getElementById("root")!).render(

@@ -1,0 +1,562 @@
+/* The board and everything on it: floor, hatches, chickens, hints and the pieces drawn on the floor. */
+
+/* ── The board ── */
+
+.board {
+  padding: 10px;
+  border-radius: calc(var(--cell) * 0.3 + 10px);
+  background: var(--fence);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.3), inset 0 2px 0 rgba(255, 246, 227, 0.12);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.board__field {
+  position: relative;
+  border-radius: calc(var(--cell) * 0.3);
+  overflow: hidden;
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+.board__floor {
+  display: grid;
+  grid-auto-rows: var(--cell);
+}
+.tile {
+  background: var(--floor);
+  display: grid;
+  place-items: center;
+}
+.tile--alt {
+  background: var(--floor-alt);
+}
+.bale-art {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
+}
+.crack-art,
+.hole-art {
+  width: 100%;
+  height: 100%;
+}
+/* The board gives way as the hatch slides off it. */
+.hole-art {
+  animation: cave 260ms ease-out;
+}
+@keyframes cave {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+.hatch,
+.chicken,
+.key,
+.hint-dot,
+.hint-ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.hatch {
+  font: inherit;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  /* Only the squares a hatch really covers take the finger, not the empty corner of an L. */
+  pointer-events: none;
+  touch-action: none;
+  /* Settling onto a square: after a key press, an undo, or when the finger lifts. */
+  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  z-index: 1;
+}
+/* Under the finger the hatch tracks it directly; the sliver of easing only rounds off corners. */
+.hatch--held {
+  z-index: 2;
+  transition: transform 40ms linear;
+  will-change: transform;
+}
+/* Just after turning a corner the finger is some way off: ease over to it rather than dart. */
+.hatch--turning {
+  transition: transform 130ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.hatch:focus-visible {
+  outline: 3px solid var(--cream);
+  outline-offset: -2px;
+  border-radius: calc(var(--cell) * 0.3);
+}
+.hatch__body {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* One square of a hatch. Sides that touch another square of the same hatch are left open. */
+.piece {
+  --gap: 3px;
+  --rim: calc(var(--cell) * 0.13 + 3px);
+  --gt: var(--gap);
+  --gr: var(--gap);
+  --gb: var(--gap);
+  --gl: var(--gap);
+  --it: var(--rim);
+  --ir: var(--rim);
+  --ib: var(--rim);
+  --il: var(--rim);
+  --round: calc(var(--cell) * 0.28);
+  --round-pit: calc(var(--cell) * 0.17);
+  --ul: 1;
+  --ur: 1;
+  --dr: 1;
+  --dl: 1;
+  --lip-h: 3px;
+  --drop-h: 3px;
+  /* Shade under the top lip only, so joined squares show no seam. */
+  --pit-shade: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) calc(var(--cell) * 0.12));
+  position: absolute;
+  width: var(--cell);
+  height: var(--cell);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+}
+.hatch--held .piece {
+  cursor: grabbing;
+}
+.piece--up {
+  --gt: 0px;
+  --it: 0px;
+  --ul: 0;
+  --ur: 0;
+  --lip-h: 0px;
+  --pit-shade: none;
+}
+.piece--right {
+  --gr: 0px;
+  --ir: 0px;
+  --ur: 0;
+  --dr: 0;
+}
+.piece--down {
+  --gb: 0px;
+  --ib: 0px;
+  --dr: 0;
+  --dl: 0;
+  --drop-h: 0px;
+}
+.piece--left {
+  --gl: 0px;
+  --il: 0px;
+  --ul: 0;
+  --dl: 0;
+}
+.piece__frame,
+.piece__pit,
+.piece__nub {
+  position: absolute;
+}
+.piece__frame {
+  inset: var(--gt) var(--gr) var(--gb) var(--gl);
+  background: var(--frame);
+  border-radius: calc(var(--round) * var(--ul)) calc(var(--round) * var(--ur)) calc(var(--round) * var(--dr)) calc(var(--round) * var(--dl));
+  box-shadow: inset 0 var(--lip-h) 0 var(--lip), 0 var(--drop-h) 0 rgba(0, 0, 0, 0.32);
+  transition: background-color 200ms, filter 200ms;
+}
+.piece__pit {
+  inset: var(--it) var(--ir) var(--ib) var(--il);
+  background-color: #24140c;
+  background-image: var(--pit-shade);
+  border-radius: calc(var(--round-pit) * var(--ul)) calc(var(--round-pit) * var(--ur)) calc(var(--round-pit) * var(--dr)) calc(var(--round-pit) * var(--dl));
+  transition: background-color 200ms;
+}
+.piece__nub {
+  width: calc(var(--cell) * 0.13);
+  height: calc(var(--cell) * 0.13);
+  background: var(--frame);
+  transition: background-color 200ms, filter 200ms;
+}
+.piece__nub--ul {
+  left: 0;
+  top: 0;
+  border-bottom-right-radius: 45%;
+}
+.piece__nub--ur {
+  right: 0;
+  top: 0;
+  border-bottom-left-radius: 45%;
+}
+.piece__nub--dl {
+  left: 0;
+  bottom: 0;
+  border-top-right-radius: 45%;
+}
+.piece__nub--dr {
+  right: 0;
+  bottom: 0;
+  border-top-left-radius: 45%;
+}
+.hatch--held .piece__frame,
+.hatch--held .piece__nub {
+  filter: brightness(1.14);
+}
+
+.hatch__label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--cell) * 0.02);
+  pointer-events: none;
+  color: var(--cream);
+  font-weight: 700;
+  line-height: 1;
+}
+.hatch__count {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--cell) * 0.04);
+  font-size: calc(var(--cell) * 0.36);
+  animation: tick 220ms ease-out;
+}
+.hatch__mark {
+  width: calc(var(--cell) * 0.24);
+  height: calc(var(--cell) * 0.24);
+}
+/* What is holding a hatch still: a snowflake and a countdown, or a padlock. */
+.hatch__hold {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--cell) * 0.03);
+  font-size: calc(var(--cell) * 0.24);
+}
+.hold-art {
+  width: calc(var(--cell) * 0.24);
+  height: calc(var(--cell) * 0.24);
+}
+@keyframes tick {
+  0% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Frozen: the pit ices over and frost rims the frame, which keeps its colour: colour is what
+   says which chickens a hatch takes, so nothing that holds a hatch still may hide it. */
+.hatch__body--ice .piece__frame {
+  box-shadow: inset 0 var(--lip-h) 0 #fff, inset 0 0 0 calc(var(--cell) * 0.035) rgba(240, 250, 255, 0.85), 0 var(--drop-h) 0 rgba(0, 0, 0, 0.32);
+}
+.hatch__body--ice .piece__pit {
+  background-color: #4d84a6;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0 14%, transparent 14% 40%, rgba(255, 255, 255, 0.22) 40% 47%, transparent 47%);
+}
+.hatch__body--ice .hatch__label {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+.hatch__body--ice,
+.hatch__body--lock {
+  cursor: not-allowed;
+}
+.hatch__body--ice .piece,
+.hatch__body--lock .piece {
+  cursor: not-allowed;
+}
+/* Padlocked: bars across the pit. The frame keeps its colour. */
+.hatch__body--lock .piece__pit {
+  background-image: repeating-linear-gradient(90deg, transparent 0 calc(var(--cell) * 0.14), rgba(240, 194, 79, 0.55) calc(var(--cell) * 0.14) calc(var(--cell) * 0.2)), var(--pit-shade);
+}
+
+/* Railed hatches wear a pair of arrowheads on the frame, pointing the only way they slide. */
+.hatch__rail::before,
+.hatch__rail::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--cell) * 0.13);
+  height: calc(var(--cell) * 0.13);
+  background: var(--cream);
+}
+.hatch__rail--h::before,
+.hatch__rail--h::after {
+  top: 50%;
+  margin-top: calc(var(--cell) * -0.065);
+}
+.hatch__rail--h::before {
+  left: 3px;
+  clip-path: polygon(100% 0, 15% 50%, 100% 100%);
+}
+.hatch__rail--h::after {
+  right: 3px;
+  clip-path: polygon(0 0, 85% 50%, 0 100%);
+}
+.hatch__rail--v::before,
+.hatch__rail--v::after {
+  left: 50%;
+  margin-left: calc(var(--cell) * -0.065);
+}
+.hatch__rail--v::before {
+  top: 3px;
+  clip-path: polygon(0 100%, 50% 15%, 100% 100%);
+}
+.hatch__rail--v::after {
+  bottom: 3px;
+  clip-path: polygon(0 0, 50% 85%, 100% 0);
+}
+
+/* A full hatch: the lid slams, then the whole thing sinks away. */
+.hatch--shut {
+  pointer-events: none;
+  animation: sink 380ms ease-in forwards;
+}
+.hatch--shut .piece__pit {
+  background: var(--lip);
+}
+.hatch--shut .piece {
+  pointer-events: none;
+}
+.hatch--shut .hatch__count {
+  visibility: hidden;
+}
+@keyframes sink {
+  0% {
+    scale: 1;
+  }
+  30% {
+    scale: 1.08;
+  }
+  100% {
+    scale: 0.4;
+    opacity: 0;
+  }
+}
+
+.chicken {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 3;
+  transition: opacity 160ms; /* for dimming while a hatch is held */
+}
+.chicken::before {
+  content: "";
+  position: absolute;
+  left: 22%;
+  right: 22%;
+  bottom: 7%;
+  height: 12%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.28);
+}
+.chicken__art {
+  position: relative;
+  width: 88%;
+  height: 88%;
+  transform-origin: 50% 80%;
+}
+/* An egg cracks open: the chicken pops out. */
+.chicken--hatched .chicken__art {
+  animation: pop 320ms cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.5) rotate(-12deg);
+  }
+}
+.key {
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.key__art {
+  width: 70%;
+  height: 70%;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.35));
+}
+.chicken--drop::before {
+  display: none;
+}
+/* A startled hop, then down the hatch. */
+.chicken--drop .chicken__art {
+  animation: drop 460ms cubic-bezier(0.5, 0, 0.9, 0.6) forwards;
+}
+@keyframes drop {
+  0% {
+    transform: none;
+  }
+  28% {
+    transform: translateY(-22%) scale(1.12, 0.92) rotate(-8deg);
+  }
+  100% {
+    transform: translateY(18%) scale(0.12) rotate(190deg);
+    opacity: 0;
+  }
+}
+
+/* While a hatch is held: the chickens it can take stand up; the rest step back. */
+.chicken--dim {
+  opacity: 0.5;
+}
+.chicken--wanted .chicken__art {
+  animation: perk 520ms ease-in-out infinite alternate;
+}
+@keyframes perk {
+  to {
+    transform: translateY(-6%) scale(1.06);
+  }
+}
+
+/* A refused slide: the hatch leans the way it was pushed, and whatever stopped it shakes. */
+.hatch--bump-up .hatch__body {
+  animation: lean-up 260ms ease-out;
+}
+.hatch--bump-down .hatch__body {
+  animation: lean-down 260ms ease-out;
+}
+.hatch--bump-left .hatch__body {
+  animation: lean-left 260ms ease-out;
+}
+.hatch--bump-right .hatch__body {
+  animation: lean-right 260ms ease-out;
+}
+@keyframes lean-up {
+  40% {
+    transform: translateY(-7%);
+  }
+}
+@keyframes lean-down {
+  40% {
+    transform: translateY(7%);
+  }
+}
+@keyframes lean-left {
+  40% {
+    transform: translateX(-7%);
+  }
+}
+@keyframes lean-right {
+  40% {
+    transform: translateX(7%);
+  }
+}
+.hatch--wobble .hatch__label,
+.chicken--wobble .chicken__art,
+.tile--wobble > svg:last-child {
+  animation: shake 380ms ease-in-out;
+}
+@keyframes shake {
+  20% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(10deg);
+  }
+  70% {
+    transform: rotate(-6deg);
+  }
+}
+.hatch--wobble .hatch__label {
+  animation-name: shake-label;
+}
+@keyframes shake-label {
+  20% {
+    transform: translate(-50%, -50%) rotate(-12deg) scale(1.15);
+  }
+  45% {
+    transform: translate(-50%, -50%) rotate(10deg) scale(1.15);
+  }
+  70% {
+    transform: translate(-50%, -50%) rotate(-6deg);
+  }
+}
+
+/* Levels that introduce something: a hand makes the first move, over and over, until the player has a go. */
+.demo-hand {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  width: calc(var(--cell) * 0.75);
+  height: calc(var(--cell) * 0.75);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 300ms ease-in-out, opacity 250ms;
+}
+.demo-hand--on {
+  opacity: 1;
+}
+.hand-art {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.3));
+}
+
+.hint-ghost {
+  z-index: 4;
+  pointer-events: none;
+  background: rgba(240, 194, 79, 0.42);
+  box-shadow: inset 0 0 0 2px rgba(240, 194, 79, 0.9);
+  animation: beckon 900ms ease-in-out infinite alternate;
+}
+.hint-dot {
+  z-index: 4;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+}
+.hint-dot::after {
+  content: "";
+  width: calc(var(--cell) * 0.2);
+  height: calc(var(--cell) * 0.2);
+  border-radius: 50%;
+  background: var(--straw);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+/* The hinted hatch walking its way, square by square. */
+.hint-runner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 4;
+  pointer-events: none;
+  transition: transform 220ms cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+.hint-runner__cell {
+  left: 0;
+  top: 0;
+  border-radius: calc(var(--cell) * 0.22);
+  box-shadow: inset 0 0 0 3px var(--cream), 0 0 0 2px rgba(43, 26, 18, 0.5);
+  background: rgba(255, 246, 227, 0.18);
+}
+.hatch--hinted .piece__frame,
+.hatch--hinted .piece__nub {
+  filter: brightness(1.2);
+}
+@keyframes beckon {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── Paint, plates, gates and one-way squares, drawn on the floor ── */
+
+.floor-art {
+  width: 100%;
+  height: 100%;
+}
+.gate-art__bars {
+  transition: transform 220ms cubic-bezier(0.3, 1.2, 0.5, 1), opacity 220ms;
+  transform-origin: 50% 0;
+}
+/* Open: the bars swing up out of the way. */
+.gate-art--open .gate-art__bars {
+  transform: scaleY(0.12);
+  opacity: 0.55;
+}

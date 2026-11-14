@@ -1,0 +1,149 @@
+/* Ways the whole game changes: a phone on its side, reduced motion, high contrast. Imported
+   last, so that these rules win ties with the ones they adjust. */
+
+/* ── Phones on their side: the board on the left, everything else beside it ── */
+
+@media (orientation: landscape) and (max-height: 560px) {
+  .screen.play {
+    max-width: 62rem;
+  }
+  .play {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem);
+    grid-template-rows: auto 1fr auto;
+    grid-template-areas: "stage top" "stage note" "stage bar";
+    gap: 0.5rem 1rem;
+    padding: 0.5rem calc(0.9rem + env(safe-area-inset-right, 0px)) 0.5rem calc(0.9rem + env(safe-area-inset-left, 0px));
+  }
+  .play__top {
+    grid-area: top;
+  }
+  .play__stage {
+    grid-area: stage;
+  }
+  .play__note {
+    grid-area: note;
+    font-size: 0.9rem;
+  }
+  .play__bar {
+    grid-area: bar;
+    grid-template-columns: 1fr 1fr;
+  }
+  .play__bar .btn:last-child {
+    grid-column: 1 / -1;
+  }
+  .play__title {
+    font-size: 1.2rem;
+  }
+  .play__number {
+    font-size: 0.78rem;
+  }
+  .sheet {
+    padding: 0.6rem;
+  }
+  .sheet__card {
+    max-height: calc(100dvh - 1.2rem);
+    overflow-y: auto;
+  }
+  .sheet__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .title-art__chicken,
+  .hatch__count,
+  .sheet,
+  .sheet__card,
+  .hint-ghost,
+  .sheet__egg--earned,
+  .chicken--wanted .chicken__art,
+  .hatch__body,
+  .hatch__label,
+  .chicken--wobble .chicken__art,
+  .tile--wobble > svg:last-child {
+    animation: none;
+  }
+  .burst,
+  .demo-hand {
+    display: none;
+  }
+  .hint-runner {
+    transition: none;
+  }
+  .hatch,
+  .hatch--held,
+  .hatch--turning {
+    transition: none;
+  }
+  .chicken--drop .chicken__art,
+  .hatch--shut {
+    animation-duration: 160ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .growing__egg {
+    animation: none;
+  }
+}
+
+/* ── Reduce motion (the setting): the same as the device asking for it ── */
+
+html.calm .title-art__chicken,
+html.calm .hatch__count,
+html.calm .sheet,
+html.calm .sheet__card,
+html.calm .hint-ghost,
+html.calm .sheet__egg--earned,
+html.calm .sheet__milestone,
+html.calm .chicken--wanted .chicken__art,
+html.calm .hatch__body,
+html.calm .hatch__label,
+html.calm .chicken--wobble .chicken__art,
+html.calm .tile--wobble > svg,
+html.calm .growing__egg {
+  animation: none;
+}
+html.calm .burst,
+html.calm .demo-hand {
+  display: none;
+}
+html.calm .hint-runner,
+html.calm .hatch,
+html.calm .hatch--held,
+html.calm .hatch--turning,
+html.calm .gate-art__bars {
+  transition: none;
+}
+html.calm .chicken--drop .chicken__art,
+html.calm .hatch--shut {
+  animation-duration: 160ms;
+}
+
+/* ── High contrast: bolder outlines on everything that matters, darker soft text ── */
+
+html.contrast {
+  --text-soft: var(--text);
+  --line: rgba(43, 26, 18, 0.55);
+}
+/* One outline round the whole hatch, not each square, so joined squares show no seam. */
+html.contrast .hatch__body {
+  filter: drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000);
+}
+html.contrast .chicken__art,
+html.contrast .floor-art,
+html.contrast .key__art {
+  filter: drop-shadow(0 0 1px #000) drop-shadow(0 0 1px #000);
+}
+html.contrast .tile--alt {
+  background: color-mix(in srgb, var(--floor-alt) 80%, #000);
+}
+html.contrast .hatch__label {
+  text-shadow: 0 0 3px #000, 0 0 2px #000;
+}
+html.contrast .hatch__mark {
+  filter: drop-shadow(0 0 1px #000);
+}
