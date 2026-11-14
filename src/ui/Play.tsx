@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
-import { msUntilTomorrow, untilText } from "../game/daily";
-import { blockedBy, cellsOf, eggsFor, heldBy, isWon, startState, step, twoEggLimit } from "../game/engine";
-import type { Blocker } from "../game/engine";
-import { DIRS } from "../game/types";
-import type { Dir, GameState, Hatch, Level } from "../game/types";
+import { blockedBy, eggsFor, heldBy, isWon, startState, step, twoEggLimit } from "../game/engine";
+import type { Dir, GameState, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
-import type { BumpFx, DemoFx, DropFx, HintFx, ShutFx } from "./Board";
-import { ClockArt, EggArt, GearArt, HardArt, PAINT, SoloArt } from "./art";
+import type { BumpFx, DropFx, HintFx, ShutFx } from "./Board";
+import { EggArt, GearArt, HardArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
-import { Guide, specialPieces } from "./Guide";
-import { newlyUnlocked, rewardName } from "./rewards";
+import { Guide } from "./Guide";
+import { EndSheet } from "./play/EndSheet";
+import { allowance, dirIndex, DROP_MS, EGG_LAND_MS, HINT_SEARCH, peek, REPLAY_STEP_MS, REPLAY_TURN_MS, restore, REWIND_DEADLINE_MS, SHUT_MS, STUCK_NOTE, STUCK_SEARCH, THINK_AFTER_MS, whyBlocked } from "./play/model";
+import type { Phase } from "./play/model";
+import { useBoardSize } from "./play/useBoardSize";
+import { useDemo } from "./play/useDemo";
+import { useDrag } from "./play/useDrag";
+import { useNewPieces } from "./play/useNewPieces";
+import { newlyUnlocked } from "./rewards";
 import type { Reward, Tally } from "./rewards";
-import { loadInPlay, loadMet, saveInPlay, saveMet } from "./storage";
-import type { Cleared, InPlay, Settings } from "./storage";
+import { loadInPlay, saveInPlay } from "./storage";
+import type { Cleared, Settings } from "./storage";
 
 interface Props {
   level: Level;
@@ -55,114 +58,6 @@ interface Props {
   onWear: (r: Reward) => void;
 }
 
-/** `replay` is the best solution playing itself out; `shown` is the sheet that follows it. */
-type Phase = "playing" | "won" | "timeup" | "replay" | "shown";
-
-/**
- * An egg cracks open when a hatch slides up beside it. Returns `seen` itself if this hatch,
- * having just moved, is beside nothing new.
- */
-function peek(game: GameState, moved: Hatch, seen: ReadonlySet<number>): ReadonlySet<number> {
-  const squares = cellsOf(moved);
-  const fresh = game.chickens.filter((c) => c.hidden && !seen.has(c.id) && squares.some((s) => Math.abs(s.x - c.x) + Math.abs(s.y - c.y) === 1));
-  return fresh.length ? new Set([...seen, ...fresh.map((c) => c.id)]) : seen;
-}
-
-/**
- * The hatch under the finger. Its place in the rules is always a whole square, but it is drawn
- * `offset` squares further along its `track`, so it glides with the finger between squares.
- */
-interface Held {
-  id: number;
-  track: "x" | "y" | null;
-  offset: number;
-  /** When it last turned a corner (ms), so it can ease round instead of darting to the finger. */
-  turnedAt: number;
-}
-
-/** A hatch can change direction only when it is this close to sitting squarely on a square. */
-const TURN = 0.15;
-/** How far towards the next square the finger must be before the hatch counts as having moved there. */
-const COMMIT = 0.5;
-/** The same, when moving there drops chickens: they fall once the hatch is nearly under them. */
-const COMMIT_DROP = 0.85;
-
-/** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
-const HINT_SEARCH = 300_000;
-const STUCK_SEARCH = 250_000;
-/** Rewind settles for the latest position proved winnable once this long has passed (the worker keeps the board responsive meanwhile). */
-const REWIND_DEADLINE_MS = 4_000;
-/** A search shorter than this shows no "Thinking": the answer just appears. */
-const THINK_AFTER_MS = 180;
-const STUCK_NOTE = "There’s no way to clear the coop from here. Rewind goes back to the last position that could still be won.";
-
-/** The best solution, played back: the pause after each square, and the longer one before a different hatch moves. */
-const REPLAY_STEP_MS = 170;
-const REPLAY_TURN_MS = 430;
-
-const DROP_MS = 460;
-const SHUT_MS = 380;
-
-/** Seconds allowed when racing the clock: generous, and longer for longer puzzles. */
-const allowance = (level: Level) => 30 + level.par * 8;
-
-/** The gap between one egg landing on the win sheet and the next. */
-const EGG_LAND_MS = 260;
-
-const dirIndex = (d: Dir) => DIRS.indexOf(d);
-
-/** A board left part-way through, replayed through the rules. Null if there is none, or it no longer fits the level. */
-function restore(level: Level, saved: InPlay | null): { game: GameState; history: GameState[]; saved: InPlay } | null {
-  if (!saved || !saved.log.length) return null;
-  const states = [startState(level)];
-  for (const [id, d] of saved.log) {
-    const out = step(level, states[states.length - 1], id, DIRS[d]);
-    if (!out) return null;
-    states.push(out.state);
-  }
-  const game = states[states.length - 1];
-  if (isWon(game)) return null;
-  if (saved.marks.some((m, i) => m > saved.log.length || (i > 0 && m < saved.marks[i - 1]))) return null;
-  return { game, history: saved.marks.map((m) => states[m]), saved };
-}
-
-/** What to tell the player when a slide is refused, for the refusals that teach a rule. */
-function whyBlocked(level: Level, game: GameState, why: Blocker): string | null {
-  const hatch = (id: number) => game.hatches.find((t) => t.id === id);
-  switch (why.kind) {
-    case "chicken": {
-      const t = hatch(why.hatch);
-      const bird = game.chickens.find((c) => c.id === why.id);
-      if (!t || !bird) return null;
-      const mine = PAINT[t.color].name;
-      return `A ${mine} hatch only takes ${mine} chickens. That ${PAINT[bird.color].name} one is in the way.`;
-    }
-    case "full": {
-      const t = hatch(why.hatch);
-      return t ? `That hatch only has room for ${t.left} more. It can’t take them all at once.` : null;
-    }
-    case "ice": {
-      const t = hatch(why.hatch);
-      if (!t) return null;
-      const n = Math.max(0, (t.ice ?? 0) - (level.chickens.length - game.chickens.length));
-      return `Frozen until ${n} more ${n === 1 ? "chicken drops" : "chickens drop"}, anywhere on the board.`;
-    }
-    case "lock":
-      return "Padlocked until a hatch slides over the key.";
-    case "rail": {
-      const t = hatch(why.hatch);
-      return t ? `That hatch is on rails. It only slides ${t.axis === "h" ? "sideways" : "up and down"}.` : null;
-    }
-    case "hole":
-      return "That board has given way. Nothing can cross it now.";
-    case "arrow":
-      return `That square is one-way: a hatch can only slide onto it moving ${why.dir === "up" ? "up" : why.dir === "down" ? "down" : `to the ${why.dir}`}.`;
-    case "gate":
-      return "The gate is shut. It opens while a hatch stands on a pressure plate.";
-    default:
-      return null;
-  }
-}
 
 export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, nextLabel, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
   // Milestones as they stood when the level opened: winning changes the props that say them.
@@ -182,12 +77,6 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const fresh = useRef(false);
   const fxKey = useRef(0);
   const streak = useRef(0);
-  const [held, setHeld] = useState<Held | null>(null);
-  const heldRef = useRef<Held | null>(null);
-  const hold = useCallback((next: Held | null) => {
-    heldRef.current = next;
-    setHeld(next);
-  }, []);
   // Which eggs have shown their chicken. Kept through undo and restart: you can't unsee it.
   const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set(resumed?.saved.seen ?? []));
   const seenRef = useRef(seen);
@@ -197,26 +86,10 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const [bump, setBump] = useState<BumpFx | null>(null);
   /** The refusal already shown for this grab, so pushing on against it doesn't repeat it. */
   const bumped = useRef<string | null>(null);
-  // Pieces on this board the player hasn't met before: the first time, say what they do. A level
-  // with its own tip is already explaining its new piece, so it needs no more.
-  const [newPieces] = useState(() => {
-    const met = loadMet() ?? new Set<string>();
-    return level.tip ? [] : specialPieces(level).filter((p) => !met.has(p.key));
-  });
-  // Once seen, they're met. (Recorded here, not above: working out the state must change nothing.)
-  useEffect(() => {
-    const met = loadMet() ?? new Set<string>();
-    const pieces = specialPieces(level);
-    if (pieces.some((p) => !met.has(p.key))) saveMet(new Set([...met, ...pieces.map((p) => p.key)]));
-  }, [level]);
+  // Pieces on this board the player hasn't met before get a line saying what they do.
+  const firstMeeting = useNewPieces(level);
   const [notice, setNotice] = useState<{ text: string; warn: boolean } | null>(() =>
-    resumed
-      ? { text: "Picked up where you left off. Start over for a fresh go.", warn: false }
-      : newPieces.length === 1
-        ? { text: `New here, ${newPieces[0].name.toLowerCase()}: ${newPieces[0].what}`, warn: false }
-        : newPieces.length > 1
-          ? { text: `New here: ${newPieces.map((p) => p.name.toLowerCase()).join(", ").replace(/, ([^,]*)$/, " and $1")}. Tap ? to see what they do.`, warn: false }
-          : null,
+    resumed ? { text: "Picked up where you left off. Start over for a fresh go.", warn: false } : firstMeeting ? { text: firstMeeting, warn: false } : null,
   );
   /** The level can no longer be won from here: Hint gives way to Rewind. */
   const [stuck, setStuck] = useState(false);
@@ -282,22 +155,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [phase, save]);
 
-  // Fit the board to whatever room the screen leaves it.
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [cell, setCell] = useState(56);
-  useEffect(() => {
-    const el = stageRef.current;
-    if (!el) return;
-    const fit = () => {
-      const pad = 28; // the fence around the field
-      const size = Math.floor(Math.min((el.clientWidth - pad) / level.w, (el.clientHeight - pad) / level.h, 92));
-      setCell(Math.max(18, size));
-    };
-    fit();
-    const ro = new ResizeObserver(fit);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [level]);
+  const { stageRef, cell } = useBoardSize(level);
 
   const commit = useCallback((next: GameState) => {
     gameRef.current = next;
@@ -394,93 +252,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     [level],
   );
 
-  const grab = useCallback(
-    (hatchId: number) => {
-      unlockAudio();
-      fresh.current = true;
-      bumped.current = null;
-      hold({ id: hatchId, track: null, offset: 0, turnedAt: 0 });
-    },
-    [hold],
-  );
-
-  /**
-   * Follow the finger. `x` and `y` are where the finger wants the hatch's top-left corner, in
-   * squares. The hatch glides along one axis at a time, stops dead against anything in its
-   * way, and steps to the next square (dropping chickens, counting the move) as it crosses over.
-   */
-  const dragTo = useCallback(
-    (hatchId: number, x: number, y: number) => {
-      const was = heldRef.current?.id === hatchId ? heldRef.current : null;
-      let track = was?.track ?? null;
-      let offset = was?.offset ?? 0;
-      let dodged = false;
-      for (let guard = 0; guard < 32; guard++) {
-        const hatch = gameRef.current.hatches.find((t) => t.id === hatchId);
-        if (!hatch) return hold(null); // it filled up and shut mid-drag
-        const dx = x - hatch.x;
-        const dy = y - hatch.y;
-        if (!dodged) {
-          const want = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
-          if (track === null) track = want;
-          else if (track !== want && Math.abs(offset) < TURN) {
-            // Turn the corner, but only once the finger clearly means it.
-            const along = Math.abs(track === "x" ? dx : dy);
-            const across = Math.abs(want === "x" ? dx : dy);
-            if (across > along + 0.12) track = want;
-          }
-        }
-        const d = track === "x" ? dx : dy;
-        const dir: Dir = track === "x" ? (d > 0 ? "right" : "left") : d > 0 ? "down" : "up";
-        const ahead = step(level, gameRef.current, hatchId, dir);
-        if (!ahead) {
-          offset = 0;
-          // Blocked this way. If the finger is also pulling sideways, slide along the obstacle.
-          const sideways = track === "x" ? dy : dx;
-          if (!dodged && Math.abs(sideways) > 0.3) {
-            track = track === "x" ? "y" : "x";
-            dodged = true;
-            continue;
-          }
-          // Pushing on into it: say what's in the way.
-          if (Math.abs(d) > 0.3) refuse(hatchId, dir);
-          break;
-        }
-        if (Math.abs(d) >= (ahead.dropped.length ? COMMIT_DROP : COMMIT)) {
-          tryStep(hatchId, dir);
-          offset = d - Math.sign(d); // what is left over, measured from the new square
-          dodged = false;
-          continue;
-        }
-        offset = d;
-        break;
-      }
-      const turned = was !== null && was.track !== null && was.track !== track;
-      hold({ id: hatchId, track, offset, turnedAt: turned ? performance.now() : (was?.turnedAt ?? 0) });
-    },
-    [level, tryStep, hold, refuse],
-  );
-
-  /** The finger lifted: settle on the nearest square. */
-  const release = useCallback(
-    (hatchId: number) => {
-      const h = heldRef.current;
-      if (h?.id === hatchId && h.track && Math.abs(h.offset) >= COMMIT) {
-        tryStep(hatchId, h.track === "x" ? (h.offset > 0 ? "right" : "left") : h.offset > 0 ? "down" : "up");
-      }
-      hold(null);
-    },
-    [tryStep, hold],
-  );
-
-  const nudge = useCallback(
-    (hatchId: number, dir: Dir) => {
-      fresh.current = true;
-      bumped.current = null;
-      if (!tryStep(hatchId, dir)) refuse(hatchId, dir);
-    },
-    [tryStep, refuse],
-  );
+  const { held, heldAt, hold, grab, dragTo, release, nudge } = useDrag({ level, gameRef, tryStep, refuse, fresh, bumped });
 
   const undo = () => {
     const prev = history.current.pop();
@@ -613,34 +385,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     });
   };
 
-  // Levels that introduce something show a hand making the first move, until the player has
-  // cleared them once, and only while the player hasn't touched the board.
-  const [demo, setDemo] = useState<DemoFx | null>(null);
-  useEffect(() => {
-    if (!level.demo || best) return;
-    let live = true;
-    void solveInBackground(level, startState(level), 20_000).then((answer) => {
-      if (!live || answer.status !== "solved" || !answer.steps.length) return;
-      const first = answer.steps[0].hatch;
-      const hatch = level.hatches.find((t) => t.id === first)!;
-      const [cx, cy] = hatch.cells[0];
-      let x = hatch.x + cx;
-      let y = hatch.y + cy;
-      const path = [{ x, y }];
-      for (const st of answer.steps) {
-        if (st.hatch !== first) break;
-        x += st.dir === "left" ? -1 : st.dir === "right" ? 1 : 0;
-        y += st.dir === "up" ? -1 : st.dir === "down" ? 1 : 0;
-        path.push({ x, y });
-      }
-      setDemo({ path });
-    });
-    return () => {
-      live = false;
-    };
-    // `best` only matters as the level opens: clearing it mid-demo needn't restart anything.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [level]);
+  // Levels that introduce something show a hand making the first move, while the player hasn't touched the board.
+  const demo = useDemo(level, best);
 
   // A little after each move, check quietly whether the level can still be cleared.
   useEffect(() => {
@@ -673,12 +419,6 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     }
   }, [secondsLeft, settings.clock, phase]);
 
-  const heldAt = held && {
-    id: held.id,
-    dx: held.track === "x" ? held.offset : 0,
-    dy: held.track === "y" ? held.offset : 0,
-    turning: performance.now() - held.turnedAt < 160,
-  };
   const eggs = eggsFor(game.moves, level.par);
   const limit = twoEggLimit(level.par);
   // What the line under the board says when nothing more pressing needs saying.
@@ -691,28 +431,6 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
         ? `Over par. Finish in ${limit} moves or fewer to keep two eggs.`
           : (level.tip ?? (late && game.moves === 0 ? "A day you missed. It earns eggs and counts towards rewards, but not the streak." : best ? `Your best: ${best.moves} ${best.moves === 1 ? "move" : "moves"}.` : "A move is one hatch, slid as far as you like."));
 
-  // Sharing a daily result: no board, no spoilers, just how it went.
-  const [shared, setShared] = useState<string | null>(null);
-  const share = async () => {
-    const result = `${game.moves} ${game.moves === 1 ? "move" : "moves"} (par ${level.par}) ${"🥚".repeat(eggs)}${"⚪".repeat(3 - eggs)}${wonSolo ? " ⭐ no hints" : ""}`;
-    const text = shareLink
-      ? [`I cleared “${level.name}” in Down the Hatch: ${result}`, `Your turn: ${shareLink}`].join("\n")
-      : [`Down the Hatch, daily coop ${level.name}`, result, location.origin + location.pathname].join("\n");
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-        return;
-      }
-    } catch (e) {
-      if ((e as { name?: string }).name === "AbortError") return;
-    }
-    try {
-      await navigator.clipboard.writeText(text);
-      setShared("Copied. Paste it anywhere.");
-    } catch {
-      setShared(text);
-    }
-  };
   const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
@@ -810,148 +528,32 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       {guide && <Guide level={level} onClose={() => setGuide(false)} />}
 
       {phase !== "playing" && phase !== "replay" && (
-        <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
-          <div className="sheet__card">
-            {phase === "won" ? (
-              <>
-                {(eggs === 3 || milestone.chapter || milestone.game) && (
-                  <div className="burst" aria-hidden="true">
-                    {Array.from({ length: 14 }, (_, i) => (
-                      <span key={i} style={{ "--a": `${(i * 360) / 14}deg`, "--d": `${(i % 3) * 60}ms` } as CSSProperties} />
-                    ))}
-                  </div>
-                )}
-                <div className="sheet__eggs" role="img" aria-label={`${eggs} of 3 eggs`}>
-                  {[1, 2, 3].map((n) => (
-                    <span key={n} className={n <= eggs ? "sheet__egg sheet__egg--earned" : "sheet__egg"} style={{ animationDelay: `${320 + (n - 1) * EGG_LAND_MS}ms` }}>
-                      <EggArt earned={n <= eggs} />
-                    </span>
-                  ))}
-                </div>
-                {milestone.game ? (
-                  <div className="sheet__milestone">
-                    <p className="sheet__kicker">Every coop cleared!</p>
-                    <p>
-                      That’s all {milestone.game.levels} levels. {tally.eggs} of {milestone.game.levels * 3} eggs and {tally.stars} stars so far. The daily coop is waiting tomorrow, and the level editor whenever you want to set a puzzle of your own.
-                    </p>
-                  </div>
-                ) : (
-                  milestone.chapter && (
-                    <div className="sheet__milestone">
-                      <p className="sheet__kicker">Chapter complete!</p>
-                      <p>
-                        All {milestone.chapter.levels} levels of {milestone.chapter.name} cleared.
-                      </p>
-                    </div>
-                  )
-                )}
-                <h2 id="sheet-title">Coop cleared</h2>
-                <p>
-                  {game.moves} {game.moves === 1 ? "move" : "moves"}. {game.moves <= level.par ? "That’s par, the fewest possible." : `Par is ${level.par}.`}
-                </p>
-                {(wonSolo || wonClock || wonHard) && (
-                  <p className="sheet__solo">
-                    {wonHard && (
-                      <>
-                        <HardArt /> Hard mode.
-                      </>
-                    )}
-                    {wonSolo && (
-                      <>
-                        <SoloArt /> No hints used.
-                      </>
-                    )}
-                    {wonClock && (
-                      <>
-                        <ClockArt /> Beat the clock.
-                      </>
-                    )}
-                  </p>
-                )}
-                {game.moves > level.par && <p className="sheet__more">{eggs === 2 ? "Match par for the third egg." : `${limit} moves or fewer earns two eggs; par earns three.`}</p>}
-                {daily && !late && <p className="sheet__more">Next board in {untilText(msUntilTomorrow(new Date()))}.</p>}
-                {unlocked.length > 0 && (
-                  <div className="sheet__reward">
-                    <p>Unlocked: {unlocked.map(rewardName).join(" and ")}!</p>
-                    <div className="sheet__wear">
-                      {unlocked.map((r) => {
-                        const on = r.kind === "board" ? settings.board === r.id : settings.hat === r.id;
-                        return (
-                          <button key={r.id} type="button" className="btn" onClick={() => onWear(r)} disabled={on}>
-                            {on ? `Wearing the ${r.name}` : `Try on the ${r.name}`}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-                <div className="sheet__actions">
-                  {onNext && (
-                    <button type="button" className="btn btn--straw btn--big" onClick={onNext} autoFocus>
-                      {nextLabel ?? (nextChapter ? `On to ${nextChapter}` : "Next level")}
-                    </button>
-                  )}
-                  {(daily || shareLink) && (
-                    <button type="button" className="btn btn--straw btn--big" onClick={share} autoFocus>
-                      Share result
-                    </button>
-                  )}
-                  {shared && (
-                    <p className="sheet__shared" role="status">
-                      {shared}
-                    </p>
-                  )}
-                  <button type="button" className="btn" onClick={restart}>
-                    Play again
-                  </button>
-                  {game.moves > level.par && (
-                    <button type="button" className="btn" onClick={watch}>
-                      Watch the best solution
-                    </button>
-                  )}
-                  <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    {backLabel}
-                  </button>
-                </div>
-              </>
-            ) : phase === "shown" ? (
-              <>
-                <h2 id="sheet-title">That’s par</h2>
-                <p>
-                  {level.par} {level.par === 1 ? "move" : "moves"} is the fewest possible.{best ? ` Your best is ${best.moves}.` : ""} Now try it yourself.
-                </p>
-                <div className="sheet__actions">
-                  <button type="button" className="btn btn--straw btn--big" onClick={restart} autoFocus>
-                    Play again
-                  </button>
-                  {onNext && (
-                    <button type="button" className="btn" onClick={onNext}>
-                      Next level
-                    </button>
-                  )}
-                  <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    {backLabel}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 id="sheet-title">Time’s up</h2>
-                <p>
-                  {game.chickens.length} {game.chickens.length === 1 ? "chicken is" : "chickens are"} still up top. The clock restarts with the level.
-                </p>
-                <div className="sheet__actions">
-                  <button type="button" className="btn btn--straw btn--big" onClick={restart} autoFocus>
-                    Try again
-                  </button>
-                  <button type="button" className="btn btn--quiet" onClick={onLevels}>
-                    {backLabel}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        <EndSheet
+          phase={phase}
+          level={level}
+          game={game}
+          eggs={eggs}
+          limit={limit}
+          best={best}
+          wonSolo={wonSolo}
+          wonClock={wonClock}
+          wonHard={wonHard}
+          milestone={milestone}
+          tally={tally}
+          unlocked={unlocked}
+          settings={settings}
+          daily={daily}
+          late={late}
+          shareLink={shareLink}
+          nextLabel={nextLabel}
+          nextChapter={nextChapter}
+          backLabel={backLabel}
+          onNext={onNext}
+          onRestart={restart}
+          onWatch={watch}
+          onLevels={onLevels}
+          onWear={onWear}
+        />
       )}
     </main>
   );
