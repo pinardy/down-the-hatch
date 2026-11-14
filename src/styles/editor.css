@@ -1,0 +1,188 @@
+/* The level editor. */
+
+/* ── The level editor ── */
+
+.editor {
+  overflow-y: auto;
+  padding: 0.8rem 0.9rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.editor__top {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.editor__name {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 0.4rem 0.7rem;
+  color: var(--title);
+  background: transparent;
+  border: 0;
+  border-radius: 0.7rem;
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+.editor__size {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.2rem;
+  align-items: center;
+  font-size: 0.92rem;
+}
+.editor__size span,
+.editor__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.editor__size b,
+.editor__row b {
+  min-width: 1.4em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.editor__stage {
+  display: grid;
+  place-items: center;
+}
+.editor__board {
+  position: relative;
+}
+/* A grid of tap targets laid exactly over the board's field (inside its 10px fence). */
+.editor__taps {
+  position: absolute;
+  z-index: 20;
+  top: 10px;
+  left: 10px;
+  display: grid;
+}
+/* The board underneath is only a picture here: every tap goes to the grid above it. */
+.editor__board .board {
+  pointer-events: none;
+}
+.editor__tap {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.editor__tap:hover {
+  background: rgba(255, 246, 227, 0.12);
+}
+.editor__tap--sel {
+  box-shadow: inset 0 0 0 3px var(--straw);
+  background: rgba(240, 194, 79, 0.18);
+}
+.editor__egg {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  padding: 0 0.3em;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--cream);
+  border-radius: 999px;
+}
+.editor__panel,
+.editor__tools,
+.editor__check {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--panel) 45%, transparent);
+}
+.editor__panel {
+  box-shadow: inset 0 0 0 3px var(--straw);
+}
+.editor__label {
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  margin-left: 0.3rem;
+}
+.editor__hint {
+  font-size: 0.88rem;
+  color: var(--text-soft);
+}
+.editor__issues {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--warn);
+  font-size: 0.92rem;
+}
+.editor__ok {
+  font-weight: 500;
+}
+.editor__bad {
+  color: var(--warn);
+  font-weight: 500;
+}
+.editor__said {
+  font-size: 0.9rem;
+  color: var(--text-soft);
+}
+.editor__delete {
+  margin-left: auto;
+}
+.btn--small {
+  min-width: 2.2rem;
+  padding: 0.3em 0.6em;
+  font-size: 0.95rem;
+}
+.chip {
+  font: inherit;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2.3rem;
+  padding: 0.25rem 0.65rem;
+  color: var(--text);
+  background: var(--tile);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 2px var(--line);
+  cursor: pointer;
+}
+.chip--on {
+  color: var(--ink);
+  background: var(--straw);
+  box-shadow: none;
+  font-weight: 600;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.chip svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.chip .bale-art,
+.chip .crack-art,
+.chip .key__art {
+  filter: none;
+}
+
+/* The newer floor pieces sit on a square of floor in the editor's chips, as on the board. */
+.chip__floor {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.35rem;
+  background: var(--floor);
+}
+.chip__floor svg {
+  width: 100%;
+  height: 100%;
+}
