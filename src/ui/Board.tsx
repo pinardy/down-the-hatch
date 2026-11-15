@@ -199,12 +199,37 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
     return { x: (e.clientX - box.left) / cell, y: (e.clientY - box.top) / cell };
   };
 
+  // A drag can end without its button ever seeing the finger lift: when the hatch fills and
+  // shuts mid-drag, its button leaves the page and the lift goes elsewhere. So the drag is
+  // also ended here: as soon as its hatch is off the board or the board is locked, and when
+  // the finger lifts anywhere at all. Otherwise a hatch that comes back (Undo, Start over,
+  // Play again) would look as if it were still being dragged, and every new touch be ignored.
+  useEffect(() => {
+    const d = drag.current;
+    if (d && (locked || !game.hatches.some((t) => t.id === d.id))) drag.current = null;
+  }, [game.hatches, locked]);
+  const releaseRef = useRef(onRelease);
+  releaseRef.current = onRelease;
+  useEffect(() => {
+    // The hatch's own button hears the lift first when it can, and then there is nothing left to do here.
+    const lifted = (e: globalThis.PointerEvent) => {
+      const d = drag.current;
+      if (d?.pointer !== e.pointerId) return;
+      drag.current = null;
+      releaseRef.current(d.id);
+    };
+    window.addEventListener("pointerup", lifted);
+    window.addEventListener("pointercancel", lifted);
+    return () => {
+      window.removeEventListener("pointerup", lifted);
+      window.removeEventListener("pointercancel", lifted);
+    };
+  }, []);
+
   const down = (e: PointerEvent<HTMLButtonElement>, hatch: Hatch) => {
     if (locked) return;
-    // Ignore a second finger while a hatch is being dragged. A drag whose hatch has since
-    // shut is over, though: its button left the page, so it never saw the finger lift.
-    const current = drag.current;
-    if (current && game.hatches.some((t) => t.id === current.id)) return;
+    // Ignore a second finger while a hatch is being dragged.
+    if (drag.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = squareUnder(e);
     drag.current = { id: hatch.id, pointer: e.pointerId, offX: p.x - hatch.x, offY: p.y - hatch.y };
