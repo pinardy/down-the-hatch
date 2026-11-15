@@ -127,6 +127,22 @@ function ask(question: Question, quiet: boolean): Promise<Answer> {
   });
 }
 
+/**
+ * How much memory the device says it has, in gigabytes, where it says (Chrome and Edge do;
+ * Safari and Firefox don't). A search takes about 0.7 KB a position, and a phone that runs
+ * short closes the tab, so the biggest searches are scaled to fit.
+ */
+const deviceMemory = typeof navigator !== "undefined" ? (navigator as { deviceMemory?: number }).deviceMemory : undefined;
+
+/** The game's own searches (hints, the check after each move): halved on a device with 2 GB or less. */
+export const searchLimit = (normal: number) => (deviceMemory !== undefined && deviceMemory <= 2 ? Math.round(normal / 2) : normal);
+
+/**
+ * The level editor's check, the largest search of all. In full only where the device says it has
+ * plenty of memory; less where it says it has little, and in between where it doesn't say.
+ */
+export const editorSearchLimit = () => (deviceMemory === undefined ? 800_000 : deviceMemory >= 8 ? 1_500_000 : deviceMemory >= 4 ? 800_000 : 300_000);
+
 /** The fewest moves that clear the level from `state`, or word that there is no way. `quiet` for the check after each move. */
 export async function solveInBackground(level: Level, state: GameState, maxStates: number, quiet = false): Promise<SolveResult> {
   const answer = await ask({ kind: "solve", level, state, maxStates }, quiet);

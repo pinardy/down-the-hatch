@@ -6,6 +6,7 @@ import type { Blocker } from "../../game/engine";
 import { DIRS } from "../../game/types";
 import type { Dir, GameState, Hatch, Level } from "../../game/types";
 import { PAINT } from "../art";
+import { searchLimit } from "../solving";
 import type { InPlay } from "../storage";
 
 /** `replay` is the best solution playing itself out; `shown` is the sheet that follows it. */
@@ -41,8 +42,8 @@ export const COMMIT = 0.5;
 export const COMMIT_DROP = 0.85;
 
 /** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
-export const HINT_SEARCH = 300_000;
-export const STUCK_SEARCH = 250_000;
+export const HINT_SEARCH = searchLimit(300_000);
+export const STUCK_SEARCH = searchLimit(250_000);
 /** Rewind settles for the latest position proved winnable once this long has passed (the worker keeps the board responsive meanwhile). */
 export const REWIND_DEADLINE_MS = 4_000;
 /** A search shorter than this shows no "Thinking": the answer just appears. */

@@ -9,7 +9,7 @@ import { COLORS, DIRS } from "../game/types";
 import type { Axis, Color, Dir, Feather, Level, LevelDef } from "../game/types";
 import { ArrowArt, BaleArt, ChickenArt, CrackArt, GateArt, KeyArt, Mark, PAINT, PaintArt, PlateArt } from "./art";
 import { Board } from "./Board";
-import { solveInBackground } from "./solving";
+import { editorSearchLimit, solveInBackground } from "./solving";
 
 interface DraftHatch {
   /** Stays with the hatch while others come and go, so a chain can point at it. */
@@ -36,7 +36,7 @@ export interface Draft {
 }
 
 const DRAFT_KEY = "down-the-hatch:draft:v1";
-const SEARCH = 1_500_000;
+
 
 const blank = (w = 5, h = 5): Draft => ({ name: "My coop", w, h, cells: new Array(w * h).fill("."), hatches: [] });
 
@@ -239,7 +239,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       const fair = parseLevel(def, -3, "", false);
       validate(fair);
       setCheck({ status: "checking" });
-      const r = await solveInBackground(fair, startState(fair), SEARCH);
+      const r = await solveInBackground(fair, startState(fair), editorSearchLimit());
       setCheck(r.status === "solved" ? { status: "solved", par: r.moves } : { status: r.status });
     } catch (e) {
       setCheck({ status: "idle" });
