@@ -62,8 +62,10 @@ The chickens must exactly fill the hatches: no colour may have more chickens tha
 | `medley` | cracked boards, white chickens and a chain together, hard |
 | `paint`, `gate`, `arrow` | boards that must use paint, a gate and plate, or one-way squares |
 | `workshop` | paint, gates and one-way squares on one big board, hard |
+| `gate-link`, `arrow-crack`, `paint-eggs` | a newer piece with an older one (gates and a chain, arrows and cracked boards, paint and eggs), hard |
+| `frost-gate`, `locks-paint` | frozen and bent hatches with gates; padlocks with paint and eggs; expert |
 
-The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration.
+The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration. Two exceptions: eggs never change the par (the solver sees inside them; they hide colours only from the player), and taking a padlock away can make a board harder to search rather than shorter, so an inconclusive answer there proves nothing either way.
 
 The hard tiers take about two minutes a board, so give them several minutes.
 
