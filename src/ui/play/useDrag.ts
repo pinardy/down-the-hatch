@@ -84,7 +84,9 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
           if (Math.abs(d) > 0.3) refuse(hatchId, dir);
           break;
         }
-        if (Math.abs(d) >= (ahead.dropped.length ? COMMIT_DROP : COMMIT)) {
+        // Strictly past: a hatch that steps at exactly halfway is left exactly halfway back, and
+        // would step straight back again (and break any cracked board it crossed, for a move).
+        if (Math.abs(d) > (ahead.dropped.length ? COMMIT_DROP : COMMIT)) {
           tryStep(hatchId, dir);
           offset = d - Math.sign(d); // what is left over, measured from the new square
           dodged = false;

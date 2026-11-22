@@ -36,7 +36,7 @@ export interface Held {
 
 /** A hatch can change direction only when it is this close to sitting squarely on a square. */
 export const TURN = 0.15;
-/** How far towards the next square the finger must be before the hatch counts as having moved there. */
+/** How far towards the next square the finger must be (strictly past) before the hatch counts as having moved there. */
 export const COMMIT = 0.5;
 /** The same, when moving there drops chickens: they fall once the hatch is nearly under them. */
 export const COMMIT_DROP = 0.85;

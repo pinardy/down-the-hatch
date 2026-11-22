@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 200 levels
+📲 Installable · ✈️ Works offline · 🧩 243 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-200 levels in 23 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+243 levels in 28 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -41,6 +41,8 @@ Slide the hatches, drop the chickens, clear the coop.
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them and take 14 to 34 moves a level.
 
 The newest pieces, paint, gates and one-way squares, each get a Hard chapter of their own (*Wet paint*, *Gatekeeper*, *One way only*), and the Expert chapter *The workshop* puts all three in one yard, up to 43 moves a level.
+
+Five more chapters pair the newest pieces with older ones: *Hold the line* (gates and chains), *Burnt bridges* (one-way squares and cracked boards) and *Colour me surprised* (paint and eggs) are Hard; *Big freeze* (frozen hatches, bends and gates) and *Safe cracking* (padlocks, paint and eggs) are Expert, up to 37 moves a level.
 
 ## 🛟 Help when you need it
 

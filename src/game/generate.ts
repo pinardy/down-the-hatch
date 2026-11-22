@@ -71,6 +71,12 @@ export const TIERS: Tier[] = [
   { name: "gate", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [1, 4], rail: 0.1, target: 16, gate: true },
   { name: "arrow", w: [5, 6], h: [5, 6], colors: [3, 4], hatches: [3, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 16, arrows: [2, 5] },
   { name: "workshop", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 26, paint: [1, 2], gate: true, arrows: [2, 4], hard: true },
+  // A newer piece paired with an older one, hard; then two expert mixes.
+  { name: "gate-link", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 6], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 19, gate: true, link: true, hard: true },
+  { name: "arrow-crack", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 6], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 19, arrows: [2, 4], crack: [2, 5], hard: true },
+  { name: "paint-eggs", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 19, paint: [1, 3], eggs: 0.4, hard: true },
+  { name: "frost-gate", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 28, odd: 2, ice: true, gate: true, hard: true },
+  { name: "locks-paint", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 28, odd: 1, lock: true, paint: [1, 2], eggs: 0.3, hard: true },
   { name: "mix-hard", w: [6, 7], h: [7, 7], colors: [5, 5], hatches: [6, 8], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 5], rail: 0.1, target: 30, odd: 2, ice: true, lock: true, eggs: 0.35, hard: true },
 ];
 
