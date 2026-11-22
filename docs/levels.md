@@ -46,6 +46,8 @@ Levels live in chapters in `src/game/levels.ts`; add a level to a chapter's list
 
 The chickens must exactly fill the hatches: no colour may have more chickens than its hatches have room for, and white chickens make up the difference. With paint on the board a hatch can change colour, so then only the totals have to agree. Gates need a plate, and a plate needs a gate. `npm test` fails if a level cannot be solved or its `par` is not the true minimum, so you can write a level by hand, guess the par, and let the test tell you the real number.
 
+Once the par is right, run `npm run solutions`. It stores every level's best solution in `src/game/solutions.ts`, which the game uses for the first hint and for "Watch the best solution" without searching (phones short of memory search less, and can give up on the biggest boards). `npm test` fails until the stored solutions match the levels.
+
 ## Generating levels
 
 `npm run levels` grows levels automatically (the growing itself lives in `src/game/generate.ts`, which the game's endless mode uses too): it builds random boards, then makes small changes (move a chicken, reshape a hatch, add a bale), keeping each change if the solver says the level is still winnable and needs at least as many moves. It prints the best as entries to paste into `levels.ts`.

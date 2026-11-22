@@ -36,10 +36,20 @@ export interface Held {
 
 /** A hatch can change direction only when it is this close to sitting squarely on a square. */
 export const TURN = 0.15;
-/** How far towards the next square the finger must be (strictly past) before the hatch counts as having moved there. */
+/**
+ * How far towards the next square the finger must be before the hatch counts as having moved
+ * there: strictly past it while dragging (see stepsAt), at least it when the finger lifts.
+ */
 export const COMMIT = 0.5;
 /** The same, when moving there drops chickens: they fall once the hatch is nearly under them. */
 export const COMMIT_DROP = 0.85;
+
+/**
+ * While dragging, whether a finger `d` squares from the hatch's square (either way) moves it on
+ * a square. Strictly past the threshold: a hatch that stepped at exactly halfway would be left
+ * exactly halfway back, step straight back again, and break any cracked board it had crossed.
+ */
+export const stepsAt = (d: number, drops: boolean) => Math.abs(d) > (drops ? COMMIT_DROP : COMMIT);
 
 /** How many positions a hint may search, and the quiet check after each move that the level can still be won. */
 export const HINT_SEARCH = searchLimit(300_000);

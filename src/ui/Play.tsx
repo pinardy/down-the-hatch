@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { blockedBy, eggsFor, heldBy, isWon, startState, step, twoEggLimit } from "../game/engine";
+import { boardKey, knownWay } from "../game/known";
 import type { Dir, GameState, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
@@ -133,6 +134,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   const verdicts = useRef(new WeakMap<GameState, boolean>());
   /** Full answers already found for positions this game passed through, so a hint needn't search again. */
   const solutions = useRef(new WeakMap<GameState, SolveResult>());
+  /** The level's stored best solution, position by position: answers there need no search. */
+  const way = useMemo(() => knownWay(level), [level]);
   /** Undo or rewind used on this attempt: the clear doesn't count as a hard-mode clear. */
   const helped = useRef(false);
   const [wonHard, setWonHard] = useState(false);
@@ -311,7 +314,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     unlockAudio();
     // The check after each move (or on opening the level) has usually answered already.
     const here = gameRef.current;
-    const ready = solutions.current.get(here);
+    const ready = solutions.current.get(here) ?? way?.get(boardKey(here));
     const got = ready && !asking.current ? { now: here, answer: ready } : await consult((now) => solveInBackground(level, now, HINT_SEARCH));
     if (!got) return;
     const { now, answer } = got;
@@ -356,7 +359,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     replaying.current = true;
     streak.current = 0;
     setPhase("replay");
-    const answer = await solveInBackground(level, startState(level), HINT_SEARCH * 2);
+    const start = startState(level);
+    const answer = way?.get(boardKey(start)) ?? (await solveInBackground(level, start, HINT_SEARCH * 2));
     if (!alive.current || !replaying.current) return; // stopped, or left, while the solver was thinking
     if (answer.status !== "solved") {
       stopReplay();
@@ -420,6 +424,13 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   useEffect(() => {
     // From the opening position too, so that the first hint is ready when asked for.
     if (phase !== "playing" || isWon(game)) return;
+    // On the stored best path: known to be winnable, and the way is known too.
+    const onPath = way?.get(boardKey(game));
+    if (onPath) {
+      verdicts.current.set(game, true);
+      solutions.current.set(game, onPath);
+      return;
+    }
     let stale = false;
     const id = window.setTimeout(() => {
       void solveInBackground(level, game, STUCK_SEARCH, true).then((answer) => {
@@ -435,7 +446,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       stale = true;
       window.clearTimeout(id);
     };
-  }, [game, level, phase, markStuck]);
+  }, [game, level, phase, markStuck, way]);
 
   // The optional countdown starts on the first move.
   useEffect(() => {

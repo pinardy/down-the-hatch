@@ -34,9 +34,16 @@ const LIST: Screen = { kind: "list" };
 /** The screen this history entry was showing. Where history is off limits, always the list. */
 function screenInHistory(): Screen {
   try {
-    const s = (window.history.state as { screen?: Screen } | null)?.screen;
+    const s = (window.history.state as { screen?: Screen & { id?: unknown } } | null)?.screen;
     if (!s) return LIST;
-    if (s.kind === "level" && LEVELS[s.index]) return s;
+    if (s.kind === "level") {
+      // Found by its id: positions shift when levels are added in the middle of the book.
+      if (typeof s.id === "string") {
+        const at = LEVELS.findIndex((l) => l.id === s.id);
+        return at >= 0 ? { kind: "level", index: at } : LIST;
+      }
+      return LEVELS[s.index] ? { kind: "level", index: s.index } : LIST;
+    }
     if (s.kind === "daily" && (s.day === undefined || /^\d{4}-\d{2}-\d{2}$/.test(s.day))) return s;
     if (s.kind === "editor" || s.kind === "stats") return s;
     if (s.kind === "endless" && s.level in ENDLESS && typeof s.code === "string") return s;
@@ -194,8 +201,10 @@ export default function App() {
   const go = (next: Screen, replace = false) => {
     const hash = next.kind === "shared" ? `#play=${next.code}` : location.pathname + location.search;
     try {
-      if (replace) window.history.replaceState({ screen: next }, "", hash);
-      else window.history.pushState({ screen: next }, "", hash);
+      // A level is kept with its id as well, to find it again after an update (see screenInHistory).
+      const entry = { screen: next.kind === "level" ? { ...next, id: LEVELS[next.index]?.id } : next };
+      if (replace) window.history.replaceState(entry, "", hash);
+      else window.history.pushState(entry, "", hash);
     } catch {
       /* no history here: the on-screen buttons still work */
     }

@@ -3041,30 +3041,17 @@ const FREEZE: LevelDef[] = [
 
 const VAULT: LevelDef[] = [
   {
-    id: "picklock",
-    name: "Picklock",
-    rows: ["...y..", ".t.5..", "#....#", "...b.t", "..t...", ".kr.#."],
+    id: "safe-bet",
+    name: "Safe bet",
+    rows: [".....#", "..Bk.y", ".....y", "t....y", ".2ybt.", "......", "#.b..."],
     hatches: [
-      { color: "blue", x: 1, y: 2, shape: [".x", "xx"], cap: 1, locked: true },
-      { color: "teal", x: 0, y: 3, shape: ["x.", "xx"], cap: 2 },
-      { color: "gold", x: 3, y: 2, w: 2, cap: 1 },
-      { color: "red", x: 4, y: 3, shape: ["x.", "xx"], cap: 1, locked: true },
-      { color: "teal", x: 4, y: 0, w: 2, cap: 1 },
+      { color: "teal", x: 4, y: 4, shape: [".x", ".x", "xx"], cap: 2, locked: true },
+      { color: "plum", x: 3, y: 0, shape: ["xx", ".x", ".x"], cap: 1 },
+      { color: "blue", x: 0, y: 2, shape: ["xxx", ".x."], cap: 3 },
+      { color: "gold", x: 0, y: 5, shape: ["xxx", ".x."], cap: 2, locked: true },
+      { color: "gold", x: 0, y: 0, shape: ["xxx", ".x."], cap: 1 },
     ],
-    par: 8,
-  },
-  {
-    id: "paint-job",
-    name: "Paint job",
-    rows: ["..B...", "..r...", ".....r", "y1Y..r", "....rt", "....rk", "#....R"],
-    hatches: [
-      { color: "gold", x: 3, y: 2, shape: ["x.", "xx", "x."], cap: 2, locked: true },
-      { color: "blue", x: 3, y: 0, h: 2, cap: 1, axis: "h" },
-      { color: "red", x: 1, y: 6, w: 2, cap: 3 },
-      { color: "teal", x: 4, y: 0, w: 2, cap: 1, axis: "v" },
-      { color: "red", x: 0, y: 0, shape: ["xx", "x.", "x."], cap: 3 },
-    ],
-    par: 8,
+    par: 11,
   },
   {
     id: "strongbox",
@@ -3104,6 +3091,19 @@ const VAULT: LevelDef[] = [
       { color: "plum", x: 2, y: 2, shape: ["x.", "x.", "xx"], cap: 1 },
     ],
     par: 20,
+  },
+  {
+    id: "inside-job",
+    name: "Inside job",
+    rows: ["R3y3rB", ".B....", "r.....", ".k....", "....b#", "ty...t"],
+    hatches: [
+      { color: "red", x: 2, y: 2, shape: ["xx", ".x"], cap: 2, locked: true },
+      { color: "gold", x: 4, y: 1, shape: [".x", ".x", "xx"], cap: 2 },
+      { color: "teal", x: 2, y: 3, shape: ["x.", "xx"], cap: 2 },
+      { color: "blue", x: 2, y: 1, shape: ["xxx", "..x"], cap: 3, locked: true },
+      { color: "red", x: 0, y: 3, shape: ["x.", "xx"], cap: 1 },
+    ],
+    par: 21,
   },
   {
     id: "master-key",

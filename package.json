@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build && node scripts/inline-pwa.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "solutions": "esbuild scripts/solutions.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/solutions.mjs && node node_modules/.cache/solutions.mjs",
     "levels": "esbuild scripts/find-levels.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/find-levels.mjs && node node_modules/.cache/find-levels.mjs"
   },
   "dependencies": {

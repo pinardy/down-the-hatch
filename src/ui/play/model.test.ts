@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blockedBy, parseLevel, startState, step } from "../../game/engine";
 import type { LevelDef } from "../../game/types";
-import { allowance, peek, restore, whyBlocked } from "./model";
+import { allowance, COMMIT, COMMIT_DROP, peek, restore, stepsAt, whyBlocked } from "./model";
 
 const level = (rows: string[], hatches: LevelDef["hatches"]) => parseLevel({ id: "t", name: "t", rows, hatches, par: 1 }, 0);
 
@@ -52,5 +52,27 @@ describe("eggs and the clock", () => {
   it("allows longer for longer puzzles", () => {
     expect(allowance({ par: 1 } as never)).toBe(38);
     expect(allowance({ par: 30 } as never)).toBe(270);
+  });
+});
+
+describe("when a drag moves a hatch on a square", () => {
+  it("steps only strictly past the threshold", () => {
+    expect(stepsAt(COMMIT, false)).toBe(false);
+    expect(stepsAt(-COMMIT, false)).toBe(false);
+    expect(stepsAt(COMMIT + 0.01, false)).toBe(true);
+    expect(stepsAt(COMMIT_DROP, true)).toBe(false);
+    expect(stepsAt(0.7, true)).toBe(false);
+    expect(stepsAt(0.9, true)).toBe(true);
+  });
+  it("never steps straight back with what is left over after a step", () => {
+    // The finger exactly halfway once stepped there and back, breaking a cracked board for a move.
+    for (let d = -1.5; d <= 1.5; d += 1 / 64) {
+      for (const drops of [false, true]) {
+        if (!stepsAt(d, drops)) continue;
+        const left = d - Math.sign(d);
+        // Back the other way, whether or not that step would drop chickens.
+        expect(Math.sign(left) !== -Math.sign(d) || !stepsAt(left, false), `d=${d}`).toBe(true);
+      }
+    }
   });
 });

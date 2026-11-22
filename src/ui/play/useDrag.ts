@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react";
 import { step } from "../../game/engine";
 import type { Dir, GameState, Level } from "../../game/types";
 import { unlockAudio } from "../../sfx";
-import { COMMIT, COMMIT_DROP, TURN } from "./model";
+import { COMMIT, stepsAt, TURN } from "./model";
 import type { Held } from "./model";
 
 interface Args {
@@ -84,9 +84,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
           if (Math.abs(d) > 0.3) refuse(hatchId, dir);
           break;
         }
-        // Strictly past: a hatch that steps at exactly halfway is left exactly halfway back, and
-        // would step straight back again (and break any cracked board it crossed, for a move).
-        if (Math.abs(d) > (ahead.dropped.length ? COMMIT_DROP : COMMIT)) {
+        if (stepsAt(d, ahead.dropped.length > 0)) {
           tryStep(hatchId, dir);
           offset = d - Math.sign(d); // what is left over, measured from the new square
           dodged = false;
