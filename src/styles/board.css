@@ -536,6 +536,19 @@
 .hatch--hinted .piece__nub {
   filter: brightness(1.2);
 }
+/* The first step of a hint: only which hatch, glowing. */
+.hatch--nudged .piece__frame,
+.hatch--nudged .piece__nub {
+  animation: nudge-glow 750ms ease-in-out infinite alternate;
+}
+@keyframes nudge-glow {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.4) saturate(1.2);
+  }
+}
 @keyframes beckon {
   from {
     opacity: 0.45;

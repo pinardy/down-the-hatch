@@ -63,7 +63,9 @@
   .hatch__body,
   .hatch__label,
   .chicken--wobble .chicken__art,
-  .tile--wobble > svg:last-child {
+  .tile--wobble > svg:last-child,
+  .hatch--nudged .piece__frame,
+  .hatch--nudged .piece__nub {
     animation: none;
   }
   .burst,
@@ -103,6 +105,8 @@ html.calm .chicken--wanted .chicken__art,
 html.calm .hatch__body,
 html.calm .hatch__label,
 html.calm .chicken--wobble .chicken__art,
+html.calm .hatch--nudged .piece__frame,
+html.calm .hatch--nudged .piece__nub,
 html.calm .tile--wobble > svg,
 html.calm .growing__egg {
   animation: none;
