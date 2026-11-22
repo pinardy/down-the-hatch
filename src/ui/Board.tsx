@@ -22,6 +22,8 @@ export interface HintFx {
   ghost: Hatch;
   /** The squares its top-left corner passes through on the way. */
   path: { x: number; y: number }[];
+  /** Only say which hatch: it glows, with no path or outline. */
+  gentle?: boolean;
 }
 /** A slide was refused: the hatch nudges that way and whatever stopped it wobbles. */
 export interface BumpFx {
@@ -303,7 +305,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
           </span>
         )}
 
-        {hint && (
+        {hint && !hint.gentle && (
           <>
             {hint.path.map((p, i) => (
               <span key={i} className="hint-dot" style={place(p.x + hint.ghost.cells[0][0], p.y + hint.ghost.cells[0][1])} />
@@ -335,7 +337,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
               key={hatch.id}
               type="button"
               data-hatch={hatch.id}
-              className={`hatch${mine ? (mine.turning ? " hatch--held hatch--turning" : " hatch--held") : ""}${hint?.ghost.id === hatch.id ? " hatch--hinted" : ""}${pushed}${refused}`}
+              className={`hatch${mine ? (mine.turning ? " hatch--held hatch--turning" : " hatch--held") : ""}${hint?.ghost.id === hatch.id ? (hint.gentle ? " hatch--hinted hatch--nudged" : " hatch--hinted") : ""}${pushed}${refused}`}
               style={place(hatch.x + (mine?.dx ?? 0), hatch.y + (mine?.dy ?? 0), hatch.w, hatch.h)}
               aria-label={`${about.join(", ")}. Arrow keys slide it.`}
               onPointerDown={(e) => down(e, hatch)}

@@ -4,7 +4,7 @@ import type { Dir, GameState, Level } from "../game/types";
 import { buzz, sfx, unlockAudio } from "../sfx";
 import { Board } from "./Board";
 import type { BumpFx, DropFx, HintFx, ShutFx } from "./Board";
-import { EggArt, GearArt, HardArt } from "./art";
+import { EggArt, GearArt, HardArt, PAINT } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
 import type { SolveResult } from "../game/solver";
 import { Guide } from "./Guide";
@@ -305,6 +305,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     }
   };
 
+  /** The board the last hint named a hatch on: a second press there shows the way. */
+  const nudged = useRef<GameState | null>(null);
   const showHint = async () => {
     unlockAudio();
     // The check after each move (or on opening the level) has usually answered already.
@@ -330,7 +332,18 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       path.push({ x, y });
     }
     hinted.current = true;
-    setHint({ key: ++fxKey.current, from: { x: hatch.x, y: hatch.y }, ghost: { ...hatch, x, y }, path: path.slice(0, -1) });
+    const fx = { key: ++fxKey.current, from: { x: hatch.x, y: hatch.y }, ghost: { ...hatch, x, y }, path: path.slice(0, -1) };
+    // Two steps: first only which hatch to move, so the player can still work out where it
+    // goes. Asking again on the same board shows the way.
+    if (nudged.current !== now) {
+      nudged.current = now;
+      setHint({ ...fx, gentle: true });
+      const twin = now.hatches.some((t) => t !== hatch && t.color === hatch.color);
+      setNotice({ text: `Try moving the ${twin ? "glowing " : ""}${PAINT[hatch.color].name} hatch. Press Show where to see where it goes.`, warn: false });
+      save();
+      return;
+    }
+    setHint(fx);
     const back = x === hatch.x && y === hatch.y;
     setNotice({ text: back ? "Slide the glowing hatch out along the dots, then back where it was." : "Slide the glowing hatch along the dots to the outline.", warn: false });
     save();
@@ -389,7 +402,13 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     setStuck(false);
     const back = got.now.moves - target.moves;
     setNotice({
-      text: target.moves === 0 ? "Back to the start. Try a different first move this time." : `Back ${back} ${back === 1 ? "move" : "moves"}. The coop can still be cleared from here.`,
+      text:
+        target.moves === 0
+          ? "Back to the start. Try a different first move this time."
+          : back > 0
+            ? `Back ${back} ${back === 1 ? "move" : "moves"}. The coop can still be cleared from here.`
+            : // Still the same move: the hatch slid one square too far, or a square the wrong way.
+              "Back part of the way through your last move. The coop can still be cleared from here.",
       warn: false,
     });
   };
@@ -533,7 +552,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
             {phase === "replay" ? "Stop" : "Start over"}
           </button>
           <button type="button" className="btn btn--straw" onClick={stuck ? rewind : showHint} disabled={phase !== "playing" || thinking} aria-busy={thinking}>
-            {thinking ? "Thinking…" : stuck ? "Rewind" : "Hint"}
+            {thinking ? "Thinking…" : stuck ? "Rewind" : hint?.gentle ? "Show where" : "Hint"}
           </button>
         </footer>
       )}

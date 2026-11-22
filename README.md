@@ -45,7 +45,7 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 ## 🛟 Help when you need it
 
 - ↩️ **Undo** and 🔄 **Start over** are always there.
-- 💡 **Hint** walks a hatch along its path to show the next slide.
+- 💡 **Hint** first names the hatch to move and makes it glow; press **Show where** to see it walk its path.
 - ⏪ **Rewind** appears when you've slid into a dead end, and takes you back to the last position that can still be won.
 - 💾 **Leave mid-level** and it's waiting where you left it.
 
