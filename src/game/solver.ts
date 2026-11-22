@@ -32,9 +32,13 @@ interface Node {
   last: number; // hatch moved last (for a chained pair, the lower id), -1 for none
   parent: Node | null;
   via: number; // hatch * 4 + dir index
+  k: string; // its key (see keyOf), worked out once
 }
 
 const BITS = 30;
+/** What an explored node's board becomes, and what takes its place in the frontier. */
+const NO_BOARD: number[] = [];
+const DONE: Node = { pos: NO_BOARD, left: [], alive: [], birds: 1, key: false, color: null, broken: 0, last: -1, parent: null, via: -1, k: "" };
 
 export function solve(level: Level, from: GameState = startState(level), maxStates = 400_000, until = Infinity): SolveResult {
   const { w, h, bales } = level;
@@ -83,6 +87,7 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     last: from.lastHatch ?? -1,
     parent: null,
     via: -1,
+    k: "",
   };
   for (const t of from.hatches) {
     start.pos[t.id] = t.y * w + t.x;
@@ -202,49 +207,61 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
         }
       }
     }
-    return { pos, left: left ?? node.left, alive: alive ?? node.alive, birds, key, color: color ?? node.color, broken, last: mover[i], parent: node, via: i * 4 + d };
+    return { pos, left: left ?? node.left, alive: alive ?? node.alive, birds, key, color: color ?? node.color, broken, last: mover[i], parent: node, via: i * 4 + d, k: "" };
   };
 
-  const done = new Set<string>();
+  // One map for every position seen: the fewest moves found to reach it so far, or, once it has
+  // been explored, -1 - those moves. (One map, not a map and a set, halves what is stored.)
   const best = new Map<string, number>();
+  let explored = 0;
+  start.k = keyOf(start);
   let frontier: Node[] = [start];
   let cost = 0;
-  best.set(keyOf(start), 0);
+  best.set(start.k, 0);
 
   while (frontier.length) {
     const next: Node[] = [];
     // The frontier grows while we walk it: continuing with the same hatch is free.
     for (let f = 0; f < frontier.length; f++) {
       const node = frontier[f];
-      const key = keyOf(node);
-      if (done.has(key)) continue;
-      done.add(key);
+      const seen = best.get(node.k)!;
+      if (seen < 0) {
+        frontier[f] = DONE; // explored already, at no more moves than now
+        continue;
+      }
+      best.set(node.k, -1 - cost);
+      explored++;
       if (node.birds === 0) {
         const steps: SolveStep[] = [];
         for (let at: Node | null = node; at && at.parent; at = at.parent) steps.push({ hatch: at.via >> 2, dir: DIRS[at.via & 3] });
-        return { status: "solved", moves: cost, steps: steps.reverse(), explored: done.size };
+        return { status: "solved", moves: cost, steps: steps.reverse(), explored };
       }
-      if (done.size > maxStates) return { status: "unknown", explored: done.size };
+      if (explored > maxStates) return { status: "unknown", explored };
       // Past the deadline (ms since 1970), give up as if out of room. Checked now and then: the clock isn't free.
-      if ((done.size & 2047) === 0 && Date.now() > until) return { status: "unknown", explored: done.size };
+      if ((explored & 2047) === 0 && Date.now() > until) return { status: "unknown", explored };
       for (let i = 0; i < n; i++) {
         if (!node.left[i]) continue;
         for (let d = 0; d < 4; d++) {
           const child = slide(node, i, d);
           if (!child) continue;
           const childCost = mover[i] === node.last ? cost : cost + 1;
-          const childKey = keyOf(child);
-          const known = best.get(childKey);
-          if (known !== undefined && known <= childCost) continue;
-          best.set(childKey, childCost);
+          child.k = keyOf(child);
+          const known = best.get(child.k);
+          // Explored (negative) means reached at no more moves than now: the search goes cheapest first.
+          if (known !== undefined && (known < 0 || known <= childCost)) continue;
+          best.set(child.k, childCost);
           (childCost === cost ? frontier : next).push(child);
         }
       }
+      // Explored: from here on it is only kept to trace the way back, which needs `parent` and
+      // `via` alone. Let its board go (the children have their own copies of what changed).
+      node.pos = NO_BOARD;
+      frontier[f] = DONE;
     }
     frontier = next;
     cost++;
   }
-  return { status: "stuck", explored: done.size };
+  return { status: "stuck", explored };
 }
 
 /**

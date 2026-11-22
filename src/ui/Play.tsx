@@ -6,6 +6,7 @@ import { Board } from "./Board";
 import type { BumpFx, DropFx, HintFx, ShutFx } from "./Board";
 import { EggArt, GearArt, HardArt } from "./art";
 import { lastWinnableInBackground, solveInBackground } from "./solving";
+import type { SolveResult } from "../game/solver";
 import { Guide } from "./Guide";
 import { EndSheet } from "./play/EndSheet";
 import { allowance, dirIndex, DROP_MS, EGG_LAND_MS, HINT_SEARCH, peek, REPLAY_STEP_MS, REPLAY_TURN_MS, restore, REWIND_DEADLINE_MS, SHUT_MS, STUCK_NOTE, STUCK_SEARCH, THINK_AFTER_MS, whyBlocked } from "./play/model";
@@ -130,6 +131,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   }, [settings.hard]);
   /** What the solver has found about positions this game passed through: winnable or lost. */
   const verdicts = useRef(new WeakMap<GameState, boolean>());
+  /** Full answers already found for positions this game passed through, so a hint needn't search again. */
+  const solutions = useRef(new WeakMap<GameState, SolveResult>());
   /** Undo or rewind used on this attempt: the clear doesn't count as a hard-mode clear. */
   const helped = useRef(false);
   const [wonHard, setWonHard] = useState(false);
@@ -304,10 +307,16 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
 
   const showHint = async () => {
     unlockAudio();
-    const got = await consult((now) => solveInBackground(level, now, HINT_SEARCH));
+    // The check after each move (or on opening the level) has usually answered already.
+    const here = gameRef.current;
+    const ready = solutions.current.get(here);
+    const got = ready && !asking.current ? { now: here, answer: ready } : await consult((now) => solveInBackground(level, now, HINT_SEARCH));
     if (!got) return;
     const { now, answer } = got;
-    if (answer.status !== "unknown") verdicts.current.set(now, answer.status === "solved");
+    if (answer.status !== "unknown") {
+      verdicts.current.set(now, answer.status === "solved");
+      solutions.current.set(now, answer);
+    }
     if (answer.status === "stuck") return markStuck();
     if (answer.status === "unknown" || !answer.steps.length) return setNotice({ text: "Too many chickens to see a way through yet. Drop a few and ask again.", warn: true });
     const first = answer.steps[0].hatch;
@@ -390,12 +399,16 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
 
   // A little after each move, check quietly whether the level can still be cleared.
   useEffect(() => {
-    if (phase !== "playing" || game.moves === 0 || isWon(game)) return;
+    // From the opening position too, so that the first hint is ready when asked for.
+    if (phase !== "playing" || isWon(game)) return;
     let stale = false;
     const id = window.setTimeout(() => {
       void solveInBackground(level, game, STUCK_SEARCH, true).then((answer) => {
         // Remembered either way: Rewind can start from what is already known.
-        if (answer.status !== "unknown") verdicts.current.set(game, answer.status === "solved");
+        if (answer.status !== "unknown") {
+          verdicts.current.set(game, answer.status === "solved");
+          solutions.current.set(game, answer);
+        }
         if (!stale && alive.current && gameRef.current === game && answer.status === "stuck") markStuck();
       });
     }, 450);
