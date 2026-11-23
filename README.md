@@ -38,7 +38,7 @@ Slide the hatches, drop the chickens, clear the coop.
 | 🚪 | **Gates and plates** | a gate opens only while a hatch stands on a pressure plate |
 | ➡️ | **One-way squares** | can only be crossed the way the arrow points |
 
-Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them and take 14 to 34 moves a level.
+Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them, at up to 34 moves a level.
 
 The newest pieces, paint, gates and one-way squares, each get a Hard chapter of their own (*Wet paint*, *Gatekeeper*, *One way only*), and the Expert chapter *The workshop* puts all three in one yard, up to 43 moves a level.
 
@@ -75,6 +75,7 @@ Five more chapters pair the newest pieces with older ones: *Hold the line* (gate
 npm install
 npm run dev      # local dev server
 npm test         # rules tests; every level is solved and its par checked
+npm run solutions # after changing levels: store each one's best solution, for hints
 npm run build    # bundle to dist/
 ```
 
