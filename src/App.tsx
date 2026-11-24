@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { dailyLevel, dayFromKey, dayKey } from "./game/daily";
+import { betterResult, GAUNTLET_BOARDS, gauntletBudget, gauntletLevels, movesLeft, resultOf, runOver, weekKey } from "./game/gauntlet";
 import { eggsFor } from "./game/engine";
 import { CHAPTERS, LEVELS } from "./game/levels";
 import { decodeLevel, encodeLevel, findCode } from "./game/share";
@@ -18,14 +19,14 @@ import { Play } from "./ui/Play";
 import { HatContext, wearing } from "./ui/rewards";
 import type { Reward, Tally } from "./ui/rewards";
 import { SettingsSheet } from "./ui/Settings";
-import { better, endlessSaveId, loadCurrentCoops, loadEndless, loadProgress, loadSettings, saveCurrentCoop, saveEndless, saveInPlay, saveProgress, saveSettings } from "./ui/storage";
-import type { Cleared, Progress, Settings } from "./ui/storage";
+import { better, endlessSaveId, loadCurrentCoops, loadEndless, loadGauntlet, loadProgress, loadSettings, saveCurrentCoop, saveEndless, saveGauntlet, saveInPlay, saveProgress, saveSettings } from "./ui/storage";
+import type { Cleared, GauntletSave, Progress, Settings } from "./ui/storage";
 
 /**
  * What is on screen. Each kind but the list gets its own entry in the browser's history, so the
  * phone's back button steps back through them instead of leaving the game.
  */
-export type Screen = { kind: "list" } | { kind: "level"; index: number } | { kind: "daily"; /** A past day's board, YYYY-MM-DD; today's when absent. */ day?: string } | { kind: "shared"; code: string; /** Opened from the editor to test it. */ test?: boolean } | { kind: "editor" } | { kind: "stats" } | { kind: "endless"; level: EndlessLevel; code: string };
+export type Screen = { kind: "list" } | { kind: "level"; index: number } | { kind: "gauntlet"; board: number } | { kind: "daily"; /** A past day's board, YYYY-MM-DD; today's when absent. */ day?: string } | { kind: "shared"; code: string; /** Opened from the editor to test it. */ test?: boolean } | { kind: "editor" } | { kind: "stats" } | { kind: "endless"; level: EndlessLevel; code: string };
 /** What a level list button asks for: a numbered level, today's daily coop, or an earlier day's (YYYY-MM-DD). */
 export type Playing = number | "daily" | { day: string };
 
@@ -46,6 +47,7 @@ function screenInHistory(): Screen {
     }
     if (s.kind === "daily" && (s.day === undefined || /^\d{4}-\d{2}-\d{2}$/.test(s.day))) return s;
     if (s.kind === "editor" || s.kind === "stats") return s;
+    if (s.kind === "gauntlet" && Number.isInteger(s.board) && s.board >= 0 && s.board < GAUNTLET_BOARDS) return { kind: "gauntlet", board: s.board };
     if (s.kind === "endless" && s.level in ENDLESS && typeof s.code === "string") return s;
     if (s.kind === "shared" && typeof s.code === "string") return s;
   } catch {
@@ -97,7 +99,7 @@ export default function App() {
   const [draft, setDraft] = useState(loadDraft);
   const [notice, setNotice] = useState<string | null>(null);
   /** The main screen's tab: back from a level, it shows the tab the level was played from. */
-  const [tab, setTab] = useState<HomeTab>(() => (screen.kind === "daily" ? "daily" : screen.kind === "endless" ? "endless" : "levels"));
+  const [tab, setTab] = useState<HomeTab>(() => (screen.kind === "daily" || screen.kind === "gauntlet" ? "daily" : screen.kind === "endless" ? "endless" : "levels"));
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Which day's coop is "today's". Looked at afresh whenever the level list comes up or the app
@@ -211,7 +213,7 @@ export default function App() {
     if (next.kind === "level") setLastPlayed(next.index);
     if (next.kind === "daily") setLastPlayed("daily");
     // Wherever this was started from is where back lands.
-    const from: HomeTab | null = next.kind === "level" ? "levels" : next.kind === "daily" ? "daily" : next.kind === "endless" ? "endless" : next.kind === "stats" || next.kind === "editor" ? "you" : null;
+    const from: HomeTab | null = next.kind === "level" ? "levels" : next.kind === "daily" || next.kind === "gauntlet" ? "daily" : next.kind === "endless" ? "endless" : next.kind === "stats" || next.kind === "editor" ? "you" : null;
     if (from) setTab(from);
     setNotice(null);
     setScreen(next);
@@ -253,11 +255,54 @@ export default function App() {
   // A past day's board, caught up on. Today's is `daily`, which turns over only on the level list.
   const pastDay = screen.kind === "daily" && screen.day && screen.day !== today ? screen.day : null;
   const pastDaily = useMemo(() => (pastDay ? dailyLevel(dayFromKey(pastDay)) : null), [pastDay]);
-  const level = screen.kind === "level" ? LEVELS[screen.index] : screen.kind === "daily" ? (pastDaily ?? daily) : sharedLevel;
+  // The weekly gauntlet: this week's boards and run. Like the daily coop, the week turns over
+  // only on the level list, so a run in progress isn't swapped mid-board.
+  const week = weekKey(dayFromKey(today));
+  const gauntletBoards = useMemo(() => gauntletLevels(dayFromKey(week)), [week]);
+  const budget = gauntletBudget(gauntletBoards);
+  const [gauntlet, setGauntlet] = useState<GauntletSave>(() => loadGauntlet(week));
+  useEffect(() => setGauntlet((g) => (g.week === week ? g : loadGauntlet(week))), [week]);
+  const changeGauntlet = (g: GauntletSave) => {
+    saveGauntlet(g);
+    setGauntlet(g);
+  };
+  /**
+   * The gauntlet board on screen: the next board of a run still going, or the one just cleared
+   * (its end sheet is showing). None once the moves have run out.
+   */
+  const run = gauntlet.run;
+  const gauntletBoard = screen.kind === "gauntlet" && run && !run.out && (screen.board === run.moves.length || screen.board === run.moves.length - 1) && screen.board < GAUNTLET_BOARDS ? screen.board : null;
+  /** The board on screen is still to clear: it plays against the budget. */
+  const gauntletLive = gauntletBoard !== null && run !== null && gauntletBoard === run.moves.length;
+  const startGauntlet = (fresh: boolean) => {
+    const g = fresh || !gauntlet.run || runOver(gauntlet.run) ? { ...gauntlet, run: { moves: [] } } : gauntlet;
+    changeGauntlet(g);
+    go({ kind: "gauntlet", board: g.run!.moves.length });
+  };
+  const outOfMoves = () => {
+    if (!gauntlet.run || gauntletBoard === null) return;
+    const ended = { ...gauntlet.run, out: true };
+    const done = resultOf(ended);
+    changeGauntlet({ ...gauntlet, run: ended, best: betterResult(done, gauntlet.best) ? done : gauntlet.best });
+    setNotice(`Out of moves on board ${gauntletBoard + 1}. This run cleared ${done.cleared} of ${GAUNTLET_BOARDS}.`);
+    back();
+  };
+  const level = screen.kind === "level" ? LEVELS[screen.index] : screen.kind === "daily" ? (pastDaily ?? daily) : screen.kind === "gauntlet" ? (gauntletBoard === null ? null : gauntletBoards[gauntletBoard]) : sharedLevel;
   const levelId = screen.kind === "level" || screen.kind === "daily" ? level?.id : undefined;
   const endlessLevel = screen.kind === "endless" ? screen.level : null;
   const cleared = useCallback(
     (moves: number, solo: boolean, clock: boolean, hard: boolean) => {
+      if (gauntletBoard !== null) {
+        setGauntlet((g) => {
+          if (!g.run || g.run.moves.length !== gauntletBoard) return g;
+          const run = { moves: [...g.run.moves, moves] };
+          const done = resultOf(run);
+          const next = { ...g, run, best: runOver(run) && betterResult(done, g.best) ? done : g.best };
+          saveGauntlet(next);
+          return next;
+        });
+        return;
+      }
       if (endlessLevel) {
         setEndless((c) => {
           const next = { ...c, [endlessLevel]: c[endlessLevel] + 1 };
@@ -280,7 +325,7 @@ export default function App() {
         return next;
       });
     },
-    [levelId, pastDay, endlessLevel],
+    [levelId, pastDay, endlessLevel, gauntletBoard],
   );
 
   /**
@@ -356,6 +401,7 @@ export default function App() {
         onProgress={changeProgress}
         onEditor={() => go({ kind: "editor" })}
         onCode={openCode}
+        gauntlet={{ save: gauntlet, budget, week: dayFromKey(week), boards: gauntletBoards, onStart: startGauntlet }}
       />
     );
   } else {
@@ -369,9 +415,9 @@ export default function App() {
     const finishesGame = firstClear && othersDone(LEVELS) ? { levels: LEVELS.length } : null;
     view = (
       <Play
-        key={level.id + (screen.kind === "shared" || screen.kind === "endless" ? screen.code : "")}
+        key={level.id + (screen.kind === "shared" || screen.kind === "endless" ? screen.code : screen.kind === "gauntlet" ? `#${screen.board}` : "")}
         level={level}
-        where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : screen.kind === "shared" && screen.test ? "Testing your coop" : screen.kind === "endless" ? `Endless coop, ${ENDLESS[screen.level].name.toLowerCase()}` : level.chapter}
+        where={chapter ? `${chapter.name}, ${chapter.levels.indexOf(level) + 1} of ${chapter.levels.length}` : gauntletBoard !== null ? `Weekly gauntlet, board ${gauntletBoard + 1} of ${GAUNTLET_BOARDS}` : screen.kind === "shared" && screen.test ? "Testing your coop" : screen.kind === "endless" ? `Endless coop, ${ENDLESS[screen.level].name.toLowerCase()}` : level.chapter}
         best={levelId ? progress[levelId] : undefined}
         saveId={levelId ?? (screen.kind === "endless" ? endlessSaveId(screen.level) : undefined)}
         shareLink={(screen.kind === "shared" && !screen.test) || screen.kind === "endless" ? `${location.origin}${location.pathname}#play=${screen.code}` : undefined}
@@ -384,8 +430,14 @@ export default function App() {
         tally={tally}
         backLabel={screen.kind === "shared" && screen.test ? "Editor" : "Levels"}
         onCleared={cleared}
-        onNext={screen.kind === "endless" ? () => playEndless(screen.level, true, true) : next === null ? null : () => play(next)}
-        nextLabel={screen.kind === "endless" ? "Next coop" : undefined}
+        onNext={
+          gauntletBoard !== null ? (gauntletBoard + 1 < GAUNTLET_BOARDS ? () => go({ kind: "gauntlet", board: gauntletBoard + 1 }, true) : back)
+          : screen.kind === "endless" ? () => playEndless(screen.level, true, true)
+          : next === null ? null
+          : () => play(next)
+        }
+        nextLabel={gauntletBoard !== null ? (gauntletBoard + 1 < GAUNTLET_BOARDS ? "Next board" : "See how you did") : screen.kind === "endless" ? "Next coop" : undefined}
+        budget={gauntletLive && run ? { left: movesLeft(run, budget), onOut: outOfMoves } : undefined}
         onLevels={back}
         onSettings={() => setSettingsOpen(true)}
         onWear={wear}

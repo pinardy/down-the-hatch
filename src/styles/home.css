@@ -736,3 +736,63 @@
 .home .update {
   bottom: calc(5.8rem + env(safe-area-inset-bottom, 0px));
 }
+
+/* ── The weekly gauntlet, under the daily coop ── */
+
+.gauntlet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1.4rem;
+}
+.gauntlet__title {
+  font-size: 1.2rem;
+}
+.gauntlet__about,
+.gauntlet__best,
+.gauntlet__said {
+  color: var(--text-soft);
+}
+.gauntlet__about {
+  margin-top: -0.4rem;
+}
+.gauntlet__status {
+  font-weight: 600;
+}
+.gauntlet__said {
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.gauntlet__boards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0;
+  list-style: none;
+}
+.gauntlet__board {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.3rem 0;
+  background: var(--tile);
+  border-radius: 0.7rem;
+  box-shadow: 0 3px 0 var(--line);
+  line-height: 1.15;
+}
+.gauntlet__board--done {
+  color: var(--ink);
+  background: var(--straw);
+  box-shadow: 0 3px 0 var(--straw-deep);
+}
+.gauntlet__board--now {
+  box-shadow: inset 0 0 0 2px var(--straw-deep), 0 3px 0 var(--line);
+}
+.gauntlet__n {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.gauntlet__par {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}

@@ -30,7 +30,7 @@ const dayNumber = (date: Date) => Math.round(Date.UTC(date.getFullYear(), date.g
 const daysBefore = (date: Date, days: number) => new Date(date.getFullYear(), date.getMonth(), date.getDate() - days, 12);
 
 /** The pool cut into seven bands by par: BANDS[0] is Monday's, the easiest; BANDS[6] is Sunday's. */
-const BANDS = (() => {
+export const BANDS = (() => {
   const byPar = [...DAILY_POOL].sort((a, b) => a.par - b.par); // stable, so equal pars keep their pool order
   return Array.from({ length: 7 }, (_, d) => byPar.slice(Math.floor((d * byPar.length) / 7), Math.floor(((d + 1) * byPar.length) / 7)));
 })();

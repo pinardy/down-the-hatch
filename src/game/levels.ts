@@ -3133,6 +3133,484 @@ const VAULT: LevelDef[] = [
   },
 ];
 
+const SLIPPERY: LevelDef[] = [
+  {
+    id: "skating-rink",
+    name: "Skating rink",
+    tip: "Slippery floor: a hatch on it keeps sliding until something stops it.",
+    rows: ["..__y", ".._.r", "._r_y", "__..#", "y_..y"],
+    hatches: [
+      { color: "red", x: 0, y: 1, w: 2, cap: 2 },
+      { color: "gold", x: 2, y: 3, h: 2, cap: 2 },
+      { color: "gold", x: 0, y: 0, w: 2, cap: 2 },
+    ],
+    par: 4,
+  },
+  {
+    id: "greased-lightning",
+    name: "Greased lightning",
+    rows: ["#....#", "r.pr_#", "..__r_", "r__...", "pr..r."],
+    hatches: [
+      { color: "plum", x: 3, y: 3, h: 2, cap: 2 },
+      { color: "red", x: 5, y: 3, h: 2, cap: 2 },
+      { color: "red", x: 2, y: 0, w: 2, cap: 2 },
+      { color: "red", x: 1, y: 0, h: 3, cap: 2 },
+    ],
+    par: 5,
+  },
+  {
+    id: "slip-and-slide",
+    name: "Slip and slide",
+    rows: ["_r...", "ttr.#", "_rr..", "t__..", "_..#."],
+    hatches: [
+      { color: "red", x: 3, y: 2, w: 2, h: 2, cap: 4 },
+      { color: "teal", x: 2, y: 0, w: 2, cap: 2 },
+      { color: "teal", x: 1, y: 4, w: 2, cap: 1 },
+    ],
+    par: 6,
+  },
+  {
+    id: "mind-the-puddle",
+    name: "Mind the puddle",
+    rows: [".#bb.", "#_.b_", "b.._r", "#.._b", "__b._", "...._"],
+    hatches: [
+      { color: "red", x: 2, y: 1, h: 3, cap: 1 },
+      { color: "blue", x: 1, y: 2, h: 2, cap: 3 },
+      { color: "blue", x: 0, y: 5, w: 3, cap: 3 },
+    ],
+    par: 7,
+  },
+  {
+    id: "glazed",
+    name: "Glazed",
+    rows: ["....#", "__...", "br_..", "_.__#", "br__b"],
+    hatches: [
+      { color: "red", x: 0, y: 0, w: 3, cap: 2 },
+      { color: "blue", x: 3, y: 2, w: 2, cap: 2 },
+      { color: "blue", x: 2, y: 1, w: 2, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "frost-fair",
+    name: "Frost fair",
+    rows: ["...y..", ".##.__", "y__.b.", "t__.._", "__..._"],
+    hatches: [
+      { color: "blue", x: 0, y: 0, h: 2, cap: 1 },
+      { color: "teal", x: 3, y: 1, h: 3, cap: 1 },
+      { color: "gold", x: 3, y: 4, w: 2, cap: 2 },
+    ],
+    par: 8,
+  },
+  {
+    id: "on-thin-ice",
+    name: "On thin ice",
+    rows: ["r....", "#_.rp", "_..__", ".ppr#", "#__b."],
+    hatches: [
+      { color: "red", x: 1, y: 2, w: 2, cap: 3 },
+      { color: "blue", x: 2, y: 0, h: 2, cap: 1 },
+      { color: "plum", x: 3, y: 0, w: 2, cap: 3 },
+    ],
+    par: 9,
+  },
+  {
+    id: "ice-dancing",
+    name: "Ice dancing",
+    rows: ["__..yy", ".#..__", "_t.y#.", "#___p.", "y...t.", "_y__p."],
+    hatches: [
+      { color: "plum", x: 1, y: 4, w: 3, cap: 2 },
+      { color: "teal", x: 2, y: 0, h: 3, cap: 2 },
+      { color: "gold", x: 5, y: 4, h: 2, cap: 5 },
+    ],
+    par: 10,
+  },
+];
+
+const CRATES: LevelDef[] = [
+  {
+    id: "heave-ho",
+    name: "Heave ho",
+    tip: "A hatch shoves a crate one square on, onto bare floor.",
+    rows: [".....", ".....", ".#...", "b...@", "..@r.", ".r@.@"],
+    hatches: [
+      { color: "blue", x: 2, y: 0, shape: ["xxx", "..x"], cap: 1 },
+      { color: "red", x: 1, y: 1, shape: ["xx", ".x", ".x"], cap: 1 },
+      { color: "red", x: 1, y: 4, cap: 1 },
+    ],
+    par: 4,
+  },
+  {
+    id: "box-clever",
+    name: "Box clever",
+    rows: ["b.t...", "@..@..", "....@b", "...b..", ".b...."],
+    hatches: [
+      { color: "blue", x: 3, y: 0, shape: ["xx", ".x"], cap: 2 },
+      { color: "teal", x: 0, y: 2, shape: ["xxx", "..x"], cap: 1 },
+      { color: "blue", x: 4, y: 3, w: 2, h: 2, cap: 2 },
+    ],
+    par: 5,
+  },
+  {
+    id: "shipping-out",
+    name: "Shipping out",
+    rows: [".#...", "p...p", ".#@.b", "#.@..", "b...b"],
+    hatches: [
+      { color: "blue", x: 3, y: 0, w: 2, cap: 3 },
+      { color: "plum", x: 2, y: 1, shape: ["xx", ".x"], cap: 1 },
+      { color: "plum", x: 3, y: 3, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "packing-up",
+    name: "Packing up",
+    rows: ["rry.y", "t.@.@", "....#", ".y...", "....@", "ryt.."],
+    hatches: [
+      { color: "red", x: 0, y: 2, h: 3, cap: 3 },
+      { color: "gold", x: 2, y: 3, shape: ["xxx", "x.."], cap: 4 },
+      { color: "teal", x: 3, y: 5, w: 2, cap: 2 },
+    ],
+    par: 8,
+  },
+  {
+    id: "odds-and-ends",
+    name: "Odds and ends",
+    rows: ["py...", ".@y..", "y@y.@", ".....", "...yy"],
+    hatches: [
+      { color: "gold", x: 2, y: 3, shape: ["xxx", "x.."], cap: 2 },
+      { color: "plum", x: 3, y: 1, w: 2, cap: 1 },
+      { color: "gold", x: 3, y: 0, w: 2, cap: 2 },
+      { color: "gold", x: 0, y: 3, h: 2, cap: 2 },
+    ],
+    par: 9,
+  },
+  {
+    id: "move-along",
+    name: "Move along",
+    rows: ["yy@.y", ".@.yr", ".@.ry", "#rr#.", ".yrrr", "...r."],
+    hatches: [
+      { color: "red", x: 0, y: 4, shape: ["x..", "xxx"], cap: 4 },
+      { color: "gold", x: 0, y: 1, h: 2, cap: 6 },
+      { color: "red", x: 2, y: 1, h: 2, cap: 4 },
+    ],
+    par: 10,
+  },
+  {
+    id: "crate-expectations",
+    name: "Crate expectations",
+    rows: [".p@.b@", "p....#", "..bbp#", "@.....", "..p@p."],
+    hatches: [
+      { color: "plum", x: 3, y: 3, w: 3, cap: 3 },
+      { color: "blue", x: 0, y: 3, shape: [".x", "xx"], cap: 3 },
+      { color: "plum", x: 3, y: 0, shape: ["x.", "xx"], cap: 2 },
+    ],
+    par: 12,
+  },
+  {
+    id: "heavy-lifting",
+    name: "Heavy lifting",
+    rows: ["b....#", "tyy..@", "..t@..", "b.@.y.", "......", "@..t.."],
+    hatches: [
+      { color: "blue", x: 3, y: 0, h: 2, cap: 2 },
+      { color: "teal", x: 0, y: 4, shape: ["xxx", "..x"], cap: 3 },
+      { color: "gold", x: 4, y: 2, shape: [".x", ".x", "xx"], cap: 3 },
+    ],
+    par: 13,
+  },
+];
+
+const TURNTABLES: LevelDef[] = [
+  {
+    id: "about-turn",
+    name: "About turn",
+    tip: "A turntable swings a hatch a quarter turn clockwise, if there’s room.",
+    rows: ["...*.", ".b#..", ".p..*", ".....", "....*", "...p#"],
+    hatches: [
+      { color: "plum", x: 0, y: 3, shape: ["x.", "xx"], cap: 1 },
+      { color: "blue", x: 1, y: 3, shape: ["xx", ".x"], cap: 1 },
+      { color: "plum", x: 0, y: 0, shape: ["xx", "x."], cap: 1 },
+    ],
+    par: 4,
+  },
+  {
+    id: "spin-cycle",
+    name: "Spin cycle",
+    rows: [".....", "..*..", "....#", "..tb.", "**..#", "t...t"],
+    hatches: [
+      { color: "blue", x: 3, y: 0, shape: ["xx", "x."], cap: 1 },
+      { color: "teal", x: 1, y: 2, shape: ["xxx", "x.."], cap: 2 },
+      { color: "teal", x: 0, y: 0, h: 2, cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "whirligig",
+    name: "Whirligig",
+    rows: [".*.p.", ".....", "p....", ".#...", "p*tt*"],
+    hatches: [
+      { color: "teal", x: 3, y: 0, shape: [".x", "xx"], cap: 2 },
+      { color: "plum", x: 2, y: 2, shape: ["xx", ".x"], cap: 2 },
+      { color: "plum", x: 2, y: 0, h: 2, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "turn-the-tables",
+    name: "Turn the tables",
+    rows: ["b..b..", ".....*", "......", "r.*r.#", "..b..."],
+    hatches: [
+      { color: "blue", x: 2, y: 1, shape: [".x.", "xxx"], cap: 2 },
+      { color: "red", x: 0, y: 1, shape: ["xxx", "x.."], cap: 2 },
+      { color: "blue", x: 0, y: 4, w: 2, cap: 1 },
+    ],
+    par: 8,
+  },
+  {
+    id: "pirouette",
+    name: "Pirouette",
+    rows: ["bb#.bb", "b#....", "*.*...", ".b..t*", "b...bb"],
+    hatches: [
+      { color: "teal", x: 2, y: 0, shape: [".x.", "xxx"], cap: 1 },
+      { color: "blue", x: 1, y: 3, shape: [".x", "xx"], cap: 3 },
+      { color: "blue", x: 3, y: 2, w: 3, cap: 3 },
+      { color: "blue", x: 3, y: 3, cap: 3 },
+    ],
+    par: 9,
+  },
+  {
+    id: "do-si-do",
+    name: "Do-si-do",
+    rows: [".....", ".p...", "....t", "..*..", "..tp.", "pp..t"],
+    hatches: [
+      { color: "teal", x: 1, y: 2, shape: ["xxx", "..x"], cap: 3 },
+      { color: "plum", x: 2, y: 0, shape: [".x.", "xxx"], cap: 2 },
+      { color: "plum", x: 0, y: 3, shape: [".x", "xx"], cap: 2 },
+    ],
+    par: 10,
+  },
+  {
+    id: "topsy-turvy",
+    name: "Topsy-turvy",
+    rows: [".y..#.", "..*..#", "....y.", "p...y*", "...p*y"],
+    hatches: [
+      { color: "gold", x: 1, y: 3, shape: ["xx", "x."], cap: 2 },
+      { color: "plum", x: 1, y: 1, shape: ["..x", "xxx"], cap: 2 },
+      { color: "gold", x: 2, y: 0, w: 2, cap: 1 },
+      { color: "gold", x: 0, y: 0, h: 3, cap: 1 },
+    ],
+    par: 12,
+  },
+  {
+    id: "hairpin",
+    name: "Hairpin",
+    rows: ["....b", "b....", "..y..", ".*...", "yb.b."],
+    hatches: [
+      { color: "gold", x: 2, y: 2, shape: ["..x", "xxx"], cap: 2 },
+      { color: "blue", x: 2, y: 0, shape: [".x.", "xxx"], cap: 2 },
+      { color: "blue", x: 0, y: 0, w: 2, cap: 2 },
+    ],
+    par: 13,
+  },
+];
+
+const BURROWS: LevelDef[] = [
+  {
+    id: "rabbit-hole",
+    name: "Rabbit hole",
+    tip: "A one-square hatch that goes down a burrow comes out of the other end.",
+    rows: ["...t..", "....#.", "r.(...", "..)...", ".b....", "r....b"],
+    hatches: [
+      { color: "teal", x: 3, y: 4, w: 2, h: 2, cap: 1 },
+      { color: "red", x: 5, y: 0, cap: 2 },
+      { color: "blue", x: 1, y: 1, h: 2, cap: 2 },
+    ],
+    par: 4,
+  },
+  {
+    id: "shortcut",
+    name: "Shortcut",
+    rows: [".....", "#....", "..)rb", "..(..", "..b.."],
+    hatches: [
+      { color: "blue", x: 1, y: 4, cap: 1 },
+      { color: "red", x: 2, y: 0, w: 2, h: 2, cap: 1 },
+      { color: "blue", x: 0, y: 3, w: 2, cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "tunnel-vision",
+    name: "Tunnel vision",
+    rows: ["....#.", "....p.", ".b...b", ".#...(", ")....#", "p.bpb."],
+    hatches: [
+      { color: "blue", x: 4, y: 3, cap: 2 },
+      { color: "plum", x: 2, y: 3, w: 2, h: 2, cap: 1 },
+      { color: "blue", x: 1, y: 4, h: 2, cap: 2 },
+      { color: "plum", x: 2, y: 2, w: 3, cap: 1 },
+      { color: "plum", x: 0, y: 0, h: 3, cap: 1 },
+    ],
+    par: 6,
+  },
+  {
+    id: "down-under",
+    name: "Down under",
+    rows: [".r.rr", "..).y", ".#r.r", "rrrry", "r.y#("],
+    hatches: [
+      { color: "red", x: 2, y: 0, cap: 5 },
+      { color: "gold", x: 0, y: 1, w: 2, cap: 3 },
+      { color: "red", x: 3, y: 1, h: 2, cap: 5 },
+    ],
+    par: 7,
+  },
+  {
+    id: "underpass",
+    name: "Underpass",
+    rows: ["y...y", ".ytt.", "..b..", "y)..#", "t.(.y", "#...#"],
+    hatches: [
+      { color: "blue", x: 3, y: 2, w: 2, cap: 1 },
+      { color: "gold", x: 3, y: 3, h: 3, cap: 3 },
+      { color: "teal", x: 0, y: 1, h: 2, cap: 3 },
+      { color: "gold", x: 1, y: 4, cap: 2 },
+    ],
+    par: 7,
+  },
+  {
+    id: "bolt-hole",
+    name: "Bolt-hole",
+    rows: ["...(b", "...).", "y....", "#r...", "yb.r."],
+    hatches: [
+      { color: "red", x: 3, y: 2, w: 2, h: 2, cap: 2 },
+      { color: "blue", x: 2, y: 0, h: 3, cap: 2 },
+      { color: "gold", x: 2, y: 3, cap: 2 },
+    ],
+    par: 8,
+  },
+  {
+    id: "warren",
+    name: "Warren",
+    rows: ["yb#b#", ".....", "..y..", "..(..", "br)y."],
+    hatches: [
+      { color: "blue", x: 4, y: 4, cap: 3 },
+      { color: "red", x: 3, y: 1, w: 2, h: 2, cap: 1 },
+      { color: "gold", x: 0, y: 1, w: 2, cap: 3 },
+    ],
+    par: 9,
+  },
+  {
+    id: "mole-hill",
+    name: "Mole hill",
+    rows: [".b...", "(r..#", "##...", "t.)..", "bbtbr"],
+    hatches: [
+      { color: "teal", x: 2, y: 0, w: 2, cap: 2 },
+      { color: "blue", x: 2, y: 1, w: 2, cap: 4 },
+      { color: "red", x: 4, y: 0, cap: 2 },
+    ],
+    par: 10,
+  },
+];
+
+
+const SKITTISH: LevelDef[] = [
+  {
+    id: "flighty",
+    name: "Flighty",
+    tip: "A skittish chicken hops away from a hatch that stops beside it. Corner it.",
+    rows: [".rrr.", "...r.", "r.r..", "#p..#", "r...."],
+    hatches: [
+      { color: "plum", x: 2, y: 1, cap: 1 },
+      { color: "red", x: 3, y: 2, h: 2, cap: 4 },
+      { color: "red", x: 1, y: 4, w: 2, cap: 3 },
+    ],
+    skittish: [[1, 0]],
+    par: 3,
+  },
+  {
+    id: "jumpy",
+    name: "Jumpy",
+    rows: ["r#...", "b.#rr", ".rr..", ".....", "..r.."],
+    hatches: [
+      { color: "blue", x: 0, y: 3, w: 2, h: 2, cap: 1 },
+      { color: "red", x: 3, y: 2, h: 2, cap: 3 },
+      { color: "red", x: 3, y: 4, w: 2, cap: 3 },
+    ],
+    skittish: [[0, 0], [1, 2], [4, 1], [3, 1]],
+    par: 4,
+  },
+  {
+    id: "spooked",
+    name: "Spooked",
+    rows: ["....#", ".t.tr", ".#.r.", "r....", "y....", "r..r."],
+    hatches: [
+      { color: "red", x: 1, y: 4, w: 3, cap: 3 },
+      { color: "gold", x: 3, y: 3, w: 2, cap: 1 },
+      { color: "teal", x: 2, y: 0, h: 3, cap: 2 },
+      { color: "red", x: 0, y: 0, h: 3, cap: 2 },
+    ],
+    skittish: [[3, 1], [1, 1], [4, 1]],
+    par: 5,
+  },
+  {
+    id: "head-start",
+    name: "Head start",
+    rows: [".tt.p", "p....", "t..t.", "y..#.", "##..."],
+    hatches: [
+      { color: "plum", x: 4, y: 3, h: 2, cap: 2 },
+      { color: "teal", x: 2, y: 2, h: 2, cap: 4 },
+      { color: "gold", x: 3, y: 0, h: 2, cap: 1 },
+    ],
+    skittish: [[4, 0], [3, 2], [1, 0], [0, 2]],
+    par: 6,
+  },
+  {
+    id: "wild-goose-chase",
+    name: "Wild goose chase",
+    rows: ["y.yr..", ".r.#..", "......", "#...yr", "....y."],
+    hatches: [
+      { color: "red", x: 0, y: 4, w: 3, cap: 3 },
+      { color: "gold", x: 0, y: 2, w: 3, cap: 2 },
+      { color: "gold", x: 3, y: 3, h: 2, cap: 2 },
+    ],
+    skittish: [[1, 1], [4, 4], [4, 3]],
+    par: 7,
+  },
+  {
+    id: "herding-cats",
+    name: "Herding cats",
+    rows: ["p...t", "#....", "..t#.", "..p.t", "...tt"],
+    hatches: [
+      { color: "plum", x: 1, y: 0, w: 3, cap: 2 },
+      { color: "teal", x: 0, y: 3, w: 2, cap: 3 },
+      { color: "teal", x: 2, y: 1, w: 3, cap: 2 },
+    ],
+    skittish: [[2, 3], [4, 3], [2, 2], [0, 0]],
+    par: 8,
+  },
+  {
+    id: "scatterbrain",
+    name: "Scatterbrain",
+    rows: ["r..r..", ".....y", "....ry", "..#...", ".#y..r"],
+    hatches: [
+      { color: "red", x: 3, y: 3, w: 2, h: 2, cap: 4 },
+      { color: "gold", x: 1, y: 2, w: 3, cap: 2 },
+      { color: "gold", x: 0, y: 1, h: 3, cap: 1 },
+    ],
+    skittish: [[3, 0], [5, 4], [5, 1], [4, 2]],
+    par: 9,
+  },
+  {
+    id: "round-them-up",
+    name: "Round them up",
+    rows: ["p#ppb", "b....", "p.p.b", "..#.b", "..p.."],
+    hatches: [
+      { color: "plum", x: 2, y: 1, w: 2, cap: 3 },
+      { color: "blue", x: 0, y: 3, w: 2, h: 2, cap: 4 },
+      { color: "plum", x: 1, y: 1, h: 2, cap: 3 },
+    ],
+    skittish: [[4, 0], [4, 3], [0, 2], [2, 0], [3, 0]],
+    par: 10,
+  },
+];
+
+
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
 
 export interface Chapter {
@@ -3157,6 +3635,11 @@ const BOOK: { name: string; difficulty: Difficulty; blurb: string; levels: Level
   { name: "Mystery guests", difficulty: "Medium", blurb: "White chickens and eggs. Some eggs hold white chickens, and some white chickens are spoken for.", levels: GUESTS },
   { name: "Chain of custody", difficulty: "Medium", blurb: "Chained hatches and padlocks. One locked hatch holds its partner still too.", levels: CUSTODY },
   { name: "Tangled", difficulty: "Medium", blurb: "Chained hatches with corners. Two awkward shapes, one move at a time.", levels: TANGLED },
+  { name: "Skid row", difficulty: "Medium", blurb: "Slippery floor: once a hatch is on it, it can’t stop until something stops it.", levels: SLIPPERY },
+  { name: "Shove off", difficulty: "Medium", blurb: "Crates go where they’re shoved, a square at a time. Shove one into a corner and there it stays.", levels: CRATES },
+  { name: "Spin doctor", difficulty: "Medium", blurb: "Turntables swing a hatch a quarter turn. Come at them from the side that leaves room to turn.", levels: TURNTABLES },
+  { name: "Down the rabbit hole", difficulty: "Medium", blurb: "A one-square hatch can take the burrow from one end to the other. Bigger ones have to go round.", levels: BURROWS },
+  { name: "Flight risk", difficulty: "Medium", blurb: "Skittish chickens hop away from a hatch that stops beside them. Herd them into a corner.", levels: SKITTISH },
   { name: "The whole flock", difficulty: "Hard", blurb: "Bends, ice, padlocks and eggs, all at once.", levels: FLOCK },
   { name: "Free range", difficulty: "Hard", blurb: "No tricks. Plain hatches, crowded yards, and a long way round.", levels: RANGE },
   { name: "Bent double", difficulty: "Hard", blurb: "More corners than floor. Every turn has to be planned.", levels: TWISTS },

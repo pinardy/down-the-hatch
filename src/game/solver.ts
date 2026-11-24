@@ -7,7 +7,7 @@
 
 import { COLORS, DELTA, DIRS } from "./types";
 import type { Dir, GameState, Level } from "./types";
-import { startState } from "./engine";
+import { moverOf, startState, step } from "./engine";
 
 export interface SolveStep {
   hatch: number;
@@ -40,7 +40,14 @@ const BITS = 30;
 const NO_BOARD: number[] = [];
 const DONE: Node = { pos: NO_BOARD, left: [], alive: [], birds: 1, key: false, color: null, broken: 0, last: -1, parent: null, via: -1, k: "" };
 
+/**
+ * Does the level use a piece the fast search doesn't model: slippery floor, crates,
+ * turntables, a burrow or skittish chickens? Those levels are searched by the game's own rules.
+ */
+export const needsRules = (level: Level) => level.slick.some(Boolean) || level.turns.some(Boolean) || level.burrow !== null || level.crates.length > 0 || level.chickens.some((c) => c.skittish);
+
 export function solve(level: Level, from: GameState = startState(level), maxStates = 400_000, until = Infinity): SolveResult {
+  if (needsRules(level)) return solveByRules(level, from, maxStates, until);
   const { w, h, bales } = level;
   const n = level.hatches.length;
   const shape = level.hatches; // sizes, colours and rails never change
@@ -260,6 +267,76 @@ export function solve(level: Level, from: GameState = startState(level), maxStat
     }
     frontier = next;
     cost++;
+  }
+  return { status: "stuck", explored };
+}
+
+interface RulesNode {
+  state: GameState | null; // let go once explored
+  parent: RulesNode | null;
+  via: number; // hatch * 4 + dir index
+  k: string;
+}
+
+/**
+ * The same search as `solve`, but each slide is made by the game's own `step`: slower, and it
+ * can't disagree with the game. For the pieces that move things around or reshape a hatch.
+ */
+export function solveByRules(level: Level, from: GameState, maxStates: number, until: number): SolveResult {
+  const w = level.w;
+  const turning = level.turns.some(Boolean);
+  const keyOf = (s: GameState) => {
+    let k = String.fromCharCode((s.lastHatch ?? -1) + 1 + (s.keyTaken ? 64 : 0));
+    for (const t of s.hatches) {
+      k += String.fromCharCode(t.id + 1, t.y * w + t.x + 1, t.left, COLORS.indexOf(t.color) + 1);
+      if (turning) for (const [cx, cy] of t.cells) k += String.fromCharCode(97 + cx * 8 + cy);
+    }
+    k += "|";
+    for (const c of s.chickens) k += c.skittish ? String.fromCharCode(c.id + 1, c.y * w + c.x + 1) : String.fromCharCode(c.id + 1);
+    k += "|";
+    for (const b of s.broken) k += String.fromCharCode(b + 1);
+    k += "|";
+    // Crates are all alike: where they are matters, not which is which.
+    for (const c of [...s.crates].sort((a, b) => a - b)) k += String.fromCharCode(c + 1);
+    return k;
+  };
+  const start: RulesNode = { state: from, parent: null, via: -1, k: keyOf(from) };
+  const best = new Map<string, number>([[start.k, 0]]);
+  let explored = 0;
+  let frontier: RulesNode[] = [start];
+  for (let cost = 0; frontier.length; cost++) {
+    const next: RulesNode[] = [];
+    for (let f = 0; f < frontier.length; f++) {
+      const node = frontier[f];
+      if (best.get(node.k)! < 0) continue;
+      best.set(node.k, -1 - cost);
+      explored++;
+      const s = node.state!;
+      if (s.chickens.length === 0) {
+        const steps: SolveStep[] = [];
+        for (let at: RulesNode | null = node; at && at.parent; at = at.parent) steps.push({ hatch: at.via >> 2, dir: DIRS[at.via & 3] });
+        return { status: "solved", moves: cost, steps: steps.reverse(), explored };
+      }
+      if (explored > maxStates) return { status: "unknown", explored };
+      if ((explored & 511) === 0 && Date.now() > until) return { status: "unknown", explored };
+      for (const t of s.hatches) {
+        // A chained pair is moved by its lower id only.
+        if (t.link !== undefined && t.link < t.id && s.hatches.some((o) => o.id === t.link)) continue;
+        const mover = moverOf(t);
+        for (let d = 0; d < 4; d++) {
+          const out = step(level, s, t.id, DIRS[d]);
+          if (!out) continue;
+          const childCost = mover === s.lastHatch ? cost : cost + 1;
+          const k = keyOf(out.state);
+          const known = best.get(k);
+          if (known !== undefined && (known < 0 || known <= childCost)) continue;
+          best.set(k, childCost);
+          (childCost === cost ? frontier : next).push({ state: out.state, parent: node, via: t.id * 4 + d, k });
+        }
+      }
+      node.state = null;
+    }
+    frontier = next;
   }
   return { status: "stuck", explored };
 }

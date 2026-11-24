@@ -35,7 +35,8 @@
   filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
 }
 .crack-art,
-.hole-art {
+.hole-art,
+.slick-art {
   width: 100%;
   height: 100%;
 }
@@ -53,6 +54,7 @@
 .hatch,
 .chicken,
 .key,
+.crate,
 .hint-dot,
 .hint-ghost {
   position: absolute;
@@ -336,7 +338,8 @@
   place-items: center;
   pointer-events: none;
   z-index: 3;
-  transition: opacity 160ms; /* for dimming while a hatch is held */
+  /* opacity for dimming while a hatch is held; transform for a skittish chicken's hop */
+  transition: opacity 160ms, transform 200ms cubic-bezier(0.3, 1.4, 0.5, 1);
 }
 .chicken::before {
   content: "";
@@ -568,4 +571,48 @@
 .gate-art--open .gate-art__bars {
   transform: scaleY(0.12);
   opacity: 0.55;
+}
+
+/* ── Crates and skittish chickens ── */
+
+.crate {
+  display: grid;
+  width: var(--cell);
+  height: var(--cell);
+  padding: calc(var(--cell) * 0.06);
+  z-index: 2;
+  pointer-events: none;
+  transition: transform 150ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.crate-art {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
+}
+.crate--wobble .crate-art {
+  animation: shake 380ms ease-in-out;
+}
+/* A skittish chicken: startled lines over its head, and a jitter now and then. */
+.startle-art {
+  position: absolute;
+  top: -6%;
+  left: 30%;
+  width: 40%;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
+}
+.chicken--skittish .chicken__art {
+  animation: fidget 2.4s ease-in-out infinite;
+}
+@keyframes fidget {
+  0%,
+  86%,
+  100% {
+    transform: none;
+  }
+  90% {
+    transform: translateX(-5%) rotate(-6deg);
+  }
+  95% {
+    transform: translateX(5%) rotate(6deg);
+  }
 }

@@ -35,6 +35,8 @@ export interface Held {
    * come back since (see easeSlack). Only going further across than this counts towards turning.
    */
   slack: number;
+  /** The hatch slipped on, turned or went down the burrow mid-drag: the rest of the drag is ignored. */
+  done?: boolean;
 }
 
 /**
@@ -146,6 +148,12 @@ export function whyBlocked(level: Level, game: GameState, why: Blocker): string 
       return `That square is one-way: a hatch can only slide onto it moving ${why.dir === "up" ? "up" : why.dir === "down" ? "down" : `to the ${why.dir}`}.`;
     case "gate":
       return "The gate is shut. It opens while a hatch stands on a pressure plate.";
+    case "crate":
+      return "That crate can’t go any further: a crate only slides onto bare floor, and one at a time.";
+    case "turn":
+      return "No room to turn there. A hatch on a turntable swings a quarter turn clockwise, and needs bare floor to do it.";
+    case "burrow":
+      return why.why === "big" ? "Only a one-square hatch fits down a burrow." : "Something is sitting on the other end of the burrow.";
     default:
       return null;
   }

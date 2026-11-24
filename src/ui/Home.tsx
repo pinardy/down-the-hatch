@@ -1,3 +1,5 @@
+import { GauntletCard } from "./GauntletCard";
+import type { GauntletProps } from "./GauntletCard";
 import { useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 import type { Playing } from "../App";
@@ -107,9 +109,11 @@ interface Props {
   onStats: () => void;
   /** Open a home-made coop from a pasted code or link. False if it isn't one. */
   onCode: (text: string) => boolean;
+  /** The weekly gauntlet, shown with the daily coop. */
+  gauntlet: GauntletProps;
 }
 
-export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, endless, endlessCurrent, onEndless, onEndlessCount, tab, onTab, onStats, onPlay, onSettings, onProgress, onEditor, onCode }: Props) {
+export function Home({ chapters, daily, progress, today, tally, lastPlayed, notice, endless, endlessCurrent, onEndless, onEndlessCount, tab, onTab, onStats, onPlay, onSettings, onProgress, onEditor, onCode, gauntlet }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const shows = (l: Level) => {
     const r = progress[l.id];
@@ -360,6 +364,9 @@ export function Home({ chapters, daily, progress, today, tally, lastPlayed, noti
             </ol>
           </div>
         </section>
+      ) : null}
+      {dailyOpen ? (
+        <GauntletCard {...gauntlet} />
       ) : (
         <div className="daily daily--locked" role="note">
           <span className="daily__text">

@@ -191,6 +191,27 @@ export const sfx = {
     tone("triangle", 900, 1500, 0.09, 0.12);
     tone("triangle", 1500, 700, 0.16, 0.1, 0.07);
   },
+  /** A long slide on slippery floor: a falling whistle. */
+  whoosh() {
+    tone("sine", 900, 300, 0.22, 0.06);
+  },
+  /** A crate scraped along the floor. */
+  scrape() {
+    tone("sawtooth", 120, 95, 0.1, 0.05);
+  },
+  /** A turntable swinging round. */
+  swivel() {
+    tone("triangle", 330, 520, 0.12, 0.09);
+  },
+  /** Down one end of the burrow and out of the other. */
+  pop() {
+    tone("sine", 520, 180, 0.1, 0.1);
+    tone("sine", 260, 760, 0.1, 0.1, 0.12);
+  },
+  /** A skittish chicken hopping off in a flap. */
+  flap() {
+    tone("square", 900, 1300, 0.05, 0.05);
+  },
   /** A cracked board giving way. */
   crack() {
     tone("sawtooth", 260, 70, 0.16, 0.12);

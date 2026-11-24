@@ -45,6 +45,8 @@ export interface Chicken {
   y: number;
   /** Still in its egg: its colour stays secret until a hatch slides up beside it. */
   hidden?: boolean;
+  /** Skittish: when a hatch stops right beside it, it hops one square the way that hatch moved, if it can. */
+  skittish?: boolean;
 }
 
 /** How a level is written down in levels.ts. */
@@ -59,9 +61,15 @@ export interface LevelDef {
    * `R` `Y` `T` `B` `P` `W` the same chicken still in its egg,
    * `1` `2` `3` `4` `5` a puddle of red, gold, teal, blue or plum paint (a hatch that slides onto it takes that colour),
    * `o` a pressure plate and `=` a gate square (gates can only be entered while a hatch stands on a plate),
-   * `<` `>` `^` `v` a one-way square (a hatch can only slide onto it moving the way the arrow points).
+   * `<` `>` `^` `v` a one-way square (a hatch can only slide onto it moving the way the arrow points),
+   * `_` slippery floor (a hatch that slides onto it keeps going until something stops it),
+   * `@` a crate (a hatch shoves it one square, onto plain empty floor),
+   * `*` a turntable (a hatch that slides onto it turns a quarter, clockwise, about that square),
+   * `(` and `)` the two ends of a burrow (a one-square hatch that goes in one comes out of the other).
    */
   rows: string[];
+  /** Chickens that are skittish, by where they start: [x, y]. */
+  skittish?: [number, number][];
   hatches: {
     color: Color;
     x: number;
@@ -108,6 +116,14 @@ export interface Level {
   gates: boolean[];
   /** Row-major: the only way a hatch may slide onto each square, or null where any way will do. */
   arrows: (Dir | null)[];
+  /** Row-major, true where the floor is slippery. */
+  slick: boolean[];
+  /** Row-major, true where a turntable is. */
+  turns: boolean[];
+  /** The two ends of the burrow, as row-major squares, if the level has one. */
+  burrow: [number, number] | null;
+  /** Where each crate starts, as row-major squares; a crate's id is its place in this list. */
+  crates: number[];
   chickens: Chicken[];
   hatches: Hatch[];
   par: number;
@@ -120,6 +136,8 @@ export interface GameState {
   chickens: Chicken[];
   /** Cracked boards that have given way, as row-major squares in ascending order. */
   broken: readonly number[];
+  /** Where each crate is now, as row-major squares, by crate id. */
+  crates: readonly number[];
   /** True once the key has been picked up (and from the start when there is no key). */
   keyTaken: boolean;
   /** A move is one unbroken run of sliding the same hatch (or the same chained pair). */
@@ -144,4 +162,14 @@ export interface StepResult {
   painted: Hatch[];
   /** The gates opened or closed on this step. */
   gate: "opened" | "closed" | null;
+  /** Crates shoved on this step: crate id, and the square it went from and to. */
+  pushed: { id: number; from: number; to: number }[];
+  /** Hatches that a turntable turned on this step (as they are now). */
+  turned: Hatch[];
+  /** A hatch went down the burrow and came out of the other end on this step. */
+  burrowed: boolean;
+  /** Squares slid on slippery floor after the first, this step (0 when it didn't slip). */
+  slid: number;
+  /** Skittish chickens that hopped away on this step (where they are now). */
+  hopped: Chicken[];
 }

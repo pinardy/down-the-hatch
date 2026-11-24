@@ -41,6 +41,11 @@ export interface Tier {
   paint?: [number, number]; // how many paint puddles
   gate?: boolean; // a pressure plate and some gate squares
   arrows?: [number, number]; // how many one-way squares
+  slick?: [number, number]; // how many squares of slippery floor
+  crates?: [number, number]; // how many crates
+  turns?: [number, number]; // how many turntables
+  burrow?: boolean; // one burrow
+  skittish?: number; // share of chickens that are skittish
   /** Hard tiers climb for longer and let the solver look further (still within what a hint can search). */
   hard?: boolean;
 }
@@ -77,6 +82,12 @@ export const TIERS: Tier[] = [
   { name: "paint-eggs", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0.1, target: 19, paint: [1, 3], eggs: 0.4, hard: true },
   { name: "frost-gate", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 28, odd: 2, ice: true, gate: true, hard: true },
   { name: "locks-paint", w: [6, 6], h: [6, 7], colors: [4, 5], hatches: [5, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0.1, target: 28, odd: 1, lock: true, paint: [1, 2], eggs: 0.3, hard: true },
+  // The later pieces, one tier each.
+  { name: "slick", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 2], bales: [1, 4], rail: 0, target: 10, slick: [5, 12] },
+  { name: "crate", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: [...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 11, crates: [2, 4] },
+  { name: "turn", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 3], rail: 0, target: 10, odd: 2, turns: [1, 3] },
+  { name: "burrow", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 5], shapes: [RECT.dot, RECT.dot, ...PLAIN], cap: [1, 3], bales: [1, 4], rail: 0, target: 10, burrow: true },
+  { name: "skittish", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, skittish: 0.4 },
   { name: "mix-hard", w: [6, 7], h: [7, 7], colors: [5, 5], hatches: [6, 8], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 5], rail: 0.1, target: 30, odd: 2, ice: true, lock: true, eggs: 0.35, hard: true },
 ];
 
@@ -91,7 +102,11 @@ export interface Draft {
   plates: Set<number>;
   gates: Set<number>;
   arrows: Map<number, Dir>;
-  birds: { color: Feather; k: number; hidden: boolean }[];
+  slick: Set<number>;
+  crates: Set<number>;
+  turns: Set<number>;
+  burrow: [number, number] | null;
+  birds: { color: Feather; k: number; hidden: boolean; skittish?: boolean }[];
   /** `extra` is room beyond the hatch's share of its own colour: room that white chickens must fill. */
   hatches: { color: Color; x: number; y: number; shape: Shape; axis?: Axis; ice?: number; locked?: boolean; link?: string; extra?: number }[];
 }
@@ -117,6 +132,10 @@ const copy = (d: Draft): Draft => ({
   plates: new Set(d.plates),
   gates: new Set(d.gates),
   arrows: new Map(d.arrows),
+  slick: new Set(d.slick),
+  crates: new Set(d.crates),
+  turns: new Set(d.turns),
+  burrow: d.burrow ? [...d.burrow] : null,
   birds: d.birds.map((b) => ({ ...b })),
   hatches: d.hatches.map((t) => ({ ...t })),
 });
@@ -125,7 +144,7 @@ const ARROW: Record<Dir, string> = { up: "^", down: "v", left: "<", right: ">" }
 const cellsOf = (d: Draft, t: Draft["hatches"][number], x = t.x, y = t.y) => t.shape.flatMap((row, dy) => [...row].flatMap((ch, dx) => (ch === "x" ? [(y + dy) * d.w + x + dx] : [])));
 
 function taken(d: Draft, skipHatch = -1): Set<number> {
-  const out = new Set<number>([...d.bales, ...d.cracks, ...d.paint.keys(), ...d.plates, ...d.gates, ...d.arrows.keys()]);
+  const out = new Set<number>([...d.bales, ...d.cracks, ...d.paint.keys(), ...d.plates, ...d.gates, ...d.arrows.keys(), ...d.slick, ...d.crates, ...d.turns, ...(d.burrow ?? [])]);
   if (d.key !== null) out.add(d.key);
   for (const b of d.birds) out.add(b.k);
   d.hatches.forEach((t, i) => i !== skipHatch && cellsOf(d, t).forEach((k) => out.add(k)));
@@ -175,6 +194,14 @@ function fits(d: Draft, tier: Tier): boolean {
   if (d.paint.size < (tier.paint?.[0] ?? 0) || d.paint.size > (tier.paint?.[1] ?? 0)) return false;
   if (tier.gate ? !d.plates.size || !d.gates.size || d.plates.size > 2 || d.gates.size > 4 : d.plates.size || d.gates.size) return false;
   if (d.arrows.size < (tier.arrows?.[0] ?? 0) || d.arrows.size > (tier.arrows?.[1] ?? 0)) return false;
+  if (d.slick.size < (tier.slick?.[0] ?? 0) || d.slick.size > (tier.slick?.[1] ?? 0)) return false;
+  if (d.crates.size < (tier.crates?.[0] ?? 0) || d.crates.size > (tier.crates?.[1] ?? 0)) return false;
+  if (d.turns.size < (tier.turns?.[0] ?? 0) || d.turns.size > (tier.turns?.[1] ?? 0)) return false;
+  if (!!tier.burrow !== (d.burrow !== null)) return false;
+  // A burrow is only worth having with a one-square hatch to use it.
+  if (tier.burrow && !d.hatches.some((t) => t.shape.length === 1 && t.shape[0] === "x")) return false;
+  const jumpy = d.birds.filter((b) => b.skittish).length;
+  if (tier.skittish ? jumpy < 1 || jumpy > Math.ceil(d.birds.length / 2) : jumpy > 0) return false;
   return true;
 }
 
@@ -187,6 +214,13 @@ function toDef(d: Draft): LevelDef | null {
   for (const k of d.plates) grid[k] = "o";
   for (const k of d.gates) grid[k] = "=";
   for (const [k, dir] of d.arrows) grid[k] = ARROW[dir];
+  for (const k of d.slick) grid[k] = "_";
+  for (const k of d.crates) grid[k] = "@";
+  for (const k of d.turns) grid[k] = "*";
+  if (d.burrow) {
+    grid[d.burrow[0]] = "(";
+    grid[d.burrow[1]] = ")";
+  }
   for (const b of d.birds) grid[b.k] = b.hidden ? CHAR[b.color].toUpperCase() : CHAR[b.color];
   const hatches: LevelDef["hatches"] = d.hatches.map((t) => {
     const rect = isRect(t.shape);
@@ -235,13 +269,14 @@ function toDef(d: Draft): LevelDef | null {
   d.hatches.forEach((t, i) => (hatches[i].cap += t.extra ?? 0));
   const rows: string[] = [];
   for (let y = 0; y < d.h; y++) rows.push(grid.slice(y * d.w, (y + 1) * d.w).join(""));
-  return { id: "untitled", name: "untitled", rows, hatches, par: 0 };
+  const skittish = d.birds.filter((b) => b.skittish).map((b): [number, number] => [b.k % d.w, Math.floor(b.k / d.w)]);
+  return { id: "untitled", name: "untitled", rows, hatches, par: 0, ...(skittish.length ? { skittish } : {}) };
 }
 
 export function build(tier: Tier, rnd: () => number): Draft | null {
   const int = ([lo, hi]: [number, number]) => lo + Math.floor(rnd() * (hi - lo + 1));
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
-  const d: Draft = { w: int(tier.w), h: int(tier.h), bales: new Set(), cracks: new Set(), key: null, paint: new Map(), plates: new Set(), gates: new Set(), arrows: new Map(), birds: [], hatches: [] };
+  const d: Draft = { w: int(tier.w), h: int(tier.h), bales: new Set(), cracks: new Set(), key: null, paint: new Map(), plates: new Set(), gates: new Set(), arrows: new Map(), slick: new Set(), crates: new Set(), turns: new Set(), burrow: null, birds: [], hatches: [] };
   for (let i = int(tier.bales); i > 0; i--) d.bales.add(Math.floor(rnd() * d.w * d.h));
   for (let i = tier.crack ? int(tier.crack) : 0; i > 0; i--) {
     const k = freeCell(d, rnd);
@@ -259,6 +294,21 @@ export function build(tier: Tier, rnd: () => number): Draft | null {
   for (let i = tier.arrows ? int(tier.arrows) : 0; i > 0; i--) {
     const k = freeCell(d, rnd);
     if (k !== null) d.arrows.set(k, pick(DIRS));
+  }
+
+  for (const [want, into] of [[tier.slick, d.slick], [tier.crates, d.crates], [tier.turns, d.turns]] as const) {
+    for (let i = want ? int(want) : 0; i > 0; i--) {
+      const k = freeCell(d, rnd);
+      if (k !== null) into.add(k);
+    }
+  }
+  if (tier.burrow) {
+    const a = freeCell(d, rnd);
+    if (a === null) return null;
+    d.burrow = [a, a];
+    const b = freeCell(d, rnd);
+    if (b === null) return null;
+    d.burrow = [a, b];
   }
 
   const colors = [...COLORS].sort(() => rnd() - 0.5).slice(0, int(tier.colors));
@@ -283,7 +333,7 @@ export function build(tier: Tier, rnd: () => number): Draft | null {
     for (let n = int(tier.cap); n > 0; n--) {
       const k = freeCell(d, rnd);
       if (k === null) return null;
-      d.birds.push({ color: d.hatches[i].color, k, hidden: rnd() < (tier.eggs ?? 0) });
+      d.birds.push({ color: d.hatches[i].color, k, hidden: rnd() < (tier.eggs ?? 0), ...(rnd() < (tier.skittish ?? 0) ? { skittish: true } : {}) });
     }
   }
   // Paint: puddles of the colours in play, or of one no hatch starts in, and some chickens
@@ -315,6 +365,40 @@ export function mutate(src: Draft, tier: Tier, rnd: () => number): Draft | null 
   const d = copy(src);
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
   const special = rnd();
+  if (special < 0.25 && (tier.slick || tier.crates || tier.turns || tier.burrow || tier.skittish)) {
+    // one of the later pieces: add, move or remove a slippery square, a crate or a turntable,
+    // move an end of the burrow, or make a chicken skittish or calm
+    const kinds = [tier.slick ? "slick" : "", tier.crates ? "crates" : "", tier.turns ? "turns" : "", tier.burrow ? "burrow" : "", tier.skittish ? "skittish" : ""].filter(Boolean);
+    const kind = pick(kinds);
+    const roll = rnd();
+    if (kind === "burrow") {
+      const k = freeCell(d, rnd);
+      if (k === null || !d.burrow) return null;
+      d.burrow[rnd() < 0.5 ? 0 : 1] = k;
+    } else if (kind === "skittish") {
+      const b = pick(d.birds);
+      if (b.skittish) delete b.skittish;
+      else b.skittish = true;
+    } else {
+      const set = kind === "slick" ? d.slick : kind === "crates" ? d.crates : d.turns;
+      if (roll < 0.4 && set.size) {
+        set.delete(pick([...set]));
+        const k = freeCell(d, rnd);
+        if (k === null) return null;
+        set.add(k);
+      } else if (roll < 0.75) {
+        // Slippery floor grows next to slippery floor, more often than not, so it forms runs.
+        const used = taken(d);
+        const beside = (k: number) => [k % d.w > 0 ? k - 1 : -1, k % d.w < d.w - 1 ? k + 1 : -1, k - d.w, k + d.w];
+        const near = kind === "slick" && set.size && rnd() < 0.7 ? [...set].flatMap(beside).filter((k) => k >= 0 && k < d.w * d.h && !used.has(k)) : [];
+        const k = near.length ? pick(near) : freeCell(d, rnd);
+        if (k === null) return null;
+        set.add(k);
+      } else if (set.size) set.delete(pick([...set]));
+    }
+    if (d.w * d.h - taken(d).size < 3) return null;
+    return fits(d, tier) ? d : null;
+  }
   if (special < 0.22 && (tier.paint || tier.gate || tier.arrows)) {
     // one of the newest pieces: move, add or change a puddle, a plate, a gate square or an arrow
     const kinds = [tier.paint ? "paint" : "", tier.gate ? "gate" : "", tier.arrows ? "arrow" : ""].filter(Boolean);
@@ -442,7 +526,7 @@ export function mutate(src: Draft, tier: Tier, rnd: () => number): Draft | null 
     if (rnd() < 0.5) {
       const k = freeCell(d, rnd);
       if (k === null) return null;
-      d.birds.push({ color: pick(d.hatches).color, k, hidden: rnd() < (tier.eggs ?? 0) });
+      d.birds.push({ color: pick(d.hatches).color, k, hidden: rnd() < (tier.eggs ?? 0), ...(tier.skittish && rnd() < tier.skittish ? { skittish: true } : {}) });
     } else {
       const coloured = d.birds.map((b, i) => (b.color === "any" ? -1 : i)).filter((i) => i >= 0);
       if (!coloured.length) return null;
