@@ -3,6 +3,7 @@ import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
 import { gatesOpen, heldBy, partnerOf, thawIn } from "../game/engine";
 import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
+import { useGlide } from "./play/useGlide";
 import { ArrowArt, BaleArt, ChainArt, ChickenArt, CrackArt, GateArt, HandArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, PaintArt, PlateArt, SnowArt } from "./art";
 
 export interface DropFx {
@@ -76,7 +77,7 @@ interface Props {
   seen: ReadonlySet<number>;
   locked: boolean;
   /** The hatch under the finger, and how far (in squares) it is drawn from its own square. */
-  held: { id: number; dx: number; dy: number; turning: boolean } | null;
+  held: { id: number; dx: number; dy: number } | null;
   /** A finger has come down on this hatch. */
   onGrab: (hatchId: number) => void;
   /** The finger now wants the hatch's top-left corner here, measured in squares. */
@@ -259,6 +260,8 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   // While a hatch is held, the chickens it (or its chained partner) could take stand out.
   const heldHatch = held ? game.hatches.find((t) => t.id === held.id) : undefined;
   const heldPartner = heldHatch && partnerOf(game, heldHatch);
+  // The held hatch follows the finger on a spring, so it curves round a corner.
+  useGlide(fieldRef, held, heldPartner?.id, game.hatches, (x, y) => place(x, y).transform as string);
   const takes = heldHatch ? new Set([heldHatch.color, heldPartner?.color]) : null;
   const wobble = bump?.why;
   const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" ? wobble.y * level.w + wobble.x : -1;
@@ -337,7 +340,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
               key={hatch.id}
               type="button"
               data-hatch={hatch.id}
-              className={`hatch${mine ? (mine.turning ? " hatch--held hatch--turning" : " hatch--held") : ""}${hint?.ghost.id === hatch.id ? (hint.gentle ? " hatch--hinted hatch--nudged" : " hatch--hinted") : ""}${pushed}${refused}`}
+              className={`hatch${mine ? " hatch--held" : ""}${hint?.ghost.id === hatch.id ? (hint.gentle ? " hatch--hinted hatch--nudged" : " hatch--hinted") : ""}${pushed}${refused}`}
               style={place(hatch.x + (mine?.dx ?? 0), hatch.y + (mine?.dy ?? 0), hatch.w, hatch.h)}
               aria-label={`${about.join(", ")}. Arrow keys slide it.`}
               onPointerDown={(e) => down(e, hatch)}

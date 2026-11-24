@@ -3,7 +3,7 @@ import type { MutableRefObject } from "react";
 import { step } from "../../game/engine";
 import type { Dir, GameState, Level } from "../../game/types";
 import { unlockAudio } from "../../sfx";
-import { COMMIT, stepsAt, TURN } from "./model";
+import { COMMIT, easeSlack, stepsAt, TURN_MARGIN, turnsAt } from "./model";
 import type { Held } from "./model";
 
 interface Args {
@@ -37,7 +37,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
       unlockAudio();
       fresh.current = true;
       bumped.current = null;
-      hold({ id: hatchId, track: null, offset: 0, turnedAt: 0 });
+      hold({ id: hatchId, track: null, offset: 0, slack: 0 });
     },
     [hold],
   );
@@ -46,30 +46,50 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
    * Follow the finger. `x` and `y` are where the finger wants the hatch's top-left corner, in
    * squares. The hatch glides along one axis at a time, stops dead against anything in its
    * way, and steps to the next square (dropping chickens, counting the move) as it crosses over.
+   * It turns a corner from wherever it is between two squares, as long as the new way is open.
    */
   const dragTo = useCallback(
     (hatchId: number, x: number, y: number) => {
       const was = heldRef.current?.id === hatchId ? heldRef.current : null;
       let track = was?.track ?? null;
       let offset = was?.offset ?? 0;
+      let slack = was?.slack ?? 0;
       let dodged = false;
       for (let guard = 0; guard < 32; guard++) {
         const hatch = gameRef.current.hatches.find((t) => t.id === hatchId);
         if (!hatch) return hold(null); // it filled up and shut mid-drag
         const dx = x - hatch.x;
         const dy = y - hatch.y;
+        const dirOn = (axis: "x" | "y"): Dir => (axis === "x" ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
         if (!dodged) {
-          const want = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
-          if (track === null) track = want;
-          else if (track !== want && Math.abs(offset) < TURN) {
-            // Turn the corner, but only once the finger clearly means it.
-            const along = Math.abs(track === "x" ? dx : dy);
-            const across = Math.abs(want === "x" ? dx : dy);
-            if (across > along + 0.12) track = want;
+          if (track === null) track = Math.abs(dx) >= Math.abs(dy) ? "x" : "y";
+          else {
+            const other = track === "x" ? "y" : "x";
+            const along = track === "x" ? dx : dy;
+            const off = track === "x" ? dy : dx;
+            slack = easeSlack(slack, off);
+            // How far the finger has gone across since the hatch took this line, not how far
+            // off the line it is: a finger running down between two columns is not asking to turn.
+            const across = Math.abs(off - slack);
+            // Turn the corner once the finger clearly means it.
+            if (across > Math.abs(along) + TURN_MARGIN) {
+              if (Math.abs(along) > COMMIT && step(level, gameRef.current, hatchId, dirOn(track))) {
+                // More than halfway to the next square: it goes there first, as it would if the
+                // finger lifted here (chickens and all), and turns the corner from there.
+                tryStep(hatchId, dirOn(track));
+                offset = along - Math.sign(along);
+                continue;
+              }
+              if (turnsAt(along, step(level, gameRef.current, hatchId, dirOn(other)) !== null)) {
+                track = other;
+                slack = along;
+              }
+            }
           }
         }
-        const d = track === "x" ? dx : dy;
-        const dir: Dir = track === "x" ? (d > 0 ? "right" : "left") : d > 0 ? "down" : "up";
+        const axis = track ?? "y";
+        const d = axis === "x" ? dx : dy;
+        const dir = dirOn(axis);
         const ahead = step(level, gameRef.current, hatchId, dir);
         if (!ahead) {
           offset = 0;
@@ -77,6 +97,8 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
           const sideways = track === "x" ? dy : dx;
           if (!dodged && Math.abs(sideways) > 0.3) {
             track = track === "x" ? "y" : "x";
+            // Still pulled towards the obstacle: it goes that way again as soon as there is room.
+            slack = 0;
             dodged = true;
             continue;
           }
@@ -93,8 +115,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
         offset = d;
         break;
       }
-      const turned = was !== null && was.track !== null && was.track !== track;
-      hold({ id: hatchId, track, offset, turnedAt: turned ? performance.now() : (was?.turnedAt ?? 0) });
+      hold({ id: hatchId, track, offset, slack });
     },
     [level, tryStep, hold, refuse],
   );
@@ -120,12 +141,11 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
     [tryStep, refuse],
   );
 
-  /** How far the held hatch is drawn from its own square, for the board. */
+  /** How far the finger wants the held hatch from its own square, for the board. */
   const heldAt = held && {
     id: held.id,
     dx: held.track === "x" ? held.offset : 0,
     dy: held.track === "y" ? held.offset : 0,
-    turning: performance.now() - held.turnedAt < 160,
   };
 
   return { held, heldAt, hold, grab, dragTo, release, nudge };
