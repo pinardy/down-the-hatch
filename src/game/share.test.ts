@@ -41,3 +41,22 @@ describe("level codes", () => {
     expect(decodeLevel(encodeLevel({ ...coop, rows: coop.rows.map((r) => r + ".....") }))).toBeNull(); // 9 wide
   });
 });
+
+describe("sharing coops with the later pieces", () => {
+  it("keeps slippery floor, crates, turntables, the burrow and skittish chickens", () => {
+    const code = encodeLevel({ name: "All of them", rows: ["(._r.", "..@..", "*...)", ".r..."], hatches: [{ color: "red", x: 1, y: 0, cap: 2 }], par: 3, skittish: [[1, 3]] });
+    const level = decodeLevel(code)!;
+    expect(level.slick.filter(Boolean)).toHaveLength(1);
+    expect(level.crates).toEqual([7]);
+    expect(level.turns.filter(Boolean)).toHaveLength(1);
+    expect(level.burrow).toEqual([0, 14]);
+    expect(level.chickens.find((c) => c.x === 1 && c.y === 3)?.skittish).toBe(true);
+    expect(level.chickens.find((c) => c.x === 3 && c.y === 0)?.skittish).toBeUndefined();
+  });
+  it("turns down a damaged list of skittish chickens", () => {
+    const good = encodeLevel({ name: "x", rows: ["r.."], hatches: [{ color: "red", x: 2, y: 0, cap: 1 }], par: 1 });
+    const raw = JSON.parse(atob(good.slice(6).replace(/-/g, "+").replace(/_/g, "/")));
+    const bad = "DTHL1." + btoa(JSON.stringify({ ...raw, s: [["a", 1]] })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    expect(decodeLevel(bad)).toBeNull();
+  });
+});

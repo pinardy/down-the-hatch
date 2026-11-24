@@ -7,7 +7,7 @@ import { encodeLevel, LIMITS } from "../game/share";
 import type { SharedLevel } from "../game/share";
 import { COLORS, DIRS } from "../game/types";
 import type { Axis, Color, Dir, Feather, Level, LevelDef } from "../game/types";
-import { ArrowArt, BaleArt, ChickenArt, CrackArt, GateArt, KeyArt, Mark, PAINT, PaintArt, PlateArt } from "./art";
+import { ArrowArt, BaleArt, BurrowArt, ChickenArt, CrackArt, CrateArt, GateArt, KeyArt, Mark, PAINT, PaintArt, PlateArt, SlickArt, TurnArt } from "./art";
 import { Board } from "./Board";
 import { editorSearchLimit, solveInBackground } from "./solving";
 
@@ -30,9 +30,11 @@ export interface Draft {
   name: string;
   w: number;
   h: number;
-  /** One character per square, row-major, as in levels.ts: . # ~ k r y t b p w R Y T B P W 1-5 o = < > ^ v */
+  /** One character per square, row-major, as in levels.ts: . # ~ k r y t b p w R Y T B P W 1-5 o = < > ^ v _ @ * ( ) */
   cells: string[];
   hatches: DraftHatch[];
+  /** Squares whose chicken is skittish. */
+  skittish?: number[];
 }
 
 const DRAFT_KEY = "down-the-hatch:draft:v1";
@@ -82,7 +84,8 @@ export function draftToDef(d: Draft): LevelDef {
       ...(partner ? { link: `c${Math.min(t.uid, partner.uid)}` } : {}),
     };
   });
-  return { id: "draft", name: d.name.trim() || "My coop", rows, hatches, par: 0 };
+  const skittish = (d.skittish ?? []).filter((k) => FEATHER[d.cells[k]?.toLowerCase()]).map((k): [number, number] => [k % d.w, Math.floor(k / d.w)]);
+  return { id: "draft", name: d.name.trim() || "My coop", rows, hatches, par: 0, ...(skittish.length ? { skittish } : {}) };
 }
 
 /** Plain-words reasons the draft is not a fair level yet. Empty when it is. */
@@ -106,11 +109,12 @@ function problems(d: Draft): string[] {
   if (d.hatches.some((t) => t.locked) && !d.cells.includes("k")) out.push("A padlocked hatch needs a key on the board.");
   if (d.cells.includes("=") && !d.cells.includes("o")) out.push("A gate needs a pressure plate to open it.");
   if (d.cells.includes("o") && !d.cells.includes("=")) out.push("A pressure plate needs a gate to open.");
+  if (d.cells.includes("(") !== d.cells.includes(")")) out.push("A burrow needs both ends.");
   for (const t of d.hatches) if (t.ice && t.ice > birds.length - t.cap) out.push(`A frozen ${PAINT[t.color].name} hatch needs ${t.ice} other chickens to drop first, and there aren’t that many.`);
   return out;
 }
 
-type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow";
+type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow" | "slick" | "crate" | "turn" | "burrow";
 type Check = { status: "idle" | "checking" } | { status: "solved"; par: number } | { status: "stuck" | "unknown" };
 
 interface Props {
@@ -125,6 +129,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const [tool, setTool] = useState<Tool>("chicken");
   const [feather, setFeather] = useState<Feather>("red");
   const [egg, setEgg] = useState(false);
+  const [skittish, setSkittish] = useState(false);
   const [hatchColor, setHatchColor] = useState<Color>("red");
   const [paintColor, setPaintColor] = useState<Color>("blue");
   const [arrow, setArrow] = useState<Dir>("right");
@@ -137,7 +142,9 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   /** "Clear board" asks once before wiping the work. */
   const [sure, setSure] = useState(false);
 
-  const change = (d: Draft) => {
+  const change = (next: Draft) => {
+    // A skittish mark only stays with a chicken.
+    const d = next.skittish ? { ...next, skittish: next.skittish.filter((k) => FEATHER[next.cells[k]?.toLowerCase()]) } : next;
     saveDraft(d);
     onDraft(d);
     setCheck({ status: "idle" });
@@ -165,7 +172,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
 
   const hatchAt = (x: number, y: number) => draft.hatches.find((t) => cellsOf(t).some(([cx, cy]) => cx === x && cy === y));
   const fits = (t: { x: number; y: number; shape: string[] }, ignore?: number) =>
-    cellsOf(t).every(([x, y]) => x >= 0 && y >= 0 && x < draft.w && y < draft.h && draft.cells[y * draft.w + x] === "." && !draft.hatches.some((o) => o.uid !== ignore && cellsOf(o).some(([ox, oy]) => ox === x && oy === y)));
+    cellsOf(t).every(([x, y]) => x >= 0 && y >= 0 && x < draft.w && y < draft.h && "._*".includes(draft.cells[y * draft.w + x]) && !draft.hatches.some((o) => o.uid !== ignore && cellsOf(o).some(([ox, oy]) => ox === x && oy === y)));
 
   const removeHatch = (uid: number) =>
     change({ ...draft, hatches: draft.hatches.filter((t) => t.uid !== uid).map((t) => (t.link === uid ? { ...t, link: undefined } : t)) });
@@ -202,8 +209,18 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       setSelected(t.uid);
       return;
     }
+    if (tool === "burrow") {
+      // One burrow a board: the first tap is one end, the second the other.
+      const ends = ["(", ")"].filter((e) => draft.cells.includes(e));
+      if (draft.cells[k] === "(" || draft.cells[k] === ")") return change({ ...draft, cells: draft.cells.map((c, i) => (i === k ? "." : c)) });
+      if (ends.length === 2) return setSaid("One burrow a board: erase an end to move it.");
+      return change({ ...draft, cells: draft.cells.map((c, i) => (i === k ? (ends.includes("(") ? ")" : "(") : c)) });
+    }
     const put =
       tool === "bale" ? "#"
+      : tool === "slick" ? "_"
+      : tool === "crate" ? "@"
+      : tool === "turn" ? "*"
       : tool === "crack" ? "~"
       : tool === "key" ? "k"
       : tool === "paint" ? paintChar(paintColor)
@@ -213,7 +230,8 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       : egg ? CHAR[feather].toUpperCase()
       : CHAR[feather];
     const cells = draft.cells.map((c, i) => (i === k ? (c === put ? "." : put) : tool === "key" && c === "k" ? "." : c));
-    change({ ...draft, cells });
+    const marks = (draft.skittish ?? []).filter((s) => s !== k);
+    change({ ...draft, cells, skittish: tool === "chicken" && skittish && cells[k] !== "." ? [...marks, k] : marks });
   };
 
   const resize = (w: number, h: number) => {
@@ -225,7 +243,12 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     });
     const keep = draft.hatches.filter((t) => cellsOf(t).every(([x, y]) => x < w && y < h));
     const kept = new Set(keep.map((t) => t.uid));
-    change({ ...draft, w, h, cells, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
+    const skittish = (draft.skittish ?? []).flatMap((k) => {
+      const x = k % draft.w;
+      const y = Math.floor(k / draft.w);
+      return x < w && y < h ? [y * w + x] : [];
+    });
+    change({ ...draft, w, h, cells, skittish, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
   };
 
   const nudge = (dx: number, dy: number) => {
@@ -247,7 +270,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     }
   };
 
-  const shared = (): SharedLevel | null => (check.status === "solved" ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par } : null);
+  const shared = (): SharedLevel | null => (check.status === "solved" ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par, ...(def.skittish ? { skittish: def.skittish } : {}) } : null);
 
   const share = async () => {
     const s = shared();
@@ -424,6 +447,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
               ["plate", "Plate"],
               ["gate", "Gate"],
               ["arrow", "One-way"],
+              ["slick", "Slippery"],
+              ["crate", "Crate"],
+              ["turn", "Turntable"],
+              ["burrow", "Burrow"],
               ["select", "Select"],
               ["erase", "Erase"],
             ] as const
@@ -437,6 +464,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
                 : t === "plate" ? <span className="chip__floor"><PlateArt down={false} /></span>
                 : t === "gate" ? <span className="chip__floor"><GateArt open={false} /></span>
                 : t === "arrow" ? <span className="chip__floor"><ArrowArt dir={arrow} /></span>
+                : t === "slick" ? <SlickArt />
+                : t === "crate" ? <CrateArt />
+                : t === "turn" ? <span className="chip__floor"><TurnArt /></span>
+                : t === "burrow" ? <span className="chip__floor"><BurrowArt end={0} /></span>
                 : null}
               {label}
             </button>
@@ -451,6 +482,9 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
             ))}
             <button type="button" className={chip(egg)} onClick={() => setEgg(!egg)}>
               In an egg
+            </button>
+            <button type="button" className={chip(skittish)} onClick={() => setSkittish(!skittish)}>
+              Skittish
             </button>
           </div>
         )}

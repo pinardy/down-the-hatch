@@ -14,6 +14,9 @@
 // Then eggs, crack, wild and link, one for each of the later pieces; crack-ice, wild-eggs,
 // link-lock and link-shapes, which pair a later piece with an earlier one; and medley for all three.
 //
+// Then slick, crate, turn, burrow and skittish, one for each of the later pieces (slippery
+// floor, crates, turntables, a burrow, skittish chickens).
+//
 // Last, paint, gate and arrow for the newest pieces (paint puddles, a gate held open by a
 // pressure plate, one-way squares), and workshop, which puts all three on one big board.
 //
@@ -95,7 +98,7 @@ for (const chosen of which) {
     console.log(
       `  { id: "untitled", name: "untitled", rows: ${JSON.stringify(f.def.rows)}, par: ${f.def.par}, hatches: [${f.def.hatches
         .map((t) => JSON.stringify(t).replace(/"(\w+)":/g, "$1: "))
-        .join(", ")}] },`,
+        .join(", ")}]${f.def.skittish ? `, skittish: ${JSON.stringify(f.def.skittish)}` : ""} },`,
     );
   }
 }

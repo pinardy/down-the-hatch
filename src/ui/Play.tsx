@@ -58,10 +58,12 @@ interface Props {
   onSettings: () => void;
   /** Put on a reward this win unlocked. */
   onWear: (r: Reward) => void;
+  /** A board of the weekly gauntlet: the moves the run has left, and what to do if they run out. */
+  budget?: { left: number; onOut: () => void };
 }
 
 
-export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, nextLabel, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear }: Props) {
+export function Play({ level, where, best, saveId, daily = false, late = false, shareLink, finishesChapter = null, finishesGame = null, nextChapter = null, nextLabel, settings, tally, backLabel = "Levels", onCleared, onNext, onLevels, onSettings, onWear, budget }: Props) {
   // Milestones as they stood when the level opened: winning changes the props that say them.
   const milestone = useRef({ chapter: finishesChapter, game: finishesGame }).current;
   // What was earned before this level was played: rewards between then and now are new.
@@ -203,6 +205,11 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
         buzz(20);
       }
       if (out.tookKey) sfx.key();
+      if (out.slid) sfx.whoosh();
+      if (out.pushed.length) sfx.scrape();
+      if (out.turned.length) window.setTimeout(() => sfx.swivel(), 60);
+      if (out.burrowed) sfx.pop();
+      if (out.hopped.length) window.setTimeout(() => sfx.flap(), 80);
       if (out.painted.length) sfx.splash();
       if (out.gate) window.setTimeout(() => sfx.gate(out.gate === "opened"), 60);
       // Anything that was frozen or padlocked and now is not has just come free.
@@ -448,6 +455,14 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
     };
   }, [game, level, phase, markStuck, way]);
 
+  // A gauntlet run ends the moment its moves are spent: undo can't buy them back.
+  const outOfMoves = budget && phase === "playing" && game.moves > budget.left;
+  const onOut = useRef(budget?.onOut);
+  onOut.current = budget?.onOut;
+  useEffect(() => {
+    if (outOfMoves) onOut.current?.();
+  }, [outOfMoves]);
+
   // The optional countdown starts on the first move.
   useEffect(() => {
     // Reading the piece guide doesn't cost time.
@@ -517,6 +532,12 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
             <dt>Par</dt>
             <dd>{level.par}</dd>
           </div>
+          {budget && (
+            <div className={budget.left - game.moves <= 3 ? "stat stat--hot" : "stat"}>
+              <dt>Left</dt>
+              <dd>{Math.max(0, budget.left - game.moves)}</dd>
+            </div>
+          )}
         </dl>
       </header>
 

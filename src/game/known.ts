@@ -41,7 +41,13 @@ export function decodeSteps(code: string): SolveStep[] | null {
 
 /** What a position is, leaving out how many moves it took to get there. */
 export function boardKey(state: GameState): string {
-  return JSON.stringify([state.hatches.map((t) => [t.id, t.x, t.y, t.left, t.color]), state.chickens.map((c) => [c.id, c.hidden ? 1 : 0]), state.broken, state.keyTaken]);
+  return JSON.stringify([
+    state.hatches.map((t) => [t.id, t.x, t.y, t.left, t.color, t.cells.join(" ")]),
+    state.chickens.map((c) => [c.id, c.hidden ? 1 : 0, c.x, c.y]),
+    state.broken,
+    state.keyTaken,
+    [...state.crates].sort((a, b) => a - b),
+  ]);
 }
 
 /**

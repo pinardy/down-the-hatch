@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Level } from "../game/types";
-import { ArrowArt, ChainArt, ChickenArt, CrackArt, GateArt, KeyArt, LockArt, MysteryEggArt, PaintArt, PlateArt, SnowArt } from "./art";
+import { ArrowArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, GateArt, KeyArt, LockArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TurnArt } from "./art";
 
 interface Piece {
   key: string;
@@ -140,6 +140,51 @@ const PIECES: Piece[] = [
     what: "A hatch can only slide onto it moving the way the arrow points. Leaving is free.",
     art: <ArrowArt dir="right" />,
     on: (l) => l.arrows.some(Boolean),
+  },
+  {
+    key: "slick",
+    name: "Slippery floor",
+    what: "A hatch on it can’t stop: it keeps sliding the same way until something stops it or it’s off the slippery floor. All in one move.",
+    art: <SlickArt />,
+    on: (l) => l.slick.some(Boolean),
+  },
+  {
+    key: "crate",
+    name: "Crate",
+    what: "A hatch shoves it one square on, if there’s bare floor beyond it. One crate at a time: a crate behind a crate won’t budge.",
+    art: <CrateArt />,
+    on: (l) => l.crates.length > 0,
+  },
+  {
+    key: "turn",
+    name: "Turntable",
+    what: "A hatch that slides onto it swings a quarter turn clockwise, about that square, if there’s bare floor to swing into. One-square hatches and hatches on rails don’t turn.",
+    art: <TurnArt />,
+    on: (l) => l.turns.some(Boolean),
+  },
+  {
+    key: "burrow",
+    name: "Burrow",
+    what: "A one-square hatch that goes into one end comes out of the other, if nothing is sitting there. Bigger hatches don’t fit.",
+    art: (
+      <span className="guide__pair">
+        <BurrowArt end={0} />
+        <BurrowArt end={1} />
+      </span>
+    ),
+    on: (l) => l.burrow !== null,
+  },
+  {
+    key: "skittish",
+    name: "Skittish chicken",
+    what: "When a hatch stops right beside it, it hops one square the way that hatch was going, if there’s room. Corner it against something to catch it.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="gold" />
+        <StartleArt />
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.skittish),
   },
 ];
 

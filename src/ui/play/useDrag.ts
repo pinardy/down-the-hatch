@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import { step } from "../../game/engine";
+import { DELTA } from "../../game/types";
 import type { Dir, GameState, Level } from "../../game/types";
 import { unlockAudio } from "../../sfx";
 import { COMMIT, easeSlack, stepsAt, TURN_MARGIN, turnsAt } from "./model";
@@ -51,6 +52,17 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
   const dragTo = useCallback(
     (hatchId: number, x: number, y: number) => {
       const was = heldRef.current?.id === hatchId ? heldRef.current : null;
+      // It slipped on, turned or went down the burrow: the rest of this drag does nothing.
+      if (was?.done) return;
+      /** Take one step. False when it carried the hatch somewhere the finger isn't, ending the drag. */
+      const stepFollows = (dir: Dir) => {
+        const before = gameRef.current.hatches.find((t) => t.id === hatchId);
+        tryStep(hatchId, dir);
+        const after = gameRef.current.hatches.find((t) => t.id === hatchId);
+        if (!before || !after) return true;
+        const { dx, dy } = DELTA[dir];
+        return after.x === before.x + dx && after.y === before.y + dy && after.cells === before.cells;
+      };
       let track = was?.track ?? null;
       let offset = was?.offset ?? 0;
       let slack = was?.slack ?? 0;
@@ -76,7 +88,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
               if (Math.abs(along) > COMMIT && step(level, gameRef.current, hatchId, dirOn(track))) {
                 // More than halfway to the next square: it goes there first, as it would if the
                 // finger lifted here (chickens and all), and turns the corner from there.
-                tryStep(hatchId, dirOn(track));
+                if (!stepFollows(dirOn(track))) return hold({ id: hatchId, track: null, offset: 0, slack: 0, done: true });
                 offset = along - Math.sign(along);
                 continue;
               }
@@ -107,7 +119,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
           break;
         }
         if (stepsAt(d, ahead.dropped.length > 0)) {
-          tryStep(hatchId, dir);
+          if (!stepFollows(dir)) return hold({ id: hatchId, track: null, offset: 0, slack: 0, done: true });
           offset = d - Math.sign(d); // what is left over, measured from the new square
           dodged = false;
           continue;
@@ -124,7 +136,7 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
   const release = useCallback(
     (hatchId: number) => {
       const h = heldRef.current;
-      if (h?.id === hatchId && h.track && Math.abs(h.offset) >= COMMIT) {
+      if (h?.id === hatchId && !h.done && h.track && Math.abs(h.offset) >= COMMIT) {
         tryStep(hatchId, h.track === "x" ? (h.offset > 0 ? "right" : "left") : h.offset > 0 ? "down" : "up");
       }
       hold(null);

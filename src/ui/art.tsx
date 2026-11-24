@@ -362,3 +362,54 @@ export function SoloArt() {
     </svg>
   );
 }
+/** Slippery floor: a pale, glassy square with a glint. */
+export function SlickArt() {
+  return (
+    <svg className="slick-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="4" y="4" width="92" height="92" rx="10" fill="#bfe3ee" />
+      <rect x="4" y="4" width="92" height="92" rx="10" fill="none" stroke="#e9f7fb" strokeWidth="4" />
+      <path d="M22 70 L46 30 M40 78 L58 48" stroke="#ffffff" strokeOpacity="0.85" strokeWidth="7" strokeLinecap="round" />
+      <path d="M66 26 l4 8 l8 4 l-8 4 l-4 8 l-4 -8 l-8 -4 l8 -4 z" fill="#ffffff" />
+    </svg>
+  );
+}
+/** A wooden crate. */
+export function CrateArt() {
+  return (
+    <svg className="crate-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="8" y="8" width="84" height="84" rx="8" fill="#a8693a" />
+      <rect x="8" y="8" width="84" height="84" rx="8" fill="none" stroke="#6f4020" strokeWidth="6" />
+      <path d="M18 18 L82 82 M82 18 L18 82" stroke="#6f4020" strokeWidth="7" strokeLinecap="round" />
+      <rect x="8" y="8" width="84" height="16" rx="8" fill="#c48550" opacity="0.6" />
+    </svg>
+  );
+}
+/** A turntable: a round platform with a clockwise arrow. */
+export function TurnArt() {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="40" fill="#7a4a2c" stroke="#d7a25f" strokeWidth="5" />
+      <path d="M50 24 A26 26 0 1 1 25 56" fill="none" stroke="#fff6e3" strokeOpacity="0.85" strokeWidth="8" strokeLinecap="round" />
+      <path d="M50 12 L64 24 L50 36 z" fill="#fff6e3" fillOpacity="0.85" />
+    </svg>
+  );
+}
+/** One end of a burrow: a dark hole in a heap of earth; `end` 0 or 1 tells the two apart. */
+export function BurrowArt({ end }: { end: 0 | 1 }) {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <ellipse cx="50" cy="56" rx="40" ry="32" fill="#6b4226" />
+      <ellipse cx="50" cy="60" rx="26" ry="20" fill="#1d100a" />
+      <path d="M22 40 q8 -10 16 -4 M60 34 q10 -6 18 4" stroke="#8c5a35" strokeWidth="6" strokeLinecap="round" fill="none" />
+      {end === 0 ? <circle cx="50" cy="20" r="7" fill="#fff6e3" fillOpacity="0.8" /> : <rect x="43" y="13" width="14" height="14" rx="2" fill="#fff6e3" fillOpacity="0.8" />}
+    </svg>
+  );
+}
+/** The sign over a skittish chicken: two startled lines. */
+export function StartleArt() {
+  return (
+    <svg className="startle-art" viewBox="0 0 40 30" aria-hidden="true">
+      <path d="M8 26 L4 8 M20 24 L20 4 M32 26 L36 8" stroke="#fff6e3" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  );
+}

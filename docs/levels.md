@@ -30,6 +30,10 @@ More grid squares:
 | `o` | a pressure plate: while any hatch stands on one, the gates are open |
 | `=` | a gate square: a hatch can only slide into it while the gates are open, and one already inside may stay when they shut |
 | `< > ^ v` | a one-way square: a hatch can only slide onto it moving the way the arrow points; leaving is free |
+| `_` | slippery floor: a hatch on it keeps sliding the same way until something stops it or it's off the slippery floor (all one move) |
+| `@` | a crate: a hatch shoves it one square on, onto plain empty floor; a crate behind a crate won't budge |
+| `*` | a turntable: a hatch that slides onto it turns a quarter, clockwise, about that square, if there's bare floor to swing into (not one-square, railed or chained hatches) |
+| `( )` | the two ends of a burrow (one per board): a one-square hatch that goes in one end comes out of the other, if that end is clear |
 
 A hatch can also take:
 
@@ -41,6 +45,8 @@ A hatch can also take:
 | `ice: 3` | frozen until 3 chickens have dropped |
 | `locked: true` | padlocked until a hatch slides over the key |
 | `link: "a"` | chained to the other hatch with the same tag: the two slide together, or not at all, until one shuts |
+
+Skittish chickens are listed by where they start, next to `rows`: `skittish: [[2, 0], [4, 3]]`. When a hatch stops right beside one, it hops one square the way that hatch was going, if there's room.
 
 Levels live in chapters in `src/game/levels.ts`; add a level to a chapter's list, or add a chapter to `BOOK`.
 
@@ -66,8 +72,13 @@ Once the par is right, run `npm run solutions`. It stores every level's best sol
 | `workshop` | paint, gates and one-way squares on one big board, hard |
 | `gate-link`, `arrow-crack`, `paint-eggs` | a newer piece with an older one (gates and a chain, arrows and cracked boards, paint and eggs), hard |
 | `frost-gate`, `locks-paint` | frozen and bent hatches with gates; padlocks with paint and eggs; expert |
+| `slick`, `crate`, `turn`, `burrow`, `skittish` | slippery floor, crates, turntables, a burrow, skittish chickens: one tier for each |
 
 The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration. Two exceptions: eggs never change the par (the solver sees inside them; they hide colours only from the player), and taking a padlock away can make a board harder to search rather than shorter, so an inconclusive answer there proves nothing either way.
+
+Skittish chickens rarely change the par: herding a chicken into a corner and catching it all happens in one move. For them, solve the board with calm chickens and replay that solution with skittish ones. If it no longer clears the board, the chickens matter.
+
+Boards with slippery floor, crates, turntables, a burrow or skittish chickens are searched by the game's own rules (`solveByRules` in `src/game/solver.ts`) rather than the faster search the other pieces use, so the solver can never disagree with the game about them.
 
 The hard tiers take about two minutes a board, so give them several minutes.
 

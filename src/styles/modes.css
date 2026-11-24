@@ -76,8 +76,12 @@
     transition: none;
   }
   .hatch,
-  .hatch--held {
+  .hatch--held,
+  .crate {
     transition: none;
+  }
+  .chicken--skittish .chicken__art {
+    animation: none;
   }
   .chicken--drop .chicken__art,
   .hatch--shut {
@@ -117,6 +121,7 @@ html.calm .demo-hand {
 html.calm .hint-runner,
 html.calm .hatch,
 html.calm .hatch--held,
+html.calm .crate,
 html.calm .gate-art__bars {
   transition: none;
 }
@@ -148,4 +153,7 @@ html.contrast .hatch__label {
 }
 html.contrast .hatch__mark {
   filter: drop-shadow(0 0 1px #000);
+}
+html.calm .chicken--skittish .chicken__art {
+  animation: none;
 }
