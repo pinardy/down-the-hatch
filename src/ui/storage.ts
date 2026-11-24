@@ -1,6 +1,7 @@
 // Progress and settings, kept in this browser. Every read and write is guarded:
 // storage can be missing or full, and the game must still play.
 
+import type { GauntletResult, GauntletRun } from "../game/gauntlet";
 import type { BoardTheme, Hat } from "./rewards";
 
 export interface Settings {
@@ -281,3 +282,23 @@ export function loadMet(): Set<string> | null {
   return Array.isArray(saved) ? new Set(saved.filter((x): x is string => typeof x === "string")) : null;
 }
 export const saveMet = (met: Set<string>) => write(MET_KEY, [...met]);
+
+// The weekly gauntlet: this week's run, and the best result this week. A new week starts afresh.
+const GAUNTLET_KEY = "down-the-hatch:gauntlet:v1";
+export interface GauntletSave {
+  /** The week, as its Monday: YYYY-MM-DD. */
+  week: string;
+  run: GauntletRun | null;
+  best: GauntletResult | null;
+}
+const wholes = (v: unknown): v is number[] => Array.isArray(v) && v.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 0);
+
+export function loadGauntlet(week: string): GauntletSave {
+  const saved = read(GAUNTLET_KEY);
+  const fresh: GauntletSave = { week, run: null, best: null };
+  if (!isObject(saved) || saved.week !== week) return fresh;
+  const run = isObject(saved.run) && wholes(saved.run.moves) ? { moves: saved.run.moves, ...(saved.run.out === true ? { out: true } : {}) } : null;
+  const best = isObject(saved.best) && wholes([saved.best.cleared, saved.best.moves]) ? { cleared: saved.best.cleared as number, moves: saved.best.moves as number } : null;
+  return { week, run, best };
+}
+export const saveGauntlet = (g: GauntletSave) => write(GAUNTLET_KEY, g);

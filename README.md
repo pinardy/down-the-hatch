@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 243 levels
+📲 Installable · ✈️ Works offline · 🧩 283 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-243 levels in 28 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+283 levels in 33 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -37,12 +37,19 @@ Slide the hatches, drop the chickens, clear the coop.
 | 🎨 | **Paint** | a hatch that slides through a puddle takes its colour |
 | 🚪 | **Gates and plates** | a gate opens only while a hatch stands on a pressure plate |
 | ➡️ | **One-way squares** | can only be crossed the way the arrow points |
+| ⛸️ | **Slippery floor** | a hatch on it can't stop until something stops it |
+| 📦 | **Crates** | a hatch shoves them a square at a time, onto bare floor |
+| 🔄 | **Turntables** | swing a hatch a quarter turn, if there's room |
+| 🐇 | **Burrows** | a one-square hatch goes in one end and out of the other |
+| 💨 | **Skittish chickens** | hop away from a hatch that stops beside them; corner them |
 
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them, at up to 34 moves a level.
 
 The newest pieces, paint, gates and one-way squares, each get a Hard chapter of their own (*Wet paint*, *Gatekeeper*, *One way only*), and the Expert chapter *The workshop* puts all three in one yard, up to 43 moves a level.
 
 Five more chapters pair the newest pieces with older ones: *Hold the line* (gates and chains), *Burnt bridges* (one-way squares and cracked boards) and *Colour me surprised* (paint and eggs) are Hard; *Big freeze* (frozen hatches, bends and gates) and *Safe cracking* (padlocks, paint and eggs) are Expert, up to 37 moves a level.
+
+Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery floor), *Shove off* (crates), *Spin doctor* (turntables), *Down the rabbit hole* (burrows) and *Flight risk* (skittish chickens).
 
 ## 🛟 Help when you need it
 
@@ -54,6 +61,7 @@ Five more chapters pair the newest pieces with older ones: *Hold the line* (gate
 ## ✨ More to play for
 
 - 📅 **Daily coop:** one extra board a day, the same for everyone, easiest on Monday and hardest on Sunday. Keep a 🔥 streak by playing on consecutive days. It opens once the tutorial is done, the last six days can be caught up on (they don't count towards the streak), and you can share your result without giving the board away.
+- 🏁 **Weekly gauntlet:** five boards in a row on one budget of moves, the same for everyone that week. Undo and Start over are free on a board, but overspend and the run is over. Your best each week can be shared.
 - 🧭 **Four tabs:** Levels, Daily, Endless and You, along the bottom of the main screen.
 - ♾️ **Endless coop:** fresh puzzles grown on your phone on the spot, Easy, Medium or Hard, as many as you like. Each is checked so it can be cleared, preferring ones that can go wrong, and can be shared as a link. Leave one part-way and resume it later.
 - 💡 **First meetings:** the first time a piece turns up (in the daily, say, before its chapter), a line under the board says what it does.
