@@ -30,12 +30,35 @@ export interface Held {
   id: number;
   track: "x" | "y" | null;
   offset: number;
-  /** When it last turned a corner (ms), so it can ease round instead of darting to the finger. */
-  turnedAt: number;
+  /**
+   * How far off its line the finger was when the hatch took that line, less whatever it has
+   * come back since (see easeSlack). Only going further across than this counts towards turning.
+   */
+  slack: number;
 }
 
-/** A hatch can change direction only when it is this close to sitting squarely on a square. */
+/**
+ * This close to sitting squarely on a square, a hatch turns to face even a way that is shut,
+ * so that pushing on says what is in the way. Further off, it turns only into an open way.
+ */
 export const TURN = 0.15;
+/** How much further across than along the finger must be before the hatch turns: stops it dithering on a diagonal. */
+export const TURN_MARGIN = 0.12;
+
+/**
+ * Whether a hatch `along` squares from its own square (either way) may turn a corner, given
+ * whether the new way is open. It used to turn only when squarely on a square, so a sharp turn
+ * made anywhere else was ignored until the finger wandered back.
+ */
+export const turnsAt = (along: number, open: boolean) => open || Math.abs(along) < TURN;
+
+/**
+ * The slack left once the finger is `off` its line: it only ever shrinks, as the finger comes
+ * back towards the line, and is gone once the finger crosses it. So what counts towards a turn
+ * (`off` less the slack) always points the way the finger is from the line, and the hatch never
+ * turns a corner by moving against the finger.
+ */
+export const easeSlack = (slack: number, off: number) => (slack * off <= 0 ? 0 : Math.abs(off) < Math.abs(slack) ? off : slack);
 /**
  * How far towards the next square the finger must be before the hatch counts as having moved
  * there: strictly past it while dragging (see stepsAt), at least it when the finger lifts.

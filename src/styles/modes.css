@@ -76,8 +76,7 @@
     transition: none;
   }
   .hatch,
-  .hatch--held,
-  .hatch--turning {
+  .hatch--held {
     transition: none;
   }
   .chicken--drop .chicken__art,
@@ -118,7 +117,6 @@ html.calm .demo-hand {
 html.calm .hint-runner,
 html.calm .hatch,
 html.calm .hatch--held,
-html.calm .hatch--turning,
 html.calm .gate-art__bars {
   transition: none;
 }

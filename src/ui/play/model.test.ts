@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { blockedBy, parseLevel, startState, step } from "../../game/engine";
 import type { LevelDef } from "../../game/types";
-import { allowance, COMMIT, COMMIT_DROP, peek, restore, stepsAt, whyBlocked } from "./model";
+import { allowance, COMMIT, COMMIT_DROP, easeSlack, peek, restore, stepsAt, TURN, turnsAt, whyBlocked } from "./model";
 
 const level = (rows: string[], hatches: LevelDef["hatches"]) => parseLevel({ id: "t", name: "t", rows, hatches, par: 1 }, 0);
 
@@ -72,6 +72,40 @@ describe("when a drag moves a hatch on a square", () => {
         const left = d - Math.sign(d);
         // Back the other way, whether or not that step would drop chickens.
         expect(Math.sign(left) !== -Math.sign(d) || !stepsAt(left, false), `d=${d}`).toBe(true);
+      }
+    }
+  });
+});
+
+describe("when a dragged hatch turns a corner", () => {
+  it("turns into an open way from anywhere between two squares", () => {
+    expect(turnsAt(0, true)).toBe(true);
+    expect(turnsAt(0.4, true)).toBe(true);
+    expect(turnsAt(-0.5, true)).toBe(true);
+  });
+  it("faces a shut way only when squarely on a square, so that pushing on says what is in the way", () => {
+    expect(turnsAt(TURN - 0.01, false)).toBe(true);
+    expect(turnsAt(TURN, false)).toBe(false);
+    expect(turnsAt(-0.4, false)).toBe(false);
+  });
+  it("forgives the finger being off the line, less and less as it comes back", () => {
+    // Took the line with the finger 0.4 off it: staying there is not asking to turn.
+    expect(easeSlack(0.4, 0.4)).toBe(0.4);
+    expect(easeSlack(0.4, 0.6)).toBe(0.4);
+    // Coming back towards the line uses the slack up; crossing the line ends it.
+    expect(easeSlack(0.4, 0.25)).toBe(0.25);
+    expect(easeSlack(0.25, 0.3)).toBe(0.25);
+    expect(easeSlack(0.4, 0)).toBe(0);
+    expect(easeSlack(0.4, -0.1)).toBe(0);
+    expect(easeSlack(-0.3, -0.1)).toBe(-0.1);
+    expect(easeSlack(0, 0.3)).toBe(0);
+  });
+  it("so what counts towards a turn never points against the finger", () => {
+    for (let slack = -0.5; slack <= 0.5; slack += 0.125) {
+      for (let off = -1; off <= 1; off += 0.125) {
+        const counted = off - easeSlack(slack, off);
+        expect(counted * off >= 0, `slack=${slack} off=${off}`).toBe(true);
+        expect(Math.abs(counted) <= Math.abs(off)).toBe(true);
       }
     }
   });
