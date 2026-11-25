@@ -73,6 +73,8 @@ Once the par is right, run `npm run solutions`. It stores every level's best sol
 | `gate-link`, `arrow-crack`, `paint-eggs` | a newer piece with an older one (gates and a chain, arrows and cracked boards, paint and eggs), hard |
 | `frost-gate`, `locks-paint` | frozen and bent hatches with gates; padlocks with paint and eggs; expert |
 | `slick`, `crate`, `turn`, `burrow`, `skittish` | slippery floor, crates, turntables, a burrow, skittish chickens: one tier for each |
+| `slick-crack`, `crate-lock`, `turn-hard`, `burrow-paint`, `skittish-slick` | one of those with an older piece, hard |
+| `funhouse` | all five of them on one board; boards where every piece matters are rare and short |
 
 The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration. Two exceptions: eggs never change the par (the solver sees inside them; they hide colours only from the player), and taking a padlock away can make a board harder to search rather than shorter, so an inconclusive answer there proves nothing either way.
 
