@@ -88,6 +88,13 @@ export const TIERS: Tier[] = [
   { name: "turn", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 3], rail: 0, target: 10, odd: 2, turns: [1, 3] },
   { name: "burrow", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 5], shapes: [RECT.dot, RECT.dot, ...PLAIN], cap: [1, 3], bales: [1, 4], rail: 0, target: 10, burrow: true },
   { name: "skittish", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, skittish: 0.4 },
+  // The later pieces again, each with an older one, hard; then all five on one board, expert.
+  { name: "slick-crack", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: PLAIN, cap: [1, 3], bales: [1, 4], rail: 0, target: 16, slick: [5, 12], crack: [2, 4], hard: true },
+  { name: "crate-lock", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 17, crates: [2, 4], lock: true, hard: true },
+  { name: "turn-hard", w: [6, 6], h: [6, 7], colors: [3, 4], hatches: [4, 6], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 4], rail: 0, target: 18, odd: 3, turns: [2, 4], hard: true },
+  { name: "burrow-paint", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 6], shapes: [RECT.dot, RECT.dot, ...PLAIN, ...ELLS], cap: [1, 3], bales: [1, 4], rail: 0, target: 16, burrow: true, paint: [1, 3], hard: true },
+  { name: "skittish-slick", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: PLAIN, cap: [1, 3], bales: [1, 4], rail: 0, target: 15, skittish: 0.35, slick: [4, 10], hard: true },
+  { name: "funhouse", w: [6, 6], h: [6, 7], colors: [3, 4], hatches: [4, 6], shapes: [RECT.dot, ...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [0, 3], rail: 0, target: 22, odd: 1, slick: [3, 8], crates: [1, 3], turns: [1, 2], burrow: true, skittish: 0.25, hard: true },
   { name: "mix-hard", w: [6, 7], h: [7, 7], colors: [5, 5], hatches: [6, 8], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 5], rail: 0.1, target: 30, odd: 2, ice: true, lock: true, eggs: 0.35, hard: true },
 ];
 
