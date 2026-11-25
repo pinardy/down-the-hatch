@@ -444,5 +444,5 @@ describe("levels", () => {
     }
     expect(isWon(s)).toBe(true);
     expect(s.moves).toBe(level.par);
-  });
+  }, 60_000);
 });

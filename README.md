@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 283 levels
+📲 Installable · ✈️ Works offline · 🧩 313 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-283 levels in 33 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+313 levels in 36 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -49,7 +49,7 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 
 Five more chapters pair the newest pieces with older ones: *Hold the line* (gates and chains), *Burnt bridges* (one-way squares and cracked boards) and *Colour me surprised* (paint and eggs) are Hard; *Big freeze* (frozen hatches, bends and gates) and *Safe cracking* (padlocks, paint and eggs) are Expert, up to 37 moves a level.
 
-Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery floor), *Shove off* (crates), *Spin doctor* (turntables), *Down the rabbit hole* (burrows) and *Flight risk* (skittish chickens).
+Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery floor), *Shove off* (crates), *Spin doctor* (turntables), *Down the rabbit hole* (burrows) and *Flight risk* (skittish chickens). Three Hard chapters take them further: *Turning point* (turntables among bent hatches, up to 21 moves), *Goods in* (crates and padlocks) and *Pick and mix* (the newest pieces in twos, and twice all five at once).
 
 ## 🛟 Help when you need it
 
