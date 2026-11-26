@@ -212,6 +212,11 @@ export const sfx = {
   flap() {
     tone("square", 900, 1300, 0.05, 0.05);
   },
+  /** A lever thrown, and the doors with it. */
+  clunk() {
+    tone("square", 180, 120, 0.06, 0.08);
+    tone("triangle", 90, 70, 0.14, 0.1, 0.05);
+  },
   /** A cracked board giving way. */
   crack() {
     tone("sawtooth", 260, 70, 0.16, 0.12);

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
-import { gatesOpen, heldBy, partnerOf, thawIn } from "../game/engine";
+import { doorShut, gatesOpen, heldBy, mirrorOf, partnerOf, thawIn } from "../game/engine";
 import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
 import { useGlide } from "./play/useGlide";
-import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, GateArt, HandArt, HoleArt, KeyArt, LockArt, Mark, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TurnArt } from "./art";
+import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, HandArt, HoleArt, KeyArt, LeverArt, LockArt, Mark, MirrorArt, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -102,7 +102,7 @@ const at = (x: number, y: number): CSSProperties => ({ left: `calc(var(--cell) *
  * square of the same hatch, and leaves those sides open, so the squares join into one piece
  * with one continuous pit: a bar, a block, an L, a T.
  */
-function HatchFace({ hatch, stuck = null, thaw = 0, chained = false }: { hatch: Hatch; stuck?: "ice" | "lock" | null; thaw?: number; chained?: boolean }) {
+function HatchFace({ hatch, stuck = null, thaw = 0, chained = false, mirrored = false }: { hatch: Hatch; stuck?: "ice" | "lock" | null; thaw?: number; chained?: boolean; mirrored?: boolean }) {
   const paint = PAINT[hatch.color];
   const has = (x: number, y: number) => hatch.cells.some(([cx, cy]) => cx === x && cy === y);
   const joins = ([cx, cy]: readonly [number, number]) => [has(cx, cy - 1), has(cx + 1, cy), has(cx, cy + 1), has(cx - 1, cy)];
@@ -155,6 +155,17 @@ function HatchFace({ hatch, stuck = null, thaw = 0, chained = false }: { hatch: 
         {chained && (
           <span className="hatch__hold">
             <ChainArt />
+          </span>
+        )}
+        {mirrored && (
+          <span className="hatch__hold">
+            <MirrorArt />
+          </span>
+        )}
+        {hatch.uses !== undefined && (
+          <span className={hatch.uses === 0 ? "hatch__hold hatch__hold--spent" : "hatch__hold"}>
+            <TiredArt />
+            {hatch.uses}
           </span>
         )}
       </span>
@@ -259,12 +270,12 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
 
   // While a hatch is held, the chickens it (or its chained partner) could take stand out.
   const heldHatch = held ? game.hatches.find((t) => t.id === held.id) : undefined;
-  const heldPartner = heldHatch && partnerOf(game, heldHatch);
+  const heldPartner = heldHatch && (partnerOf(game, heldHatch) ?? mirrorOf(game, heldHatch));
   // The held hatch follows the finger on a spring, so it curves round a corner.
-  useGlide(fieldRef, held, heldPartner?.id, game.hatches, (x, y) => place(x, y).transform as string);
+  useGlide(fieldRef, held, heldPartner?.id, !!heldPartner && heldPartner.id === heldHatch?.mirror, game.hatches, (x, y) => place(x, y).transform as string);
   const takes = heldHatch ? new Set([heldHatch.color, heldPartner?.color]) : null;
   const wobble = bump?.why;
-  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" || wobble?.kind === "turn" || wobble?.kind === "burrow" ? wobble.y * level.w + wobble.x : -1;
+  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" || wobble?.kind === "turn" || wobble?.kind === "burrow" || wobble?.kind === "door" ? wobble.y * level.w + wobble.x : -1;
   const bumpedCrate = wobble?.kind === "crate" ? wobble.y * level.w + wobble.x : -1;
   const open = gatesOpen(level, game.hatches);
 
@@ -272,7 +283,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   // which are buttons with labels of their own.
   const where = (x: number, y: number) => `row ${y + 1}, column ${x + 1}`;
   const about: string[] = [];
-  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`} at ${where(c.x, c.y)}`);
+  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`}${c.order ? `, number ${c.order} in the pecking order,` : ""}${c.under ? " underneath another" : ""} at ${where(c.x, c.y)}`);
   for (const k of game.crates) about.push(`a crate at ${where(k % level.w, Math.floor(k / level.w))}`);
   level.bales.forEach((bale, k) => {
     const x = k % level.w;
@@ -286,6 +297,10 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
     if (level.slick[k]) about.push(`slippery floor at ${where(x, y)}`);
     if (level.turns[k]) about.push(`a turntable at ${where(x, y)}`);
     if (level.burrow?.includes(k)) about.push(`an end of the burrow at ${where(x, y)}`);
+    if (level.levers[k]) about.push(`a lever at ${where(x, y)}`);
+    if (level.doors[k] !== null) about.push(`a ${doorShut(level, game.flipped, k) ? "shut" : "open"} door at ${where(x, y)}`);
+    if (level.fenceRight[k]) about.push(`a fence on the right of ${where(x, y)}`);
+    if (level.fenceDown[k]) about.push(`a fence below ${where(x, y)}`);
   });
   if (level.key && !game.keyTaken) about.push(`the key at ${where(level.key.x, level.key.y)}`);
   const summary = `A board ${level.w} wide and ${level.h} high. ${about.length ? `On it: ${about.join("; ")}.` : ""}${level.gates.some(Boolean) ? ` The gates are ${open ? "open" : "shut"}.` : ""}`;
@@ -306,9 +321,14 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
               {level.cracks[k] && (game.broken.includes(k) ? <HoleArt /> : <CrackArt />)}
               {level.turns[k] && <TurnArt />}
               {level.burrow?.includes(k) && <BurrowArt end={level.burrow[0] === k ? 0 : 1} />}
+              {level.levers[k] && <LeverArt flipped={game.flipped} />}
+              {level.doors[k] !== null && <DoorArt shut={doorShut(level, game.flipped, k)} />}
             </div>
           ))}
         </div>
+
+        {level.fenceRight.map((f, k) => f && <span key={`fr${k}`} className={`fence fence--right${wobble?.kind === "fence" && ((wobble.dir === "right" && wobble.y * level.w + wobble.x === k) || (wobble.dir === "left" && wobble.y * level.w + wobble.x - 1 === k)) ? " fence--wobble" : ""}`} style={at(k % level.w, Math.floor(k / level.w))} aria-hidden="true" />)}
+        {level.fenceDown.map((f, k) => f && <span key={`fd${k}`} className={`fence fence--down${wobble?.kind === "fence" && ((wobble.dir === "down" && wobble.y * level.w + wobble.x === k) || (wobble.dir === "up" && (wobble.y - 1) * level.w + wobble.x === k)) ? " fence--wobble" : ""}`} style={at(k % level.w, Math.floor(k / level.w))} aria-hidden="true" />)}
 
         {game.crates.map((k, id) => (
           <span key={`crate-${id}`} className={`crate${k === bumpedCrate ? " crate--wobble" : ""}`} style={place(k % level.w, Math.floor(k / level.w))}>
@@ -335,9 +355,11 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
         )}
 
         {game.hatches.map((hatch) => {
-          // A chained hatch is drawn wherever its partner is being dragged to, as well as its own.
+          // A chained hatch is drawn wherever its partner is being dragged to, as well as its own;
+          // a mirrored one the opposite way.
           const partner = partnerOf(game, hatch);
-          const mine = held && (held.id === hatch.id || held.id === partner?.id) ? held : null;
+          const twin = mirrorOf(game, hatch);
+          const mine = held && (held.id === hatch.id || held.id === partner?.id) ? held : held && held.id === twin?.id ? { ...held, dx: -held.dx, dy: -held.dy } : null;
           const stuck = heldBy(level, game, hatch);
           const thaw = thawIn(level, game, hatch);
           const about = [
@@ -346,6 +368,8 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
             stuck === "ice" ? `frozen until ${thaw} more ${thaw === 1 ? "chicken drops" : "chickens drop"}` : "",
             stuck === "lock" ? "padlocked until the key is picked up" : "",
             partner ? `chained to the ${PAINT[partner.color].name} hatch, they slide together` : "",
+            twin ? `mirrored with the ${PAINT[twin.color].name} hatch, they slide opposite ways` : "",
+            hatch.uses !== undefined ? `can be picked up ${hatch.uses} more ${hatch.uses === 1 ? "time" : "times"}` : "",
           ].filter(Boolean);
           const pushed = bump && (bump.hatch === hatch.id || bump.hatch === partner?.id) ? ` hatch--bump-${bump.dir}` : "";
           const refused = wobble && ((wobble.kind === "hatch" && wobble.id === hatch.id) || ((wobble.kind === "full" || wobble.kind === "ice" || wobble.kind === "lock" || wobble.kind === "rail") && wobble.hatch === hatch.id)) ? " hatch--wobble" : "";
@@ -364,7 +388,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
               onLostPointerCapture={up}
               onKeyDown={(e) => key(e, hatch)}
             >
-              <HatchFace hatch={hatch} stuck={stuck} thaw={thaw} chained={partner !== undefined} />
+              <HatchFace hatch={hatch} stuck={stuck} thaw={thaw} chained={partner !== undefined} mirrored={twin !== undefined} />
             </button>
           );
         })}
@@ -376,21 +400,27 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
         ))}
 
         {game.chickens.map((c) => {
-          const shake = wobble?.kind === "chicken" && wobble.id === c.id ? " chicken--wobble" : "";
+          // One waiting under a hatch that took the chicken on top is out of sight for now.
+          if (game.hatches.some((t) => t.cells.some(([cx, cy]) => t.x + cx === c.x && t.y + cy === c.y))) return null;
+          const below = c.under && game.chickens.some((o) => o !== c && o.x === c.x && o.y === c.y) ? " chicken--under" : "";
+          const shake = (wobble?.kind === "chicken" || wobble?.kind === "order") && wobble.id === c.id ? " chicken--wobble" : "";
+          const order = c.order ? <span className="chicken__order">{c.order}</span> : null;
           const jumpy = c.skittish ? " chicken--skittish" : "";
           if (c.hidden && !seen.has(c.id)) {
             return (
-              <span key={c.id} className={`chicken chicken--egg${jumpy}${shake}`} style={place(c.x, c.y)}>
+              <span key={c.id} className={`chicken chicken--egg${jumpy}${below}${shake}`} style={place(c.x, c.y)}>
                 <MysteryEggArt />
                 {c.skittish && <StartleArt />}
+                {order}
               </span>
             );
           }
           const focus = takes ? (c.color === "any" || takes.has(c.color) ? " chicken--wanted" : " chicken--dim") : "";
           return (
-            <span key={c.id} className={`chicken${c.hidden ? " chicken--hatched" : ""}${jumpy}${focus}${shake}`} style={place(c.x, c.y)}>
+            <span key={c.id} className={`chicken${c.hidden ? " chicken--hatched" : ""}${jumpy}${below}${focus}${shake}`} style={place(c.x, c.y)}>
               <ChickenArt color={c.color} className="chicken__art" />
               {c.skittish && <StartleArt />}
+              {order}
             </span>
           );
         })}

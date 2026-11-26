@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Level } from "../game/types";
-import { ArrowArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, GateArt, KeyArt, LockArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TurnArt } from "./art";
+import { ArrowArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, LockArt, MirrorArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 interface Piece {
   key: string;
@@ -185,6 +185,76 @@ const PIECES: Piece[] = [
       </span>
     ),
     on: (l) => l.chickens.some((c) => c.skittish),
+  },
+  {
+    key: "mirror",
+    name: "Mirrored hatches",
+    what: "Two hatches with the mirror mark slide opposite ways: one goes left, the other goes right. If either is blocked, neither moves. It counts as one move.",
+    art: (
+      <MiniHatch cells={[[0, 0], [1, 0]]} frame="#2fa597">
+        <g transform="translate(3 3) scale(1)">
+          <MirrorArt />
+        </g>
+      </MiniHatch>
+    ),
+    on: (l) => l.hatches.some((t) => t.mirror !== undefined),
+  },
+  {
+    key: "lever",
+    name: "Levers and doors",
+    what: "A move that slides onto a lever flips every door on the board: shut ones open, open ones shut. A shut door can’t be entered, but a hatch already in the doorway may stay.",
+    art: (
+      <span className="guide__pair">
+        <LeverArt flipped={false} />
+        <DoorArt shut />
+      </span>
+    ),
+    on: (l) => l.levers.some(Boolean),
+  },
+  {
+    key: "tired",
+    name: "Tired hatch",
+    what: "A boot and a number: how many more times it can be picked up. Going on with it after you let go is the same move, and costs nothing.",
+    art: (
+      <span className="guide__tired">
+        <TiredArt />
+      </span>
+    ),
+    on: (l) => l.hatches.some((t) => t.uses !== undefined),
+  },
+  {
+    key: "order",
+    name: "Pecking order",
+    what: "Chickens with numbers must go in turn: number 1 first, then 2, and so on. Until its turn, a hatch can’t take one.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="red" />
+        <span className="guide__order">1</span>
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.order),
+  },
+  {
+    key: "fence",
+    name: "Fence",
+    what: "A fence along the edge of a square stops anything crossing it: hatches, crates and hopping chickens.",
+    art: (
+      <svg viewBox="0 0 30 30" aria-hidden="true">
+        <rect x="13" y="2" width="4" height="26" rx="1.5" fill="#f3e2bf" stroke="#3a2014" strokeWidth="1.2" />
+      </svg>
+    ),
+    on: (l) => l.fenceRight.some(Boolean) || l.fenceDown.some(Boolean),
+  },
+  {
+    key: "stack",
+    name: "Stacked chickens",
+    what: "One chicken sitting on another. A hatch takes the top one; the one underneath waits until a hatch slides onto the square again.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="blue" />
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.under),
   },
 ];
 

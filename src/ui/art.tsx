@@ -413,3 +413,49 @@ export function StartleArt() {
     </svg>
   );
 }
+/** The mark on a mirrored hatch: two arrows pointing opposite ways. */
+export function MirrorArt() {
+  return (
+    <svg className="hold-art" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 8 h14 M13 4 l4 4 -4 4 M21 16 h-14 M11 12 l-4 4 4 4" fill="none" stroke="#fff6e3" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+/** The mark on a tired hatch: a little boot. */
+export function TiredArt() {
+  return (
+    <svg className="hold-art" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 3 h6 v9 l6 3 q2 1 2 3 v2 H5 z" fill="#fff6e3" />
+      <path d="M5 17 h16" stroke="#3a2014" strokeWidth="1.6" />
+    </svg>
+  );
+}
+/** A lever in the floor, leaning one way or the other. */
+export function LeverArt({ flipped }: { flipped: boolean }) {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="22" y="62" width="56" height="20" rx="7" fill="#5b3a22" stroke="#d7a25f" strokeWidth="4" />
+      <g className="lever-art__arm" transform={`rotate(${flipped ? 32 : -32} 50 70)`}>
+        <rect x="45" y="22" width="10" height="50" rx="5" fill="#cfc6b8" />
+        <circle cx="50" cy="22" r="11" fill="#e0533d" />
+      </g>
+    </svg>
+  );
+}
+/** A door: shut, it is a solid plank gate; open, just its frame. */
+export function DoorArt({ shut }: { shut: boolean }) {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="8" y="8" width="84" height="84" rx="8" fill="none" stroke="#3a2014" strokeWidth="7" opacity="0.8" />
+      {shut ? (
+        <g>
+          <rect x="12" y="12" width="76" height="76" rx="5" fill="#9b5c32" />
+          <path d="M37 12 v76 M63 12 v76" stroke="#6f4020" strokeWidth="4" />
+          <path d="M14 30 h72 M14 70 h72" stroke="#3a2014" strokeWidth="6" />
+        </g>
+      ) : (
+        <path d="M14 14 l12 0 M14 86 l12 0" stroke="#3a2014" strokeWidth="6" strokeLinecap="round" />
+      )}
+    </svg>
+  );
+}

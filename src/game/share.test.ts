@@ -60,3 +60,32 @@ describe("sharing coops with the later pieces", () => {
     expect(decodeLevel(bad)).toBeNull();
   });
 });
+
+describe("sharing coops with the newest pieces", () => {
+  it("keeps mirrors, levers and doors, tired hatches, the pecking order, stacked chickens and fences", () => {
+    const code = encodeLevel({
+      name: "Lot",
+      rows: ["r.%+.", "b...r"],
+      hatches: [
+        { color: "red", x: 1, y: 0, cap: 3, mirror: "a", uses: 2 },
+        { color: "blue", x: 2, y: 1, cap: 1, mirror: "a" },
+      ],
+      par: 3,
+      order: [[4, 1], [0, 0]],
+      under: [[0, 0, "r"]],
+      fences: [[2, 1, "right"], [0, 0, "down"]],
+    });
+    const l = decodeLevel(code)!;
+    expect(l.hatches.map((t) => [t.mirror, t.uses])).toEqual([[1, 2], [0, undefined]]);
+    expect(l.levers.filter(Boolean)).toHaveLength(1);
+    expect(l.doors.filter((d) => d !== null)).toEqual([true]);
+    expect(l.chickens.filter((c) => c.order).map((c) => [c.x, c.y, c.order])).toEqual([[0, 0, 2], [4, 1, 1]]);
+    expect(l.chickens.find((c) => c.under)).toMatchObject({ x: 0, y: 0, color: "red" });
+    expect(l.fenceRight[1 * 5 + 2] && l.fenceDown[0]).toBe(true);
+  });
+  it("turns down damaged extras", () => {
+    const ok = { name: "x", rows: ["r.."], hatches: [{ color: "red" as const, x: 2, y: 0, cap: 1 }], par: 1 };
+    expect(decodeLevel(encodeLevel({ ...ok, fences: [[0, 0, "sideways" as "down"]] }))).toBeNull();
+    expect(decodeLevel(encodeLevel({ ...ok, under: [[0, 0, "q"]] }))).toBeNull();
+  });
+});

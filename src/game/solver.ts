@@ -44,7 +44,16 @@ const DONE: Node = { pos: NO_BOARD, left: [], alive: [], birds: 1, key: false, c
  * Does the level use a piece the fast search doesn't model: slippery floor, crates,
  * turntables, a burrow or skittish chickens? Those levels are searched by the game's own rules.
  */
-export const needsRules = (level: Level) => level.slick.some(Boolean) || level.turns.some(Boolean) || level.burrow !== null || level.crates.length > 0 || level.chickens.some((c) => c.skittish);
+export const needsRules = (level: Level) =>
+  level.slick.some(Boolean) ||
+  level.turns.some(Boolean) ||
+  level.burrow !== null ||
+  level.crates.length > 0 ||
+  level.chickens.some((c) => c.skittish || c.order || c.under) ||
+  level.levers.some(Boolean) ||
+  level.fenceRight.some(Boolean) ||
+  level.fenceDown.some(Boolean) ||
+  level.hatches.some((t) => t.mirror !== undefined || t.uses !== undefined);
 
 export function solve(level: Level, from: GameState = startState(level), maxStates = 400_000, until = Infinity): SolveResult {
   if (needsRules(level)) return solveByRules(level, from, maxStates, until);
@@ -286,9 +295,9 @@ export function solveByRules(level: Level, from: GameState, maxStates: number, u
   const w = level.w;
   const turning = level.turns.some(Boolean);
   const keyOf = (s: GameState) => {
-    let k = String.fromCharCode((s.lastHatch ?? -1) + 1 + (s.keyTaken ? 64 : 0));
+    let k = String.fromCharCode((s.lastHatch ?? -1) + 1 + (s.keyTaken ? 64 : 0) + (s.flipped ? 128 : 0));
     for (const t of s.hatches) {
-      k += String.fromCharCode(t.id + 1, t.y * w + t.x + 1, t.left, COLORS.indexOf(t.color) + 1);
+      k += String.fromCharCode(t.id + 1, t.y * w + t.x + 1, t.left, COLORS.indexOf(t.color) + 1, (t.uses ?? 99) + 1);
       if (turning) for (const [cx, cy] of t.cells) k += String.fromCharCode(97 + cx * 8 + cy);
     }
     k += "|";

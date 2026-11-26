@@ -35,8 +35,9 @@ interface Placed {
 }
 
 interface Glide {
-  /** The hatch under the finger, then any that move with it. */
+  /** The hatch under the finger, then any that move with it; a mirrored one moves the opposite way. */
   ids: number[];
+  mirrored: boolean;
   /** How far the hatch is drawn from its own square, and how fast that is changing, in squares. */
   x: number;
   y: number;
@@ -63,21 +64,22 @@ const still = () => (typeof matchMedia === "function" && matchMedia("(prefers-re
  * React draws each hatch on its own square, plus where the finger wants it; while a hatch is
  * held this writes over that, after every render and on every frame, and puts it back on release.
  * `held` is the hatch under the finger (`dx`, `dy` from its square) and `partner` the hatch
- * chained to it, if any; `hatches` is every hatch on the board, each found in `field` by its
+ * chained or (`mirrored`) mirrored to it, if any; `hatches` is every hatch on the board, each found in `field` by its
  * `data-hatch`; `place` turns a position in squares into a transform.
  */
-export function useGlide(field: RefObject<HTMLElement>, held: { id: number; dx: number; dy: number } | null, partner: number | undefined, hatches: readonly Placed[], place: (x: number, y: number) => string) {
+export function useGlide(field: RefObject<HTMLElement>, held: { id: number; dx: number; dy: number } | null, partner: number | undefined, mirrored: boolean, hatches: readonly Placed[], place: (x: number, y: number) => string) {
   const glide = useRef<Glide | null>(null);
   const hatchesRef = useRef(hatches);
   hatchesRef.current = hatches;
 
-  /** Draw the gliding hatches `dx`, `dy` from their own squares. */
-  const draw = (ids: number[], dx: number, dy: number) => {
-    for (const id of ids) {
+  /** Draw the gliding hatches `dx`, `dy` from their own squares (a mirrored partner the other way). */
+  const draw = (ids: number[], dx: number, dy: number, mirror = false) => {
+    ids.forEach((id, i) => {
       const hatch = hatchesRef.current.find((t) => t.id === id);
       const el = hatch && field.current?.querySelector<HTMLElement>(`[data-hatch="${id}"]`);
-      if (el) el.style.transform = place(hatch.x + dx, hatch.y + dy);
-    }
+      const sign = mirror && i > 0 ? -1 : 1;
+      if (el) el.style.transform = place(hatch.x + sign * dx, hatch.y + sign * dy);
+    });
   };
 
   // After every render: React has just drawn the held hatch where the finger wants it.
@@ -92,8 +94,9 @@ export function useGlide(field: RefObject<HTMLElement>, held: { id: number; dx: 
       g = glide.current = null;
     }
     if (!held || !own) return;
-    if (!g) g = glide.current = { ids: [], x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, ox: own.x, oy: own.y, frame: 0, last: 0 };
+    if (!g) g = glide.current = { ids: [], mirrored: false, x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, ox: own.x, oy: own.y, frame: 0, last: 0 };
     g.ids = partner === undefined ? [own.id] : [own.id, partner];
+    g.mirrored = mirrored;
     // The hatch stepped on a square: measured from the new one, it is that much further back.
     g.x += g.ox - own.x;
     g.y += g.oy - own.y;
@@ -106,7 +109,7 @@ export function useGlide(field: RefObject<HTMLElement>, held: { id: number; dx: 
       g.y = g.ty;
       g.vx = g.vy = 0;
     }
-    draw(g.ids, g.x, g.y);
+    draw(g.ids, g.x, g.y, g.mirrored);
     if (!g.frame && (g.x !== g.tx || g.y !== g.ty)) {
       g.last = performance.now();
       const tick = (now: number) => {
@@ -127,7 +130,7 @@ export function useGlide(field: RefObject<HTMLElement>, held: { id: number; dx: 
           at.y = at.ty;
           at.vx = at.vy = 0;
         }
-        draw(at.ids, at.x, at.y);
+        draw(at.ids, at.x, at.y, at.mirrored);
         at.frame = arrived ? 0 : requestAnimationFrame(tick);
       };
       g.frame = requestAnimationFrame(tick);

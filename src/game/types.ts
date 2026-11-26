@@ -36,6 +36,10 @@ export interface Hatch {
   locked?: boolean;
   /** Chained to this other hatch (its id): the two slide together, or not at all, until one of them shuts. */
   link?: number;
+  /** Mirrored with this other hatch (its id): when one slides, the other slides the opposite way, or neither does. */
+  mirror?: number;
+  /** Tired: how many more times it can be picked up for a move. */
+  uses?: number;
 }
 
 export interface Chicken {
@@ -47,6 +51,10 @@ export interface Chicken {
   hidden?: boolean;
   /** Skittish: when a hatch stops right beside it, it hops one square the way that hatch moved, if it can. */
   skittish?: boolean;
+  /** In the pecking order: it can only be taken once every chicken with a lower number has gone. */
+  order?: number;
+  /** Underneath another chicken on the same square: it waits until that one has gone and a hatch slides onto the square again. */
+  under?: boolean;
 }
 
 /** How a level is written down in levels.ts. */
@@ -65,11 +73,18 @@ export interface LevelDef {
    * `_` slippery floor (a hatch that slides onto it keeps going until something stops it),
    * `@` a crate (a hatch shoves it one square, onto plain empty floor),
    * `*` a turntable (a hatch that slides onto it turns a quarter, clockwise, about that square),
-   * `(` and `)` the two ends of a burrow (a one-square hatch that goes in one comes out of the other).
+   * `(` and `)` the two ends of a burrow (a one-square hatch that goes in one comes out of the other),
+   * `%` a lever (a move that slides onto it flips every door), `+` a door that starts shut, `-` one that starts open.
    */
   rows: string[];
   /** Chickens that are skittish, by where they start: [x, y]. */
   skittish?: [number, number][];
+  /** The pecking order: chickens by where they start, the first to be taken first. */
+  order?: [number, number][];
+  /** A second chicken under the one on this square: [x, y, colour letter as in rows]. */
+  under?: [number, number, string][];
+  /** Fences on the right or bottom edge of a square: [x, y, "right" | "down"]. */
+  fences?: [number, number, "right" | "down"][];
   hatches: {
     color: Color;
     x: number;
@@ -85,6 +100,10 @@ export interface LevelDef {
     locked?: boolean;
     /** Two hatches with the same tag here are chained together. */
     link?: string;
+    /** Two hatches with the same tag here are mirrored. */
+    mirror?: string;
+    /** Tired: how many times it can be picked up for a move. */
+    uses?: number;
   }[];
   /** Fewest moves that clear the level, as found by the solver. Checked by the test suite. */
   par: number;
@@ -124,6 +143,14 @@ export interface Level {
   burrow: [number, number] | null;
   /** Where each crate starts, as row-major squares; a crate's id is its place in this list. */
   crates: number[];
+  /** Row-major, true where a lever is. */
+  levers: boolean[];
+  /** Row-major: a door that starts shut (true), one that starts open (false), or no door (null). */
+  doors: (boolean | null)[];
+  /** Row-major: a fence on the right edge of the square. */
+  fenceRight: boolean[];
+  /** Row-major: a fence on the bottom edge of the square. */
+  fenceDown: boolean[];
   chickens: Chicken[];
   hatches: Hatch[];
   par: number;
@@ -138,6 +165,8 @@ export interface GameState {
   broken: readonly number[];
   /** Where each crate is now, as row-major squares, by crate id. */
   crates: readonly number[];
+  /** The doors have been flipped an odd number of times: those that started shut are open, and the other way about. */
+  flipped: boolean;
   /** True once the key has been picked up (and from the start when there is no key). */
   keyTaken: boolean;
   /** A move is one unbroken run of sliding the same hatch (or the same chained pair). */
@@ -172,4 +201,6 @@ export interface StepResult {
   slid: number;
   /** Skittish chickens that hopped away on this step (where they are now). */
   hopped: Chicken[];
+  /** The doors flipped on this step. */
+  flipped: boolean;
 }
