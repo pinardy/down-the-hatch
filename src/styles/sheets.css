@@ -278,6 +278,26 @@
   width: 70%;
   height: 70%;
 }
+.guide__stack {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.guide__stack > svg {
+  position: absolute;
+  width: 78%;
+  height: 78%;
+}
+.guide__stack > svg:first-child {
+  left: 0;
+  top: 0;
+  filter: brightness(0.92);
+}
+.guide__stack > svg:last-child {
+  right: 0;
+  bottom: 0;
+}
 .guide__toggle {
   display: block;
   margin: 1rem auto 0;

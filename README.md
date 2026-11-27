@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 313 levels
+📲 Installable · ✈️ Works offline · 🧩 361 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-313 levels in 36 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+361 levels in 42 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -42,6 +42,12 @@ Slide the hatches, drop the chickens, clear the coop.
 | 🔄 | **Turntables** | swing a hatch a quarter turn, if there's room |
 | 🐇 | **Burrows** | a one-square hatch goes in one end and out of the other |
 | 💨 | **Skittish chickens** | hop away from a hatch that stops beside them; corner them |
+| 🪞 | **Mirrored hatches** | slide opposite ways: one goes left, the other goes right |
+| 🚪 | **Levers and doors** | slide onto a lever and every door flips, shut to open and open to shut |
+| 🥾 | **Tired hatches** | can only be picked up so many times |
+| 🔢 | **Pecking order** | numbered chickens must be taken in turn |
+| 🚧 | **Fences** | thin walls along square edges that nothing crosses |
+| 🐔 | **Stacked chickens** | take the top one, then come back for the one underneath |
 
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them, at up to 34 moves a level.
 
@@ -50,6 +56,8 @@ The newest pieces, paint, gates and one-way squares, each get a Hard chapter of 
 Five more chapters pair the newest pieces with older ones: *Hold the line* (gates and chains), *Burnt bridges* (one-way squares and cracked boards) and *Colour me surprised* (paint and eggs) are Hard; *Big freeze* (frozen hatches, bends and gates) and *Safe cracking* (padlocks, paint and eggs) are Expert, up to 37 moves a level.
 
 Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery floor), *Shove off* (crates), *Spin doctor* (turntables), *Down the rabbit hole* (burrows) and *Flight risk* (skittish chickens). Three Hard chapters take them further: *Turning point* (turntables among bent hatches, up to 21 moves), *Goods in* (crates and padlocks) and *Pick and mix* (the newest pieces in twos, and twice all five at once).
+
+Six more Medium chapters bring in the newest pieces, one each: *Opposite numbers* (mirrored hatches), *Doorkeepers* (levers and doors), *Running ragged* (tired hatches), *Mind your manners* (the pecking order), *Over the fence* (fences) and *Two up* (stacked chickens).
 
 ## 🛟 Help when you need it
 

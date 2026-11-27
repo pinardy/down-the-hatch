@@ -250,7 +250,8 @@ const PIECES: Piece[] = [
     name: "Stacked chickens",
     what: "One chicken sitting on another. A hatch takes the top one; the one underneath waits until a hatch slides onto the square again.",
     art: (
-      <span className="guide__skittish">
+      <span className="guide__stack">
+        <ChickenArt color="red" />
         <ChickenArt color="blue" />
       </span>
     ),
