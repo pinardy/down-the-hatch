@@ -316,6 +316,15 @@
   background: #437fd2;
   box-shadow: 0 0 0 2px #fff6e3, 0 0 0 3px #3a2014;
 }
+.guide__zzz {
+  position: absolute;
+  right: -6%;
+  top: -12%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #fff6e3;
+  text-shadow: 0 0 2px #3a2014, 0 0 2px #3a2014;
+}
 .guide__toggle {
   display: block;
   margin: 1rem auto 0;

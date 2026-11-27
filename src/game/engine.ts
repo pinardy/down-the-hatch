@@ -41,6 +41,14 @@
 //    square towards the nearest chicken it can reach (hatches, hay, crates, fences and shut
 //    doors are in its way). If the fox gets a chicken, the level is lost.
 //  - A curious chicken right behind a hatch follows it one square when it slides away.
+//  - A sleeping chicken can't be taken. A hatch that stops right beside it wakes it, and it
+//    can be taken from the next move on.
+//  - A magnet is a post nothing can stand on. Once a move, with the belts and before them, it
+//    pulls every hatch in its row or column, other than the one being moved, one square
+//    towards it, if that hatch could slide there itself.
+//  - A two-square hatch with room for two or more that slides onto a blade splits into two
+//    one-square hatches, which share its room.
+//  - A hatch that slides onto a bomb sets it off: the hay bales right beside it are gone for good.
 //  - A chicken can sit on top of another. A hatch takes the top one; the one underneath waits
 //    for a hatch to slide onto the square again.
 //  - Clear every chicken to win.
@@ -78,6 +86,9 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
   const bridges: boolean[] = new Array(w * h).fill(false);
   const belts: (Dir | null)[] = new Array(w * h).fill(null);
   const foxes: number[] = [];
+  const magnets: number[] = [];
+  const blades: boolean[] = new Array(w * h).fill(false);
+  const bombs: boolean[] = new Array(w * h).fill(false);
   const chickens: Chicken[] = [];
   let key: Level["key"] = null;
   def.rows.forEach((row, y) => {
@@ -100,6 +111,11 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
       else if (ch === "m") mud[y * w + x] = true;
       else if (ch === ":") bridges[y * w + x] = true;
       else if (ch === "f") foxes.push(y * w + x);
+      else if (ch === "&") {
+        magnets.push(y * w + x);
+        bales[y * w + x] = true;
+      } else if (ch === "/") blades[y * w + x] = true;
+      else if (ch === "!") bombs[y * w + x] = true;
       else if (color) chickens.push({ id: chickens.length, color, x, y, ...(ch !== ch.toLowerCase() ? { hidden: true } : {}) });
       else if (ch !== ".") throw new Error(`${def.name}: unknown square "${ch}" at ${x},${y}`);
     });
@@ -163,6 +179,11 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
     if (bird && !bird.skittish) bird.curious = true;
     else if (check) throw new Error(`${def.name}: no chicken at ${x},${y} to be curious`);
   }
+  for (const [x, y] of def.asleep ?? []) {
+    const bird = chickens.find((c) => c.x === x && c.y === y && !c.under);
+    if (bird) bird.asleep = true;
+    else if (check) throw new Error(`${def.name}: no chicken at ${x},${y} to be asleep`);
+  }
   for (const [x, y, ch] of def.fickle ?? []) {
     const bird = chickens.find((c) => c.x === x && c.y === y && !c.under);
     const alt = CHICKEN_CHARS[ch];
@@ -190,7 +211,7 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
   const paired = ends["("].length === 1 && ends[")"].length === 1;
   if (check && !paired && ends["("].length + ends[")"].length > 0) throw new Error(`${def.name}: a burrow needs one ( and one )`);
   const burrow: Level["burrow"] = paired ? [ends["("][0], ends[")"][0]] : null;
-  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, slick, turns, burrow, crates, levers, doors, fenceRight, fenceDown, mud, bridges, belts, fox: foxes.length ? foxes[0] : -1, chickens, hatches, par: def.par, tip: def.tip, ...(def.demo ? { demo: true } : {}) };
+  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, slick, turns, burrow, crates, levers, doors, fenceRight, fenceDown, mud, bridges, belts, fox: foxes.length ? foxes[0] : -1, magnets, blades, bombs, chickens, hatches, par: def.par, tip: def.tip, ...(def.demo ? { demo: true } : {}) };
   if (check) validate(level);
   return level;
 }
@@ -236,8 +257,29 @@ export function validate(level: Level) {
 }
 
 export function startState(level: Level): GameState {
-  return { hatches: level.hatches, chickens: level.chickens, broken: [], crates: level.crates, flipped: false, fox: level.fox, lost: false, bogged: null, keyTaken: level.key === null, moves: 0, lastHatch: null };
+  return { hatches: level.hatches, chickens: level.chickens, broken: [], crates: level.crates, flipped: false, fox: level.fox, lost: false, bogged: null, blown: [], keyTaken: level.key === null, moves: 0, lastHatch: null };
 }
+
+const VIEWS = new WeakMap<Level, Map<string, Level>>();
+/** The level as it stands once these bombs have gone off: the hay right beside each is gone (magnets stay). */
+function blownView(level: Level, blown: readonly number[]): Level {
+  if (!blown.length) return level;
+  const key = blown.join(",");
+  let views = VIEWS.get(level);
+  if (!views) VIEWS.set(level, (views = new Map()));
+  let view = views.get(key);
+  if (!view) {
+    const bales = level.bales.slice();
+    for (const k of blown) {
+      const x = k % level.w;
+      for (const n of [x > 0 ? k - 1 : -1, x < level.w - 1 ? k + 1 : -1, k - level.w, k + level.w]) if (n >= 0 && n < bales.length && !level.magnets.includes(n)) bales[n] = false;
+    }
+    views.set(key, (view = { ...level, bales }));
+  }
+  return view;
+}
+/** Where the hay is now: row-major, true where a bale (or a magnet) still stands. */
+export const hayNow = (level: Level, state: GameState) => blownView(level, state.blown).bales;
 
 /** Is the door on this square shut now? False where there is no door. */
 export const doorShut = (level: Level, flipped: boolean, k: number) => level.doors[k] !== null && level.doors[k] !== flipped;
@@ -311,7 +353,7 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
   // Each further square is another step of the same move, for as long as it is on slippery
   // floor; a turn or a trip down the burrow ends it, and so does a hatch shutting.
   for (let guard = level.w * level.h; guard > 0; guard--) {
-    if (out.turned.length || out.burrowed || out.shut.length || !out.moved.some(onSlick)) break;
+    if (out.turned.length || out.burrowed || out.split || out.shut.length || !out.moved.some(onSlick)) break;
     const next = attempt(level, out.state, hatchId, dir);
     if (!next || "no" in next) break;
     const n = next.ok;
@@ -332,6 +374,10 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
       flipped: n.state.flipped !== state.flipped,
       caught: n.caught,
       bogged: n.bogged,
+      split: n.split,
+      boomed: out.boomed || n.boomed,
+      woke: out.woke || n.woke,
+      pulled: out.pulled || n.pulled,
     };
   }
   if (out.slid) {
@@ -391,7 +437,9 @@ export type Blocker =
   /** The fox is sitting there. */
   | { kind: "fox"; x: number; y: number }
   /** The fox has a chicken: the level is lost. */
-  | { kind: "lost" };
+  | { kind: "lost" }
+  /** A chicken that is asleep, or only just woken. */
+  | { kind: "asleep"; id: number; hatch: number };
 
 /** What stops this step, or null if nothing does. The same rules as `step`, saying which piece is in the way. */
 export function blockedBy(level: Level, state: GameState, hatchId: number, dir: Dir): Blocker | null {
@@ -420,7 +468,9 @@ function bare(level: Level, state: { hatches: readonly Hatch[]; chickens: readon
  * One square: the result, or what stops it. Null when there is no such hatch. Both `step` and
  * `blockedBy` are this, so the game never refuses a slide for one reason and names another.
  */
-function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { ok: StepResult } | { no: Blocker } | null {
+function attempt(whole: Level, state: GameState, hatchId: number, dir: Dir): { ok: StepResult } | { no: Blocker } | null {
+  // The board as the bombs so far have left it.
+  const level = blownView(whole, state.blown);
   const hatch = state.hatches.find((t) => t.id === hatchId);
   if (!hatch) return null;
   const partner = partnerOf(state, hatch);
@@ -430,6 +480,9 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
   const wayOf = (t: Hatch): Dir => (t === mirror ? OPPOSITE[dir] : dir);
   const mover = moverOf(hatch);
   const fresh = state.lastHatch !== mover; // picked up for a new move
+  // Chickens woken during the last move are properly awake once a new one starts.
+  const base = fresh && state.chickens.some((c) => c.waking) ? state.chickens.map((c) => (c.waking ? { ...c, waking: undefined } : c)) : state.chickens;
+  const booms: number[] = [];
   if (state.lost) return { no: { kind: "lost" } };
   if (state.bogged === mover) return { no: { kind: "mud", hatch: hatch.id } };
   for (const t of group) {
@@ -491,8 +544,10 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
         if (fenced(level, x, y, way) || !bare(level, state, x + dx, y + dy, true) || pushed.some((p) => p.to === to)) return { no: { kind: "crate", x, y } };
         pushed.push({ id: crate, from: k, to });
       }
-      const bird = chickenAt(state.chickens, x, y);
+      if (level.bombs[k] && !state.blown.includes(k)) booms.push(k);
+      const bird = chickenAt(base, x, y);
       if (bird) {
+        if (bird.asleep || bird.waking) return { no: { kind: "asleep", id: bird.id, hatch: t.id } };
         if (bird.color !== t.color && bird.color !== "any") return { no: { kind: "chicken", id: bird.id, hatch: t.id } };
         dropped.push(bird);
         mine++;
@@ -505,21 +560,23 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
   // The pecking order: none taken while a lower number is still about (unless it goes now too).
   for (const bird of dropped) {
     if (!bird.order) continue;
-    const before = state.chickens.find((c) => c.order && c.order < bird.order! && !dropped.includes(c));
+    const before = base.find((c) => c.order && c.order < bird.order! && !dropped.includes(c));
     if (before) {
       const taker = group.find((t) => covers({ ...t, x: t.x + DELTA[wayOf(t)].dx, y: t.y + DELTA[wayOf(t)].dy }, bird.x, bird.y))!;
       return { no: { kind: "order", id: bird.id, hatch: taker.id, need: before.order! } };
     }
   }
-  const crates = pushed.length ? state.crates.map((k, id) => pushed.find((p) => p.id === id)?.to ?? k) : state.crates;
-  const chickens = dropped.length ? state.chickens.filter((c) => !dropped.includes(c)) : state.chickens;
-  const flipped = flips % 2 === 1 ? !state.flipped : state.flipped;
+  let crates = pushed.length ? state.crates.map((k, id) => pushed.find((p) => p.id === id)?.to ?? k) : state.crates;
+  const chickens = dropped.length ? base.filter((c) => !dropped.includes(c)) : base;
+  let flipped = flips % 2 === 1 ? !state.flipped : state.flipped;
+  const blown = booms.length ? [...state.blown, ...booms].sort((a, b) => a - b) : state.blown;
 
   // Paint: the last puddle a hatch newly covers, in the order of its squares, gives its new colour.
   const painted: Hatch[] = [];
   const turned: Hatch[] = [];
   const others = state.hatches.filter((o) => !group.includes(o));
   const moved: Hatch[] = [];
+  let half: Hatch | null = null; // the other half of a hatch a blade has split
   for (const t of group) {
     const { dx, dy } = DELTA[wayOf(t)];
     let color = t.color;
@@ -539,6 +596,13 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
       const blocked = crates.includes(exit) || chickens.some((c) => c.x === ex && c.y === ey) || others.some((o) => covers(o, ex, ey));
       if (blocked) return { no: { kind: "burrow", x: burrow % w, y: (burrow - (burrow % w)) / w, why: "exit" } };
       now = { ...now, x: ex, y: ey };
+    } else if (group.length === 1 && t.cells.length === 2 && now.left >= 2 && now.cells.some(([cx, cy]) => level.blades[(now.y + cy) * w + now.x + cx] && !covers(t, now.x + cx, now.y + cy))) {
+      // A blade newly under it: two hatches of one square, sharing its room.
+      const [a, b] = now.cells;
+      half = { ...now, id: level.hatches.length + t.id, x: now.x + b[0], y: now.y + b[1], w: 1, h: 1, cells: [[0, 0]], left: Math.floor(now.left / 2) };
+      delete half.axis;
+      now = { ...now, x: now.x + a[0], y: now.y + a[1], w: 1, h: 1, cells: [[0, 0]], left: Math.ceil(now.left / 2) };
+      delete now.axis;
     } else if (group.length === 1 && !t.axis && t.cells.length > 1) {
       // A turntable newly under one of its squares turns it, about that square.
       const pivot = now.cells.find(([cx, cy]) => level.turns[(now.y + cy) * w + now.x + cx] && !covers(t, now.x + cx, now.y + cy));
@@ -573,11 +637,15 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
     const px = p.to % w;
     if (moved.some((m) => covers(m, px, (p.to - px) / w))) return { no: { kind: "crate", x: p.from % w, y: (p.from - (p.from % w)) / w } };
   }
-  const shut = moved.filter((t) => t.left === 0);
-  const after = state.hatches.flatMap((t) => {
+  let shut = moved.filter((t) => t.left === 0);
+  let after = state.hatches.flatMap((t) => {
     const now = moved.find((m) => m.id === t.id);
     return now ? (now.left === 0 ? [] : [now]) : [t];
   });
+  if (half) {
+    moved.push(half);
+    after = [...after, half];
+  }
   // A gate can only be entered while a plate is held down, as things stand after the step.
   const wasOpen = gatesOpen(level, state.hatches);
   const isOpen = gatesOpen(level, after);
@@ -590,7 +658,7 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
       if (level.cracks[k] && !broke.includes(k) && !moved.some((m) => covers(m, cell.x, cell.y))) broke.push(k);
     }
   }
-  const broken = broke.length ? [...state.broken, ...broke].sort((a, b) => a - b) : state.broken;
+  let broken = broke.length ? [...state.broken, ...broke].sort((a, b) => a - b) : state.broken;
   // Skittish chickens right beside a hatch that slid (and is still on the board) hop on, its way.
   const hopped: Chicken[] = [];
   let flock = chickens;
@@ -622,9 +690,58 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
   }
   // Mud: a hatch that has newly slid onto some is stuck until another hatch has moved.
   const bogs = group.some((t, i) => moved[i].cells.some(([cx, cy]) => level.mud[(moved[i].y + cy) * w + moved[i].x + cx] && !covers(t, moved[i].x + cx, moved[i].y + cy)));
-  // Once a move, after its first square: the belts run, changeable chickens change, the fox walks.
+  // A sleeping chicken right beside a hatch that slid is woken: it can be taken from the next move on.
+  let woke = false;
+  flock = flock.map((c) => {
+    if (!c.asleep || !moved.some((m) => cellsOf(m).some((q) => Math.abs(q.x - c.x) + Math.abs(q.y - c.y) === 1))) return c;
+    woke = true;
+    return { ...c, asleep: undefined, waking: true };
+  });
+  // Once a move, after its first square: the magnets pull, the belts run, changeable chickens
+  // change, the fox walks.
   let fox = state.fox;
   let caught = false;
+  let pulled = false;
+  if (fresh && level.magnets.length) {
+    // Each other hatch in a magnet's row or column slides a square towards it, as if dragged
+    // (but it is no move of its own, and nothing else that happens once a move happens again).
+    const moves = state.lastHatch === mover ? state.moves : state.moves + 1;
+    let now: GameState = { hatches: after, chickens: flock, broken, crates, flipped, fox, lost: false, bogged: bogs ? mover : null, blown, keyTaken: state.keyTaken || tookKey, moves, lastHatch: mover };
+    const done = new Set<number>(group.map((t) => t.id));
+    for (const m of level.magnets) {
+      const mx = m % w;
+      const my = (m - mx) / w;
+      for (const id of now.hatches.map((t) => t.id)) {
+        const t = now.hatches.find((o) => o.id === id);
+        if (!t || done.has(id)) continue;
+        const cells = cellsOf(t);
+        const inRow = cells.find((q) => q.y === my);
+        const inCol = cells.find((q) => q.x === mx);
+        const way: Dir | null = inRow ? (inRow.x > mx ? "left" : "right") : inCol ? (inCol.y > my ? "up" : "down") : null;
+        if (!way) continue;
+        const tug = attempt(whole, { ...now, lastHatch: moverOf(t) }, id, way);
+        if (!tug || "no" in tug) continue;
+        for (const o of tug.ok.moved) done.add(o.id);
+        done.add(id);
+        dropped.push(...tug.ok.dropped);
+        shut = [...shut, ...tug.ok.shut];
+        broke.push(...tug.ok.broke);
+        pushed.push(...tug.ok.pushed);
+        hopped.push(...tug.ok.hopped);
+        tookKey = tookKey || tug.ok.tookKey;
+        woke = woke || tug.ok.woke;
+        pulled = true;
+        now = { ...tug.ok.state, moves, lastHatch: mover, bogged: now.bogged };
+      }
+    }
+    after = now.hatches;
+    flock = [...now.chickens];
+    broken = now.broken;
+    crates = now.crates;
+    flipped = now.flipped;
+    booms.push(...now.blown.filter((k) => !blown.includes(k)));
+  }
+  const blownNow = booms.length ? [...state.blown, ...booms].sort((a, b) => a - b) : state.blown;
   if (fresh) {
     if (level.belts.some(Boolean)) {
       const rode = new Set<number>();
@@ -660,6 +777,7 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
         fox,
         lost: caught,
         bogged: bogs ? mover : null,
+        blown: blownNow,
         keyTaken: state.keyTaken || tookKey,
         moves: state.lastHatch === mover ? state.moves : state.moves + 1,
         lastHatch: mover,
@@ -679,6 +797,10 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
       flipped: flipped !== state.flipped,
       caught,
       bogged: bogs,
+      split: half !== null,
+      boomed: booms.length > 0,
+      woke,
+      pulled,
     },
   };
 }

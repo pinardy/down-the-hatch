@@ -58,7 +58,10 @@ export const needsRules = (level: Level) =>
   level.bridges.some(Boolean) ||
   level.belts.some(Boolean) ||
   level.fox >= 0 ||
-  level.chickens.some((c) => c.curious || c.alt);
+  level.chickens.some((c) => c.curious || c.alt || c.asleep) ||
+  level.magnets.length > 0 ||
+  level.blades.some(Boolean) ||
+  level.bombs.some(Boolean);
 
 export function solve(level: Level, from: GameState = startState(level), maxStates = 400_000, until = Infinity): SolveResult {
   if (needsRules(level)) return solveByRules(level, from, maxStates, until);
@@ -298,9 +301,9 @@ interface RulesNode {
  */
 export function solveByRules(level: Level, from: GameState, maxStates: number, until: number): SolveResult {
   const w = level.w;
-  const turning = level.turns.some(Boolean);
+  const turning = level.turns.some(Boolean) || level.blades.some(Boolean);
   // Chickens that can end up somewhere else, or another colour: then where and what each is matters.
-  const roam = level.belts.some(Boolean) || level.chickens.some((c) => c.skittish || c.curious || c.alt);
+  const roam = level.belts.some(Boolean) || level.chickens.some((c) => c.skittish || c.curious || c.alt || c.asleep);
   const keyOf = (s: GameState) => {
     let k = String.fromCharCode((s.lastHatch ?? -1) + 1 + (s.keyTaken ? 64 : 0) + (s.flipped ? 128 : 0));
     for (const t of s.hatches) {
@@ -308,8 +311,9 @@ export function solveByRules(level: Level, from: GameState, maxStates: number, u
       if (turning) for (const [cx, cy] of t.cells) k += String.fromCharCode(97 + cx * 8 + cy);
     }
     k += "|";
-    for (const c of s.chickens) k += roam ? String.fromCharCode(c.id + 1, c.y * w + c.x + 1, c.color.charCodeAt(0)) : String.fromCharCode(c.id + 1);
+    for (const c of s.chickens) k += roam ? String.fromCharCode(c.id + 1, c.y * w + c.x + 1, c.color.charCodeAt(0) + (c.asleep ? 200 : 0) + (c.waking ? 400 : 0)) : String.fromCharCode(c.id + 1);
     k += String.fromCharCode(s.fox + 2, (s.bogged ?? -1) + 2);
+    for (const b of s.blown) k += String.fromCharCode(b + 1);
     k += "|";
     for (const b of s.broken) k += String.fromCharCode(b + 1);
     k += "|";

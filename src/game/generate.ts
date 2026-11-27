@@ -58,6 +58,10 @@ export interface Tier {
   belts?: [number, number]; // how many belts
   curious?: number; // share of chickens that are curious
   fickle?: [number, number]; // how many changeable chickens
+  asleep?: [number, number]; // how many sleeping chickens
+  magnets?: [number, number]; // how many magnets
+  blades?: [number, number]; // how many blades
+  bombs?: [number, number]; // how many bombs
   /** Hard tiers climb for longer and let the solver look further (still within what a hint can search). */
   hard?: boolean;
 }
@@ -121,6 +125,18 @@ export const TIERS: Tier[] = [
   { name: "belt", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, belts: [3, 8] },
   { name: "curious", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, curious: 0.4 },
   { name: "fickle", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, fickle: [1, 3] },
+  // Four more: sleeping chickens, magnets, blades and bombs.
+  { name: "asleep", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, asleep: [2, 4] },
+  { name: "magnet", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 10, magnets: [1, 2] },
+  { name: "blade", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [2, 3], shapes: [RECT.wide, RECT.tall, RECT.wide, RECT.tall, RECT.dot, RECT.long], cap: [2, 3], bales: [1, 4], rail: 0, target: 10, blades: [1, 3] },
+  { name: "bomb", w: [5, 6], h: [5, 6], colors: [2, 3], hatches: [3, 4], shapes: PLAIN, cap: [1, 3], bales: [4, 8], rail: 0, target: 10, bombs: [1, 3] },
+  // The newest pieces in pairs, hard.
+  { name: "fox-mud", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: PLAIN, cap: [1, 3], bales: [0, 4], rail: 0, target: 14, fox: true, mud: [3, 7], hard: true },
+  { name: "belt-fence", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 3], rail: 0, target: 15, belts: [3, 8], fences: [4, 9], hard: true },
+  { name: "mirror-lever", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: PLAIN, cap: [1, 3], bales: [0, 3], rail: 0, target: 16, mirror: true, lever: true, hard: true },
+  { name: "order-stack", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...PLAIN, ...ELLS], cap: [1, 3], bales: [0, 4], rail: 0, target: 15, order: [3, 6], stack: [2, 4], hard: true },
+  { name: "bridge-curious", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 4], rail: 0, target: 15, bridges: [2, 6], curious: 0.35, hard: true },
+  { name: "fickle-mud", w: [6, 6], h: [6, 6], colors: [3, 4], hatches: [4, 5], shapes: PLAIN, cap: [1, 3], bales: [0, 4], rail: 0, target: 14, fickle: [2, 4], mud: [3, 7], hard: true },
   { name: "mix-hard", w: [6, 7], h: [7, 7], colors: [5, 5], hatches: [6, 8], shapes: [...PLAIN, ...ELLS, ...TEES], cap: [1, 3], bales: [1, 5], rail: 0.1, target: 30, odd: 2, ice: true, lock: true, eggs: 0.35, hard: true },
 ];
 
@@ -149,7 +165,10 @@ export interface Draft {
   fox: number | null;
   /** Belts lie under whatever else is on their square. */
   belts: Map<number, Dir>;
-  birds: { color: Feather; k: number; hidden: boolean; skittish?: boolean; order?: number; curious?: boolean; alt?: Color }[];
+  birds: { color: Feather; k: number; hidden: boolean; skittish?: boolean; order?: number; curious?: boolean; alt?: Color; asleep?: boolean }[];
+  magnets: Set<number>;
+  blades: Set<number>;
+  bombs: Set<number>;
   /** Chickens underneath others, on those birds' squares. */
   under: { color: Color; k: number }[];
   /** `extra` is room beyond the hatch's share of its own colour: room that white chickens must fill. */
@@ -187,6 +206,9 @@ const copy = (d: Draft): Draft => ({
   mud: new Set(d.mud),
   bridges: new Set(d.bridges),
   belts: new Map(d.belts),
+  magnets: new Set(d.magnets),
+  blades: new Set(d.blades),
+  bombs: new Set(d.bombs),
   birds: d.birds.map((b) => ({ ...b })),
   under: d.under.map((u) => ({ ...u })),
   hatches: d.hatches.map((t) => ({ ...t })),
@@ -196,7 +218,7 @@ const ARROW: Record<Dir, string> = { up: "^", down: "v", left: "<", right: ">" }
 const cellsOf = (d: Draft, t: Draft["hatches"][number], x = t.x, y = t.y) => t.shape.flatMap((row, dy) => [...row].flatMap((ch, dx) => (ch === "x" ? [(y + dy) * d.w + x + dx] : [])));
 
 function taken(d: Draft, skipHatch = -1): Set<number> {
-  const out = new Set<number>([...d.bales, ...d.cracks, ...d.paint.keys(), ...d.plates, ...d.gates, ...d.arrows.keys(), ...d.slick, ...d.crates, ...d.turns, ...(d.burrow ?? []), ...d.levers, ...d.doors.keys(), ...d.mud, ...d.bridges, ...(d.fox === null ? [] : [d.fox])]);
+  const out = new Set<number>([...d.bales, ...d.cracks, ...d.paint.keys(), ...d.plates, ...d.gates, ...d.arrows.keys(), ...d.slick, ...d.crates, ...d.turns, ...(d.burrow ?? []), ...d.levers, ...d.doors.keys(), ...d.mud, ...d.bridges, ...(d.fox === null ? [] : [d.fox]), ...d.magnets, ...d.blades, ...d.bombs]);
   if (d.key !== null) out.add(d.key);
   for (const b of d.birds) out.add(b.k);
   d.hatches.forEach((t, i) => i !== skipHatch && cellsOf(d, t).forEach((k) => out.add(k)));
@@ -265,6 +287,11 @@ function fits(d: Draft, tier: Tier): boolean {
   if (d.bridges.size < (tier.bridges?.[0] ?? 0) || d.bridges.size > (tier.bridges?.[1] ?? 0)) return false;
   if (!!tier.fox !== (d.fox !== null)) return false;
   if (d.belts.size < (tier.belts?.[0] ?? 0) || d.belts.size > (tier.belts?.[1] ?? 0)) return false;
+  const sleepy = d.birds.filter((b) => b.asleep).length;
+  if (sleepy < (tier.asleep?.[0] ?? 0) || sleepy > (tier.asleep?.[1] ?? 0)) return false;
+  if (d.magnets.size < (tier.magnets?.[0] ?? 0) || d.magnets.size > (tier.magnets?.[1] ?? 0)) return false;
+  if (d.blades.size < (tier.blades?.[0] ?? 0) || d.blades.size > (tier.blades?.[1] ?? 0)) return false;
+  if (d.bombs.size < (tier.bombs?.[0] ?? 0) || d.bombs.size > (tier.bombs?.[1] ?? 0)) return false;
   const nosy = d.birds.filter((b) => b.curious).length;
   if (tier.curious ? nosy < 1 || nosy > Math.ceil(d.birds.length / 2) : nosy > 0) return false;
   const changing = d.birds.filter((b) => b.alt).length;
@@ -291,6 +318,9 @@ function toDef(d: Draft): LevelDef | null {
     grid[d.burrow[0]] = "(";
     grid[d.burrow[1]] = ")";
   }
+  for (const k of d.magnets) grid[k] = "&";
+  for (const k of d.blades) grid[k] = "/";
+  for (const k of d.bombs) grid[k] = "!";
   for (const k of d.mud) grid[k] = "m";
   for (const k of d.bridges) grid[k] = ":";
   if (d.fox !== null) grid[d.fox] = "f";
@@ -366,6 +396,7 @@ function toDef(d: Draft): LevelDef | null {
     ...(fences.length ? { fences } : {}),
     ...(d.birds.some((b) => b.curious) ? { curious: d.birds.filter((b) => b.curious).map((b) => xy(b.k)) } : {}),
     ...(d.birds.some((b) => b.alt) ? { fickle: d.birds.filter((b) => b.alt).map((b): [number, number, string] => [...xy(b.k), CHAR[b.alt!]]) } : {}),
+    ...(d.birds.some((b) => b.asleep) ? { asleep: d.birds.filter((b) => b.asleep).map((b) => xy(b.k)) } : {}),
     ...(d.belts.size ? { belts: [...d.belts].map(([k, dir]): [number, number, Dir] => [...xy(k), dir]) } : {}),
   };
 }
@@ -373,7 +404,7 @@ function toDef(d: Draft): LevelDef | null {
 export function build(tier: Tier, rnd: () => number): Draft | null {
   const int = ([lo, hi]: [number, number]) => lo + Math.floor(rnd() * (hi - lo + 1));
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
-  const d: Draft = { w: int(tier.w), h: int(tier.h), bales: new Set(), cracks: new Set(), key: null, paint: new Map(), plates: new Set(), gates: new Set(), arrows: new Map(), slick: new Set(), crates: new Set(), turns: new Set(), burrow: null, levers: new Set(), doors: new Map(), fences: new Set(), mud: new Set(), bridges: new Set(), fox: null, belts: new Map(), birds: [], under: [], hatches: [] };
+  const d: Draft = { w: int(tier.w), h: int(tier.h), bales: new Set(), cracks: new Set(), key: null, paint: new Map(), plates: new Set(), gates: new Set(), arrows: new Map(), slick: new Set(), crates: new Set(), turns: new Set(), burrow: null, levers: new Set(), doors: new Map(), fences: new Set(), mud: new Set(), bridges: new Set(), fox: null, belts: new Map(), magnets: new Set(), blades: new Set(), bombs: new Set(), birds: [], under: [], hatches: [] };
   for (let i = int(tier.bales); i > 0; i--) d.bales.add(Math.floor(rnd() * d.w * d.h));
   for (let i = tier.crack ? int(tier.crack) : 0; i > 0; i--) {
     const k = freeCell(d, rnd);
@@ -404,6 +435,22 @@ export function build(tier: Tier, rnd: () => number): Draft | null {
       const k = freeCell(d, rnd);
       if (k !== null) into.add(k);
     }
+  }
+  /** A free square, beside a hay bale if there is one free: where a bomb does something. */
+  const besideHay = () => {
+    const used = taken(d);
+    const open = [...d.bales].flatMap((k) => [k % d.w > 0 ? k - 1 : -1, k % d.w < d.w - 1 ? k + 1 : -1, k - d.w, k + d.w]).filter((k) => k >= 0 && k < d.w * d.h && !used.has(k));
+    return open.length ? pick(open) : freeCell(d, rnd);
+  };
+  for (const [want, into] of [[tier.magnets, d.magnets], [tier.blades, d.blades]] as const) {
+    for (let i = want ? int(want) : 0; i > 0; i--) {
+      const k = freeCell(d, rnd);
+      if (k !== null) into.add(k);
+    }
+  }
+  for (let i = tier.bombs ? int(tier.bombs) : 0; i > 0; i--) {
+    const k = besideHay();
+    if (k !== null) d.bombs.add(k);
   }
   if (tier.fox) d.fox = freeCell(d, rnd);
   for (let i = tier.belts ? int(tier.belts) : 0; i > 0; i--) d.belts.set(Math.floor(rnd() * d.w * d.h), pick(DIRS));
@@ -471,6 +518,7 @@ export function build(tier: Tier, rnd: () => number): Draft | null {
     const colours = [...new Set(d.paint.values())];
     for (const b of d.birds) if (rnd() < 0.3) b.color = pick(colours);
   }
+  if (tier.asleep) for (const b of [...d.birds].sort(() => rnd() - 0.5).slice(0, int(tier.asleep))) b.asleep = true;
   if (tier.curious) for (const b of d.birds) if (rnd() < tier.curious) b.curious = true;
   if (tier.fickle) {
     for (const b of [...d.birds].sort(() => rnd() - 0.5).slice(0, int(tier.fickle))) {
@@ -526,6 +574,37 @@ export function mutate(src: Draft, tier: Tier, rnd: () => number): Draft | null 
   const d = copy(src);
   const pick = <T,>(xs: T[]) => xs[Math.floor(rnd() * xs.length)];
   const special = rnd();
+  if (special < 0.3 && (tier.asleep || tier.magnets || tier.blades || tier.bombs)) {
+    const kinds = [tier.asleep ? "asleep" : "", tier.magnets ? "magnets" : "", tier.blades ? "blades" : "", tier.bombs ? "bombs" : ""].filter(Boolean);
+    const kind = pick(kinds);
+    const roll = rnd();
+    if (kind === "asleep") {
+      const b = pick(d.birds);
+      if (b.asleep) delete b.asleep;
+      else b.asleep = true;
+    } else {
+      const set = kind === "magnets" ? d.magnets : kind === "blades" ? d.blades : d.bombs;
+      const place = () => {
+        if (kind !== "bombs" || !d.bales.size || rnd() < 0.25) return freeCell(d, rnd);
+        const used = taken(d);
+        const open = [...d.bales].flatMap((k) => [k % d.w > 0 ? k - 1 : -1, k % d.w < d.w - 1 ? k + 1 : -1, k - d.w, k + d.w]).filter((k) => k >= 0 && k < d.w * d.h && !used.has(k));
+        return open.length ? pick(open) : freeCell(d, rnd);
+      };
+      if (roll < 0.45 && set.size) {
+        set.delete(pick([...set]));
+        const k = place();
+        if (k === null) return null;
+        set.add(k);
+      } else if (roll < 0.75) {
+        const k = place();
+        if (k === null) return null;
+        set.add(k);
+      } else if (set.size) set.delete(pick([...set]));
+    }
+    tidy(d);
+    if (d.w * d.h - taken(d).size < 3) return null;
+    return fits(d, tier) ? d : null;
+  }
   if (special < 0.3 && (tier.mud || tier.bridges || tier.fox || tier.belts || tier.curious || tier.fickle)) {
     const kinds = [tier.mud ? "mud" : "", tier.bridges ? "bridges" : "", tier.fox ? "fox" : "", tier.belts ? "belts" : "", tier.curious ? "curious" : "", tier.fickle ? "fickle" : ""].filter(Boolean);
     const kind = pick(kinds);

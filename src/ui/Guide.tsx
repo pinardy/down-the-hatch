@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Level } from "../game/types";
-import { ArrowArt, BeltArt, BridgeArt, BurrowArt, FoxArt, MudArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, LockArt, MirrorArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
+import { ArrowArt, BeltArt, BladeArt, BombArt, BridgeArt, MagnetArt, BurrowArt, FoxArt, MudArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, LockArt, MirrorArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 interface Piece {
   key: string;
@@ -308,6 +308,39 @@ const PIECES: Piece[] = [
       </span>
     ),
     on: (l) => l.chickens.some((c) => c.alt),
+  },
+  {
+    key: "asleep",
+    name: "Sleeping chicken",
+    what: "It can’t be taken while it’s asleep. Stop any hatch right beside it to wake it; it can be taken from your next move on.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="plum" />
+        <span className="guide__zzz">z z</span>
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.asleep),
+  },
+  {
+    key: "magnet",
+    name: "Magnet",
+    what: "A post nothing can stand on. Each time you start a move with a different hatch, every other hatch in the magnet’s row or column is pulled one square towards it, if it’s free to slide.",
+    art: <MagnetArt />,
+    on: (l) => l.magnets.length > 0,
+  },
+  {
+    key: "blade",
+    name: "Blade",
+    what: "A two-square hatch with room for two or more that slides onto it is cut into two one-square hatches, which share its room. Other hatches pass unharmed.",
+    art: <BladeArt />,
+    on: (l) => l.blades.some(Boolean),
+  },
+  {
+    key: "bomb",
+    name: "Bomb",
+    what: "A hatch that slides onto it sets it off, once: the hay bales right beside it are gone for good.",
+    art: <BombArt />,
+    on: (l) => l.bombs.some(Boolean),
   },
 ];
 

@@ -505,3 +505,34 @@ export function FoxArt() {
     </svg>
   );
 }
+/** A magnet: a red horseshoe with steel tips. */
+export function MagnetArt() {
+  return (
+    <svg className="bale-art" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M22 18 v34 a28 28 0 0 0 56 0 v-34 h-20 v34 a8 8 0 0 1 -16 0 v-34 z" fill="#d4543d" stroke="#3a2014" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M22 18 h20 v14 h-20 z M58 18 h20 v14 h-20 z" fill="#cfc6b8" stroke="#3a2014" strokeWidth="5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+/** A blade set in the floor. */
+export function BladeArt() {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="14" y="44" width="72" height="12" rx="4" fill="#3a2014" />
+      <path d="M20 46 L50 16 L80 46 z" fill="#dfe6ea" stroke="#3a2014" strokeWidth="4" strokeLinejoin="round" />
+      <path d="M34 42 L50 26" stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+      <path d="M26 62 h48 M32 72 h36" stroke="#3a2014" strokeWidth="5" strokeLinecap="round" opacity="0.5" />
+    </svg>
+  );
+}
+/** A bomb with a lit fuse. */
+export function BombArt() {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="46" cy="60" r="28" fill="#2c2d31" />
+      <circle cx="37" cy="50" r="7" fill="#5c5e66" />
+      <path d="M62 38 q10 -14 22 -8" fill="none" stroke="#b9852b" strokeWidth="6" strokeLinecap="round" />
+      <path d="M84 20 l3 7 l7 3 l-7 3 l-3 7 l-3 -7 l-7 -3 l7 -3 z" fill="#f0c552" />
+    </svg>
+  );
+}

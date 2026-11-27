@@ -39,6 +39,9 @@ More grid squares:
 | `:` | a narrow bridge: only hatches of one or two squares can slide onto it |
 | `f` | the fox (one per board): right after the first square of each new move it walks one square towards the nearest chicken it can reach; hatches, hay, crates, fences and shut doors are in its way; if it reaches a chicken the level is lost |
 | `+` `-` | a door that starts shut, or open: a shut door can't be entered, but a hatch already in the doorway may stay |
+| `&` | a magnet (it is a hay bale too): right after the first square of each new move, every other hatch in its row or column slides one square towards it, if it can |
+| `/` | a blade: a two-square hatch, alone and with room for at least two, that slides onto it is cut into two one-square hatches that share its room |
+| `!` | a bomb: a hatch that slides onto it sets it off, which clears the hay bales on the four squares beside it for good |
 
 A hatch can also take:
 
@@ -64,6 +67,7 @@ Some pieces are listed next to `rows`, by where they start:
 | `curious: [[1, 2]]` | curious chickens: when a hatch right in front of one slides away, it follows one square |
 | `fickle: [[3, 0, "b"]]` | a changeable chicken: it swaps between the colour in `rows` and this one right after the first square of each new move |
 | `belts: [[0, 4, "right"]]` | a belt under a square: right after the first square of each new move, it carries the chicken standing on it one square that way, if that square is free |
+| `asleep: [[2, 3]]` | a sleeping chicken: it can't be taken until a hatch stops right beside it; it wakes then, and can be taken from the next move on |
 
 Levels live in chapters in `src/game/levels.ts`; add a level to a chapter's list, or add a chapter to `BOOK`.
 
@@ -94,6 +98,8 @@ Once the par is right, run `npm run solutions`. It stores every level's best sol
 | `mirror`, `lever`, `tired`, `order`, `fence`, `stack` | mirrored hatches, levers and doors, tired hatches, the pecking order, fences, stacked chickens: one tier for each |
 | `slick-crack`, `crate-lock`, `turn-hard`, `burrow-paint`, `skittish-slick` | one of those with an older piece, hard |
 | `funhouse` | all five of them on one board; boards where every piece matters are rare and short |
+| `asleep`, `magnet`, `blade`, `bomb` | sleeping chickens, magnets, blades, bombs: one tier for each (curate each by the replay test below) |
+| `fox-mud`, `belt-fence`, `mirror-lever`, `order-stack`, `bridge-curious`, `fickle-mud` | two of the newer pieces together, hard: keep a board only if both pieces pass the test below |
 
 The search doesn't check that a piece matters. Before keeping a board, take the piece away and solve it again: if the par doesn't drop and the board can still be cleared, the piece is only decoration. Two exceptions: eggs never change the par (the solver sees inside them; they hide colours only from the player), and taking a padlock away can make a board harder to search rather than shorter, so an inconclusive answer there proves nothing either way.
 
@@ -115,9 +121,9 @@ Prefer boards with traps, and play what the search finds before keeping it.
 
 The daily coop draws one board a day from `src/game/daily-pool.ts`. Nothing is fetched, so it works offline. Pool boards are written like levels but need no `id` or `name`.
 
-The week has a shape: the pool is sorted by par and cut into seven bands, Monday's the easiest and Sunday's the hardest. Each weekday works through its own band, one board a week, then starts it again. With 120 boards that is 17 or 18 weeks before a weekday repeats.
+The week has a shape: the pool is sorted by par and cut into seven bands, Monday's the easiest and Sunday's the hardest. Each weekday works through its own band, one board a week, then starts it again. With 184 boards that is 26 or 27 weeks before a weekday repeats.
 
-To add boards, run a mid-difficulty tier (`medium`, `large`, `shapes`, `ice`, `lock`, `mix`, `eggs`, `crack`, `wild` or `link`) and paste the best into the pool, anywhere. Adding boards moves the bands, so which board falls on which day changes from then on, today's included. `npm test` solves every pool board and checks its par.
+To add boards, run a mid-difficulty tier (`medium`, `large`, `shapes`, `ice`, `lock`, `mix`, `eggs`, `crack`, `wild` or `link`) and paste the best at the end of the pool. Boards with the newer pieces are welcome, but those are searched by the slower solver and the daily coop has no stored solution, so keep to boards it solves in a couple of seconds or hints will be slow. Adding boards moves the bands, so which board falls on which day changes from then on, today's included. `npm test` solves every pool board and checks its par.
 
 ## Chapters
 
