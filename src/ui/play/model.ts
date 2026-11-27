@@ -154,6 +154,10 @@ export function whyBlocked(level: Level, game: GameState, why: Blocker): string 
       return "No room to turn there. A hatch on a turntable swings a quarter turn clockwise, and needs bare floor to do it.";
     case "burrow":
       return why.why === "big" ? "Only a one-square hatch fits down a burrow." : "Something is sitting on the other end of the burrow.";
+    case "asleep": {
+      const bird = game.chickens.find((c) => c.id === why.id);
+      return bird?.waking ? "It’s only just woken. It can be taken from your next move on." : "Fast asleep. Stop a hatch right beside it to wake it, then take it on a later move.";
+    }
     case "mud":
       return "Stuck in the mud. It comes free once you’ve moved another hatch.";
     case "bridge":

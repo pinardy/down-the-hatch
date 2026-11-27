@@ -216,6 +216,9 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       if (out.hopped.length) window.setTimeout(() => sfx.flap(), 80);
       if (out.flipped) sfx.clunk();
       if (out.bogged) sfx.squelch();
+      if (out.boomed) sfx.boom();
+      if (out.split) sfx.snip();
+      if (out.woke) window.setTimeout(() => sfx.peep(), 60);
       if (out.caught) sfx.yip();
       if (out.painted.length) sfx.splash();
       if (out.gate) window.setTimeout(() => sfx.gate(out.gate === "opened"), 60);

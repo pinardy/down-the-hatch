@@ -43,7 +43,8 @@ export function decodeSteps(code: string): SolveStep[] | null {
 export function boardKey(state: GameState): string {
   return JSON.stringify([
     state.hatches.map((t) => [t.id, t.x, t.y, t.left, t.color, t.cells.join(" ")]),
-    state.chickens.map((c) => [c.id, c.hidden ? 1 : 0, c.x, c.y, c.color]),
+    state.chickens.map((c) => [c.id, c.hidden ? 1 : 0, c.x, c.y, c.color, c.asleep ? 1 : c.waking ? 2 : 0]),
+    state.blown,
     state.fox,
     state.bogged,
     state.broken,

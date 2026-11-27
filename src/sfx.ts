@@ -217,6 +217,16 @@ export const sfx = {
     tone("square", 180, 120, 0.06, 0.08);
     tone("triangle", 90, 70, 0.14, 0.1, 0.05);
   },
+  /** A bomb going off. */
+  boom() {
+    tone("sawtooth", 140, 40, 0.3, 0.2);
+    tone("square", 90, 30, 0.35, 0.14, 0.03);
+  },
+  /** A blade splitting a hatch. */
+  snip() {
+    tone("square", 1400, 900, 0.05, 0.07);
+    tone("square", 1100, 700, 0.06, 0.07, 0.07);
+  },
   /** A hatch sinking into mud. */
   squelch() {
     tone("sine", 160, 60, 0.18, 0.14);

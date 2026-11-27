@@ -101,7 +101,7 @@ for (const chosen of which) {
     console.log(
       `  { id: "untitled", name: "untitled", rows: ${JSON.stringify(f.def.rows)}, par: ${f.def.par}, hatches: [${f.def.hatches
         .map((t) => JSON.stringify(t).replace(/"(\w+)":/g, "$1: "))
-        .join(", ")}]${(["skittish", "order", "under", "fences", "curious", "fickle", "belts"] as const).map((k) => (f.def[k] ? `, ${k}: ${JSON.stringify(f.def[k])}` : "")).join("")} },`,
+        .join(", ")}]${(["skittish", "order", "under", "fences", "curious", "fickle", "belts", "asleep"] as const).map((k) => (f.def[k] ? `, ${k}: ${JSON.stringify(f.def[k])}` : "")).join("")} },`,
     );
   }
 }

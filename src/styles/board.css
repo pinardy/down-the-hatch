@@ -723,3 +723,24 @@
   border-radius: 50%;
   box-shadow: 0 0 0 calc(var(--cell) * 0.03) #fff6e3, 0 0 0 calc(var(--cell) * 0.05) #3a2014;
 }
+
+/* ── Sleeping chickens ── */
+
+.chicken--asleep .chicken__art,
+.chicken--asleep > svg:first-child {
+  filter: saturate(0.55) brightness(0.9);
+}
+.chicken__zzz {
+  position: absolute;
+  right: 2%;
+  top: -4%;
+  font-size: calc(var(--cell) * 0.22);
+  font-weight: 700;
+  line-height: 1;
+  color: #fff6e3;
+  text-shadow: 0 0 2px #3a2014, 0 0 2px #3a2014, 0 1px 0 #3a2014;
+}
+.chicken__zzz--waking {
+  color: #f0c552;
+  font-size: calc(var(--cell) * 0.3);
+}

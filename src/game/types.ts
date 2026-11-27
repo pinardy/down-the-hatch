@@ -59,6 +59,10 @@ export interface Chicken {
   curious?: boolean;
   /** Changeable: the colour it turns at the start of the next move (and back the move after). */
   alt?: Feather;
+  /** Asleep: it can't be taken until a hatch has stopped right beside it, and then only from the next move on. */
+  asleep?: boolean;
+  /** Woken during this move: it can be taken once the next move starts. */
+  waking?: boolean;
 }
 
 /** How a level is written down in levels.ts. */
@@ -81,7 +85,10 @@ export interface LevelDef {
    * `%` a lever (a move that slides onto it flips every door), `+` a door that starts shut, `-` one that starts open,
    * `m` mud (a hatch that slides onto it stops there until another hatch has moved),
    * `:` a narrow bridge (only hatches of one or two squares can cross),
-   * `f` the fox (each new move it walks a square towards the nearest chicken; if it gets one, the level is lost).
+   * `f` the fox (each new move it walks a square towards the nearest chicken; if it gets one, the level is lost),
+   * `&` a magnet (a post: each new move it pulls every other hatch in its row or column a square towards it),
+   * `/` a blade (a two-square hatch with room for two or more that slides onto it splits in two),
+   * `!` a bomb (a hatch that slides onto it sets it off, once, clearing the hay bales right beside it).
    */
   rows: string[];
   /** Chickens that are skittish, by where they start: [x, y]. */
@@ -98,6 +105,8 @@ export interface LevelDef {
   fickle?: [number, number, string][];
   /** Conveyor belts under squares: [x, y, the way they carry a chicken]. */
   belts?: [number, number, Dir][];
+  /** Sleeping chickens, by where they start: [x, y]. */
+  asleep?: [number, number][];
   hatches: {
     color: Color;
     x: number;
@@ -172,6 +181,12 @@ export interface Level {
   belts: (Dir | null)[];
   /** Where the fox starts, as a row-major square, or -1 when there is none. */
   fox: number;
+  /** Magnets, as row-major squares. Each is also a bale: nothing can stand there. */
+  magnets: number[];
+  /** Row-major, true where a blade is. */
+  blades: boolean[];
+  /** Row-major, true where a bomb starts. */
+  bombs: boolean[];
   chickens: Chicken[];
   hatches: Hatch[];
   par: number;
@@ -194,6 +209,8 @@ export interface GameState {
   lost: boolean;
   /** The hatch (or pair, by its lower id) stuck in mud until another hatch has moved, or null. */
   bogged: number | null;
+  /** Bombs that have gone off, as row-major squares in ascending order: the hay beside them is gone. */
+  blown: readonly number[];
   /** True once the key has been picked up (and from the start when there is no key). */
   keyTaken: boolean;
   /** A move is one unbroken run of sliding the same hatch (or the same chained pair). */
@@ -234,4 +251,12 @@ export interface StepResult {
   caught: boolean;
   /** The hatch slid into mud on this step, and is stuck for now. */
   bogged: boolean;
+  /** A blade split the hatch in two on this step. */
+  split: boolean;
+  /** A bomb went off on this step. */
+  boomed: boolean;
+  /** A sleeping chicken was woken on this step. */
+  woke: boolean;
+  /** A magnet pulled a hatch on this step. */
+  pulled: boolean;
 }

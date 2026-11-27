@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, PointerEvent } from "react";
-import { doorShut, gatesOpen, heldBy, mirrorOf, partnerOf, thawIn } from "../game/engine";
+import { doorShut, gatesOpen, hayNow, heldBy, mirrorOf, partnerOf, thawIn } from "../game/engine";
 import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
 import { useGlide } from "./play/useGlide";
-import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, BeltArt, BridgeArt, DoorArt, FoxArt, GateArt, HandArt, HoleArt, KeyArt, LeverArt, LockArt, Mark, MirrorArt, MudArt, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
+import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, BeltArt, BladeArt, BombArt, BridgeArt, DoorArt, MagnetArt, FoxArt, GateArt, HandArt, HoleArt, KeyArt, LeverArt, LockArt, Mark, MirrorArt, MudArt, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -283,7 +283,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   // which are buttons with labels of their own.
   const where = (x: number, y: number) => `row ${y + 1}, column ${x + 1}`;
   const about: string[] = [];
-  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`}${c.order ? `, number ${c.order} in the pecking order,` : ""}${c.curious ? ", curious," : ""}${c.alt ? `, turning ${PAINT[c.alt].name} next move,` : ""}${c.under ? " underneath another" : ""} at ${where(c.x, c.y)}`);
+  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`}${c.order ? `, number ${c.order} in the pecking order,` : ""}${c.curious ? ", curious," : ""}${c.asleep ? ", asleep," : c.waking ? ", just woken," : ""}${c.alt ? `, turning ${PAINT[c.alt].name} next move,` : ""}${c.under ? " underneath another" : ""} at ${where(c.x, c.y)}`);
   for (const k of game.crates) about.push(`a crate at ${where(k % level.w, Math.floor(k / level.w))}`);
   level.bales.forEach((bale, k) => {
     const x = k % level.w;
@@ -299,6 +299,9 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
     if (level.burrow?.includes(k)) about.push(`an end of the burrow at ${where(x, y)}`);
     if (level.levers[k]) about.push(`a lever at ${where(x, y)}`);
     if (level.mud[k]) about.push(`mud at ${where(x, y)}`);
+    if (level.magnets.includes(k)) about.push(`a magnet at ${where(x, y)}`);
+    if (level.blades[k]) about.push(`a blade at ${where(x, y)}`);
+    if (level.bombs[k] && !game.blown.includes(k)) about.push(`a bomb at ${where(x, y)}`);
     if (level.bridges[k]) about.push(`a narrow bridge at ${where(x, y)}`);
     if (level.belts[k]) about.push(`a belt running ${level.belts[k]} at ${where(x, y)}`);
     if (game.fox === k) about.push(`the fox at ${where(x, y)}`);
@@ -314,13 +317,15 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
       <p className="sr-only">{summary}</p>
       <div className="board__field" ref={fieldRef} style={{ width: cell * level.w, height: cell * level.h }}>
         <div className="board__floor" style={{ gridTemplateColumns: `repeat(${level.w}, var(--cell))` }} aria-hidden="true">
-          {level.bales.map((bale, k) => (
+          {hayNow(level, game).map((bale, k) => (
             <div key={k} className={`${(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}${k === bumpedSquare ? " tile--wobble" : ""}`}>
               {level.slick[k] && <SlickArt />}
               {level.mud[k] && <MudArt />}
               {level.bridges[k] && <BridgeArt />}
               {level.belts[k] && <BeltArt dir={level.belts[k]!} />}
-              {bale && <BaleArt />}
+              {level.blades[k] && <BladeArt />}
+              {level.bombs[k] && !game.blown.includes(k) && <BombArt />}
+              {bale && (level.magnets.includes(k) ? <MagnetArt /> : <BaleArt />)}
               {level.paint[k] && <PaintArt color={level.paint[k]!} />}
               {level.plates[k] && <PlateArt down={open} />}
               {level.gates[k] && <GateArt open={open} />}
@@ -415,12 +420,14 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
         {game.chickens.map((c) => {
           // One waiting under a hatch that took the chicken on top is out of sight for now.
           if (game.hatches.some((t) => t.cells.some(([cx, cy]) => t.x + cx === c.x && t.y + cy === c.y))) return null;
-          const below = c.under && game.chickens.some((o) => o !== c && o.x === c.x && o.y === c.y) ? " chicken--under" : "";
-          const shake = (wobble?.kind === "chicken" || wobble?.kind === "order") && wobble.id === c.id ? " chicken--wobble" : "";
+          const sleepy = c.asleep ? " chicken--asleep" : "";
+          const below = sleepy + (c.under && game.chickens.some((o) => o !== c && o.x === c.x && o.y === c.y) ? " chicken--under" : "");
+          const shake = (wobble?.kind === "chicken" || wobble?.kind === "order" || wobble?.kind === "asleep") && wobble.id === c.id ? " chicken--wobble" : "";
           const order = (
             <>
               {c.order ? <span className="chicken__order">{c.order}</span> : null}
               {c.curious && <span className="chicken__heart">♥</span>}
+              {(c.asleep || c.waking) && <span className={c.asleep ? "chicken__zzz" : "chicken__zzz chicken__zzz--waking"}>{c.asleep ? "z z" : "!"}</span>}
               {c.alt && <span className="chicken__next" style={{ background: PAINT[c.alt].body }} />}
             </>
           );
