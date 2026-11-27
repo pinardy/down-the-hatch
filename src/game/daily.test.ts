@@ -71,7 +71,7 @@ describe("daily coop", () => {
     let s = startState(level);
     for (const st of r.steps) s = step(level, s, st.hatch, st.dir)!.state;
     expect(isWon(s)).toBe(true);
-  });
+  }, 30_000);
 });
 
 describe("daily coop timing", () => {

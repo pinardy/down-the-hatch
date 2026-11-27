@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 409 levels
+📲 Installable · ✈️ Works offline · 🧩 489 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-409 levels in 48 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+489 levels in 58 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -54,6 +54,10 @@ Slide the hatches, drop the chickens, clear the coop.
 | ⏩ | **Conveyor belts** | carry the chicken on them one square every move |
 | 💗 | **Curious chickens** | follow a hatch that slides away from right in front of them |
 | 🎭 | **Changeable chickens** | swap between two colours every move |
+| 💤 | **Sleeping chickens** | can't be collected until a hatch stops beside them and wakes them |
+| 🧲 | **Magnets** | pull every hatch in line with them a square closer, every move |
+| ✂️ | **Blades** | cut a two-square hatch into two small ones |
+| 💣 | **Bombs** | go off when a hatch slides onto them, clearing the hay bales beside them |
 
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them, at up to 34 moves a level.
 
@@ -66,6 +70,12 @@ Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery 
 Six more Medium chapters bring in the newest pieces, one each: *Opposite numbers* (mirrored hatches), *Doorkeepers* (levers and doors), *Running ragged* (tired hatches), *Mind your manners* (the pecking order), *Over the fence* (fences) and *Two up* (stacked chickens).
 
 And six more: *Stuck in the mud* (mud), *Small enough* (narrow bridges), *Fox watch* (a fox), *Belt up* (conveyor belts), *Follow me* (curious chickens) and *Changing colours* (changeable chickens). "Every move" for the fox, belts and changeable chickens means each time you move a different hatch from the last one.
+
+Four more Medium chapters, one piece each: *Sound asleep* (sleeping chickens, which have to be woken by stopping a hatch beside them), *Animal magnetism* (magnets that pull hatches in line with them a square closer each move), *Cutting edge* (blades that cut a two-square hatch into two) and *Short fuse* (bombs that clear the hay around them).
+
+Six Hard chapters pair the newer pieces: *Stuck with the fox* (a fox and mud), *Factory fencing* (belts and fences), *Smoke and mirrors* (mirrored hatches and levers), *Chain of command* (the pecking order and stacked chickens), *Nosy neighbours* (narrow bridges and curious chickens) and *Muddied waters* (changeable chickens and mud), up to 22 moves a level.
+
+The daily coop and endless mode use the newer pieces too.
 
 ## 🛟 Help when you need it
 
