@@ -130,7 +130,11 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
   }, []);
   const markStuck = useCallback(() => {
     setStuck(true);
-    setNotice({ text: settings.hard ? "There’s no way to clear the coop from here. Start over to try again." : STUCK_NOTE, warn: true });
+    const fox = gameRef.current.lost;
+    setNotice({
+      text: settings.hard ? `${fox ? "The fox got a chicken" : "There’s no way to clear the coop from here"}. Start over to try again.` : fox ? "The fox got a chicken. Rewind goes back to before it could." : STUCK_NOTE,
+      warn: true,
+    });
   }, [settings.hard]);
   /** What the solver has found about positions this game passed through: winnable or lost. */
   const verdicts = useRef(new WeakMap<GameState, boolean>());
@@ -211,6 +215,8 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       if (out.burrowed) sfx.pop();
       if (out.hopped.length) window.setTimeout(() => sfx.flap(), 80);
       if (out.flipped) sfx.clunk();
+      if (out.bogged) sfx.squelch();
+      if (out.caught) sfx.yip();
       if (out.painted.length) sfx.splash();
       if (out.gate) window.setTimeout(() => sfx.gate(out.gate === "opened"), 60);
       // Anything that was frozen or padlocked and now is not has just come free.
@@ -225,6 +231,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       setHint(null);
       setBump(null);
       clearNote();
+      if (out.caught) markStuck();
       if (isWon(out.state) && !replaying.current) {
         const solo = !hinted.current && !watched.current;
         const hard = settings.hard && solo && !helped.current;
@@ -243,7 +250,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       }
       return true;
     },
-    [level, commit, onCleared, clearNote, saveId, settings.clock, settings.hard],
+    [level, commit, onCleared, clearNote, saveId, settings.clock, settings.hard, markStuck],
   );
 
   /** A slide was refused: show what is in the way, once per grab and direction. */

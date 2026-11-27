@@ -217,6 +217,15 @@ export const sfx = {
     tone("square", 180, 120, 0.06, 0.08);
     tone("triangle", 90, 70, 0.14, 0.1, 0.05);
   },
+  /** A hatch sinking into mud. */
+  squelch() {
+    tone("sine", 160, 60, 0.18, 0.14);
+  },
+  /** The fox getting a chicken. */
+  yip() {
+    tone("sawtooth", 700, 300, 0.12, 0.1);
+    tone("sawtooth", 500, 200, 0.16, 0.1, 0.12);
+  },
   /** A cracked board giving way. */
   crack() {
     tone("sawtooth", 260, 70, 0.16, 0.12);

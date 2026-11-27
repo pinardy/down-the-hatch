@@ -34,11 +34,18 @@
 //  - A tired hatch can only be picked up for so many moves. Going on with it is the same move.
 //  - Chickens in the pecking order must be taken in turn: number 1 first, then 2, and so on.
 //  - A fence on the edge between two squares stops anything crossing it.
+//  - A hatch that slides onto mud is stuck there until another hatch has moved.
+//  - Only hatches of one or two squares can slide onto a narrow bridge.
+//  - Things that happen once a move, right after its first square: belts carry the chickens
+//    standing on them one square along, changeable chickens swap colour, and the fox walks one
+//    square towards the nearest chicken it can reach (hatches, hay, crates, fences and shut
+//    doors are in its way). If the fox gets a chicken, the level is lost.
+//  - A curious chicken right behind a hatch follows it one square when it slides away.
 //  - A chicken can sit on top of another. A hatch takes the top one; the one underneath waits
 //    for a hatch to slide onto the square again.
 //  - Clear every chicken to win.
 
-import { COLORS, DELTA } from "./types";
+import { COLORS, DELTA, DIRS } from "./types";
 import type { Chicken, Color, Dir, Feather, GameState, Hatch, Level, LevelDef, StepResult } from "./types";
 
 const CHICKEN_CHARS: Record<string, Feather> = { r: "red", y: "gold", t: "teal", b: "blue", p: "plum", w: "any" };
@@ -67,6 +74,10 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
   const doors: (boolean | null)[] = new Array(w * h).fill(null);
   const fenceRight: boolean[] = new Array(w * h).fill(false);
   const fenceDown: boolean[] = new Array(w * h).fill(false);
+  const mud: boolean[] = new Array(w * h).fill(false);
+  const bridges: boolean[] = new Array(w * h).fill(false);
+  const belts: (Dir | null)[] = new Array(w * h).fill(null);
+  const foxes: number[] = [];
   const chickens: Chicken[] = [];
   let key: Level["key"] = null;
   def.rows.forEach((row, y) => {
@@ -86,6 +97,9 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
       else if (ch === "(" || ch === ")") ends[ch].push(y * w + x);
       else if (ch === "%") levers[y * w + x] = true;
       else if (ch === "+" || ch === "-") doors[y * w + x] = ch === "+";
+      else if (ch === "m") mud[y * w + x] = true;
+      else if (ch === ":") bridges[y * w + x] = true;
+      else if (ch === "f") foxes.push(y * w + x);
       else if (color) chickens.push({ id: chickens.length, color, x, y, ...(ch !== ch.toLowerCase() ? { hidden: true } : {}) });
       else if (ch !== ".") throw new Error(`${def.name}: unknown square "${ch}" at ${x},${y}`);
     });
@@ -144,6 +158,22 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
     if (bird && !bird.order) bird.order = i + 1;
     else if (check) throw new Error(`${def.name}: no chicken at ${x},${y} for the pecking order`);
   });
+  for (const [x, y] of def.curious ?? []) {
+    const bird = chickens.find((c) => c.x === x && c.y === y && !c.under);
+    if (bird && !bird.skittish) bird.curious = true;
+    else if (check) throw new Error(`${def.name}: no chicken at ${x},${y} to be curious`);
+  }
+  for (const [x, y, ch] of def.fickle ?? []) {
+    const bird = chickens.find((c) => c.x === x && c.y === y && !c.under);
+    const alt = CHICKEN_CHARS[ch];
+    if (bird && alt && alt !== "any" && bird.color !== "any" && alt !== bird.color) bird.alt = alt;
+    else if (check) throw new Error(`${def.name}: no chicken at ${x},${y} to change to "${ch}"`);
+  }
+  for (const [x, y, dir] of def.belts ?? []) {
+    if (x >= 0 && y >= 0 && x < w && y < h && DELTA[dir]) belts[y * w + x] = dir;
+    else if (check) throw new Error(`${def.name}: a belt off the board at ${x},${y}`);
+  }
+  if (foxes.length > 1 && check) throw new Error(`${def.name}: one fox at most`);
   for (const [x, y, side] of def.fences ?? []) {
     if (x < 0 || y < 0 || x >= w || y >= h) {
       if (check) throw new Error(`${def.name}: a fence off the board at ${x},${y}`);
@@ -160,7 +190,7 @@ export function parseLevel(def: LevelDef, index: number, chapter = "", check = t
   const paired = ends["("].length === 1 && ends[")"].length === 1;
   if (check && !paired && ends["("].length + ends[")"].length > 0) throw new Error(`${def.name}: a burrow needs one ( and one )`);
   const burrow: Level["burrow"] = paired ? [ends["("][0], ends[")"][0]] : null;
-  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, slick, turns, burrow, crates, levers, doors, fenceRight, fenceDown, chickens, hatches, par: def.par, tip: def.tip, ...(def.demo ? { demo: true } : {}) };
+  const level: Level = { index, id: def.id, name: def.name, chapter, w, h, bales, cracks, key, paint, plates, gates, arrows, slick, turns, burrow, crates, levers, doors, fenceRight, fenceDown, mud, bridges, belts, fox: foxes.length ? foxes[0] : -1, chickens, hatches, par: def.par, tip: def.tip, ...(def.demo ? { demo: true } : {}) };
   if (check) validate(level);
   return level;
 }
@@ -180,7 +210,7 @@ export function validate(level: Level) {
       const inside = cell.x >= 0 && cell.y >= 0 && cell.x < level.w && cell.y < level.h;
       const k = cell.y * level.w + cell.x;
       const onKey = level.key?.x === cell.x && level.key.y === cell.y;
-      if (!inside || level.bales[k] || taken.has(k) || onKey || level.crates.includes(k) || level.burrow?.includes(k) || level.chickens.some((c) => c.x === cell.x && c.y === cell.y)) {
+      if (!inside || level.bales[k] || taken.has(k) || onKey || level.crates.includes(k) || level.fox === k || level.burrow?.includes(k) || level.chickens.some((c) => c.x === cell.x && c.y === cell.y)) {
         fail(`hatch ${hatch.id} does not sit on free floor`);
       }
       taken.add(k);
@@ -191,7 +221,7 @@ export function validate(level: Level) {
   // Every chicken needs a hatch to go down, and every hatch must be able to fill. A white
   // chicken can make up the numbers for any colour. Paint can change a hatch's colour, so
   // with paint on the board only the totals have to agree.
-  const painted = level.paint.some(Boolean);
+  const painted = level.paint.some(Boolean) || level.chickens.some((c) => c.alt);
   for (const color of new Set([...level.chickens.map((c) => c.color), ...level.hatches.map((t) => t.color)])) {
     if (painted) break;
     if (color === "any") continue;
@@ -206,7 +236,7 @@ export function validate(level: Level) {
 }
 
 export function startState(level: Level): GameState {
-  return { hatches: level.hatches, chickens: level.chickens, broken: [], crates: level.crates, flipped: false, keyTaken: level.key === null, moves: 0, lastHatch: null };
+  return { hatches: level.hatches, chickens: level.chickens, broken: [], crates: level.crates, flipped: false, fox: level.fox, lost: false, bogged: null, keyTaken: level.key === null, moves: 0, lastHatch: null };
 }
 
 /** Is the door on this square shut now? False where there is no door. */
@@ -300,6 +330,8 @@ export function step(level: Level, state: GameState, hatchId: number, dir: Dir):
       slid: out.slid + 1,
       hopped: [...out.hopped.filter((c) => !n.hopped.some((m) => m.id === c.id)), ...n.hopped],
       flipped: n.state.flipped !== state.flipped,
+      caught: n.caught,
+      bogged: n.bogged,
     };
   }
   if (out.slid) {
@@ -351,7 +383,15 @@ export type Blocker =
   /** A fence on the edge of this square, the way the hatch is going. */
   | { kind: "fence"; x: number; y: number; dir: Dir }
   /** A chicken that can't be taken yet: number `need` comes first. */
-  | { kind: "order"; id: number; hatch: number; need: number };
+  | { kind: "order"; id: number; hatch: number; need: number }
+  /** Stuck in mud until another hatch has moved. */
+  | { kind: "mud"; hatch: number }
+  /** Too big for the narrow bridge on this square. */
+  | { kind: "bridge"; x: number; y: number }
+  /** The fox is sitting there. */
+  | { kind: "fox"; x: number; y: number }
+  /** The fox has a chicken: the level is lost. */
+  | { kind: "lost" };
 
 /** What stops this step, or null if nothing does. The same rules as `step`, saying which piece is in the way. */
 export function blockedBy(level: Level, state: GameState, hatchId: number, dir: Dir): Blocker | null {
@@ -364,9 +404,11 @@ export function blockedBy(level: Level, state: GameState, hatchId: number, dir: 
  * chicken can hop, or a turning hatch can swing. With `floorOnly`, special squares don't count
  * as plain either. A shut door never does.
  */
-function bare(level: Level, state: { hatches: readonly Hatch[]; chickens: readonly Chicken[]; crates: readonly number[]; keyTaken: boolean; flipped: boolean }, x: number, y: number, floorOnly: boolean): boolean {
+function bare(level: Level, state: { hatches: readonly Hatch[]; chickens: readonly Chicken[]; crates: readonly number[]; keyTaken: boolean; flipped: boolean; fox: number }, x: number, y: number, floorOnly: boolean): boolean {
   if (x < 0 || y < 0 || x >= level.w || y >= level.h) return false;
   const k = y * level.w + x;
+  if (state.fox === k) return false;
+  if (floorOnly && (level.mud[k] || level.bridges[k] || level.belts[k])) return false;
   if (level.bales[k] || level.burrow?.includes(k) || state.crates.includes(k) || doorShut(level, state.flipped, k)) return false;
   if (!state.keyTaken && level.key?.x === x && level.key.y === y) return false;
   if (floorOnly && (level.cracks[k] || level.paint[k] || level.plates[k] || level.gates[k] || level.arrows[k] || level.slick[k] || level.turns[k] || level.levers[k] || level.doors[k] !== null)) return false;
@@ -388,6 +430,8 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
   const wayOf = (t: Hatch): Dir => (t === mirror ? OPPOSITE[dir] : dir);
   const mover = moverOf(hatch);
   const fresh = state.lastHatch !== mover; // picked up for a new move
+  if (state.lost) return { no: { kind: "lost" } };
+  if (state.bogged === mover) return { no: { kind: "mud", hatch: hatch.id } };
   for (const t of group) {
     const held = heldBy(level, state, t);
     if (held) return { no: { kind: held, hatch: t.id } };
@@ -427,6 +471,8 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
       const arrow = level.arrows[k];
       if (arrow && arrow !== way) return { no: { kind: "arrow", x, y, dir: arrow } };
       if (doorShut(level, state.flipped, k)) return { no: { kind: "door", x, y } };
+      if (level.bridges[k] && t.cells.length > 2) return { no: { kind: "bridge", x, y } };
+      if (state.fox === k) return { no: { kind: "fox", x, y } };
       if (level.gates[k] && !gate) gate = { x, y };
       if (level.levers[k]) flips++;
       // ...and a square its chained partner is sliding out of is free. (A mirrored one slides
@@ -503,7 +549,7 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
         for (const [x, y] of spun) {
           if (covers(now, x, y)) continue;
           const k = y * w + x;
-          const room = bare(level, { hatches: others, chickens, crates, keyTaken: state.keyTaken, flipped }, x, y, false) && !state.broken.includes(k) && !level.gates[k] && !level.arrows[k] && !level.paint[k];
+          const room = bare(level, { hatches: others, chickens, crates, keyTaken: state.keyTaken, flipped, fox: state.fox }, x, y, false) && !state.broken.includes(k) && !level.gates[k] && !level.arrows[k] && !level.paint[k];
           if (!room) return { no: { kind: "turn", x: px, y: py } };
         }
         const minX = Math.min(...spun.map(([x]) => x));
@@ -556,10 +602,52 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
     const way = wayOf(group.find((g) => g.id === by.id)!);
     const x = c.x + DELTA[way].dx;
     const y = c.y + DELTA[way].dy;
-    if (fenced(level, c.x, c.y, way) || broken.includes(y * w + x) || !bare(level, { hatches: after, chickens: flock, crates, keyTaken: state.keyTaken || tookKey, flipped }, x, y, false)) continue;
+    if (fenced(level, c.x, c.y, way) || broken.includes(y * w + x) || !bare(level, { hatches: after, chickens: flock, crates, keyTaken: state.keyTaken || tookKey, flipped, fox: state.fox }, x, y, false)) continue;
     const now = { ...c, x, y };
     flock = flock.map((b) => (b === c ? now : b));
     hopped.push(now);
+  }
+  // Curious chickens right behind a hatch that slid away follow it.
+  for (const c of flock) {
+    if (!c.curious || after.some((t) => covers(t, c.x, c.y))) continue;
+    const lead = group.find((t) => covers(t, c.x + DELTA[wayOf(t)].dx, c.y + DELTA[wayOf(t)].dy));
+    if (!lead) continue;
+    const way = wayOf(lead);
+    const x = c.x + DELTA[way].dx;
+    const y = c.y + DELTA[way].dy;
+    if (fenced(level, c.x, c.y, way) || broken.includes(y * w + x) || !bare(level, { hatches: after, chickens: flock, crates, keyTaken: state.keyTaken || tookKey, flipped, fox: state.fox }, x, y, false)) continue;
+    const now = { ...c, x, y };
+    flock = flock.map((b) => (b === c ? now : b));
+    hopped.push(now);
+  }
+  // Mud: a hatch that has newly slid onto some is stuck until another hatch has moved.
+  const bogs = group.some((t, i) => moved[i].cells.some(([cx, cy]) => level.mud[(moved[i].y + cy) * w + moved[i].x + cx] && !covers(t, moved[i].x + cx, moved[i].y + cy)));
+  // Once a move, after its first square: the belts run, changeable chickens change, the fox walks.
+  let fox = state.fox;
+  let caught = false;
+  if (fresh) {
+    if (level.belts.some(Boolean)) {
+      const rode = new Set<number>();
+      for (let again = true; again; ) {
+        again = false;
+        for (const c of flock) {
+          const way = level.belts[c.y * w + c.x];
+          if (!way || rode.has(c.id) || chickenAt(flock, c.x, c.y) !== c || after.some((t) => covers(t, c.x, c.y))) continue;
+          const x = c.x + DELTA[way].dx;
+          const y = c.y + DELTA[way].dy;
+          if (fenced(level, c.x, c.y, way) || broken.includes(y * w + x) || !bare(level, { hatches: after, chickens: flock, crates, keyTaken: state.keyTaken || tookKey, flipped, fox }, x, y, false)) continue;
+          const now = { ...c, x, y };
+          flock = flock.map((b) => (b === c ? now : b));
+          rode.add(c.id);
+          again = true;
+        }
+      }
+    }
+    if (flock.some((c) => c.alt)) flock = flock.map((c) => (c.alt ? { ...c, color: c.alt, alt: c.color } : c));
+    if (fox >= 0) {
+      fox = foxStep(level, { hatches: after, chickens: flock, crates, broken, flipped, fox });
+      caught = flock.some((c) => c.y * w + c.x === fox);
+    }
   }
   return {
     ok: {
@@ -569,6 +657,9 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
         broken,
         crates,
         flipped,
+        fox,
+        lost: caught,
+        bogged: bogs ? mover : null,
         keyTaken: state.keyTaken || tookKey,
         moves: state.lastHatch === mover ? state.moves : state.moves + 1,
         lastHatch: mover,
@@ -586,6 +677,48 @@ function attempt(level: Level, state: GameState, hatchId: number, dir: Dir): { o
       slid: 0,
       hopped,
       flipped: flipped !== state.flipped,
+      caught,
+      bogged: bogs,
     },
   };
+}
+
+/**
+ * Where the fox goes next: one square along the shortest way to the nearest chicken it can
+ * reach (the lowest-numbered of equals), or where it is if it can reach none. It can't cross
+ * hay, holes, crates, shut doors, fences, the burrow or a hatch, and can't see a chicken under one.
+ */
+function foxStep(level: Level, s: { hatches: readonly Hatch[]; chickens: readonly Chicken[]; crates: readonly number[]; broken: readonly number[]; flipped: boolean; fox: number }): number {
+  const w = level.w;
+  const covered = (k: number) => s.hatches.some((t) => t.cells.some(([cx, cy]) => (t.y + cy) * w + t.x + cx === k));
+  const birds = new Map<number, number>();
+  for (const c of s.chickens) {
+    const k = c.y * w + c.x;
+    if (!covered(k) && (birds.get(k) ?? Infinity) > c.id) birds.set(k, c.id);
+  }
+  if (!birds.size) return s.fox;
+  const open = (k: number) => !level.bales[k] && !s.broken.includes(k) && !s.crates.includes(k) && !doorShut(level, s.flipped, k) && !level.burrow?.includes(k) && !covered(k);
+  // Breadth first; `first` is the first square of the way to each square reached.
+  const first = new Map<number, number>([[s.fox, s.fox]]);
+  let frontier = [s.fox];
+  while (frontier.length) {
+    const next: number[] = [];
+    for (const k of frontier) {
+      const x = k % w;
+      const y = (k - x) / w;
+      for (const dir of DIRS) {
+        const nx = x + DELTA[dir].dx;
+        const ny = y + DELTA[dir].dy;
+        const nk = ny * w + nx;
+        if (nx < 0 || ny < 0 || nx >= w || ny >= level.h || first.has(nk) || fenced(level, x, y, dir)) continue;
+        if (!birds.has(nk) && !open(nk)) continue;
+        first.set(nk, k === s.fox ? nk : first.get(k)!);
+        next.push(nk);
+      }
+    }
+    const found = next.filter((k) => birds.has(k)).sort((a, b) => birds.get(a)! - birds.get(b)!);
+    if (found.length) return first.get(found[0])!;
+    frontier = next;
+  }
+  return s.fox;
 }

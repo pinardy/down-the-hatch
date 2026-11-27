@@ -4,7 +4,7 @@ import { doorShut, gatesOpen, heldBy, mirrorOf, partnerOf, thawIn } from "../gam
 import type { Blocker } from "../game/engine";
 import type { Chicken, Dir, GameState, Hatch, Level } from "../game/types";
 import { useGlide } from "./play/useGlide";
-import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, HandArt, HoleArt, KeyArt, LeverArt, LockArt, Mark, MirrorArt, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
+import { ArrowArt, BaleArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, BeltArt, BridgeArt, DoorArt, FoxArt, GateArt, HandArt, HoleArt, KeyArt, LeverArt, LockArt, Mark, MirrorArt, MudArt, MysteryEggArt, PAINT, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 export interface DropFx {
   key: number;
@@ -275,7 +275,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   useGlide(fieldRef, held, heldPartner?.id, !!heldPartner && heldPartner.id === heldHatch?.mirror, game.hatches, (x, y) => place(x, y).transform as string);
   const takes = heldHatch ? new Set([heldHatch.color, heldPartner?.color]) : null;
   const wobble = bump?.why;
-  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" || wobble?.kind === "turn" || wobble?.kind === "burrow" || wobble?.kind === "door" ? wobble.y * level.w + wobble.x : -1;
+  const bumpedSquare = wobble?.kind === "bale" || wobble?.kind === "hole" || wobble?.kind === "arrow" || wobble?.kind === "gate" || wobble?.kind === "turn" || wobble?.kind === "burrow" || wobble?.kind === "door" || wobble?.kind === "bridge" ? wobble.y * level.w + wobble.x : -1;
   const bumpedCrate = wobble?.kind === "crate" ? wobble.y * level.w + wobble.x : -1;
   const open = gatesOpen(level, game.hatches);
 
@@ -283,7 +283,7 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
   // which are buttons with labels of their own.
   const where = (x: number, y: number) => `row ${y + 1}, column ${x + 1}`;
   const about: string[] = [];
-  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`}${c.order ? `, number ${c.order} in the pecking order,` : ""}${c.under ? " underneath another" : ""} at ${where(c.x, c.y)}`);
+  for (const c of game.chickens) about.push(`${c.hidden && !seen.has(c.id) ? "an egg" : `a ${c.skittish ? "skittish " : ""}${PAINT[c.color].name} chicken`}${c.order ? `, number ${c.order} in the pecking order,` : ""}${c.curious ? ", curious," : ""}${c.alt ? `, turning ${PAINT[c.alt].name} next move,` : ""}${c.under ? " underneath another" : ""} at ${where(c.x, c.y)}`);
   for (const k of game.crates) about.push(`a crate at ${where(k % level.w, Math.floor(k / level.w))}`);
   level.bales.forEach((bale, k) => {
     const x = k % level.w;
@@ -298,6 +298,10 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
     if (level.turns[k]) about.push(`a turntable at ${where(x, y)}`);
     if (level.burrow?.includes(k)) about.push(`an end of the burrow at ${where(x, y)}`);
     if (level.levers[k]) about.push(`a lever at ${where(x, y)}`);
+    if (level.mud[k]) about.push(`mud at ${where(x, y)}`);
+    if (level.bridges[k]) about.push(`a narrow bridge at ${where(x, y)}`);
+    if (level.belts[k]) about.push(`a belt running ${level.belts[k]} at ${where(x, y)}`);
+    if (game.fox === k) about.push(`the fox at ${where(x, y)}`);
     if (level.doors[k] !== null) about.push(`a ${doorShut(level, game.flipped, k) ? "shut" : "open"} door at ${where(x, y)}`);
     if (level.fenceRight[k]) about.push(`a fence on the right of ${where(x, y)}`);
     if (level.fenceDown[k]) about.push(`a fence below ${where(x, y)}`);
@@ -313,6 +317,9 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
           {level.bales.map((bale, k) => (
             <div key={k} className={`${(k % level.w) + Math.floor(k / level.w) & 1 ? "tile tile--alt" : "tile"}${k === bumpedSquare ? " tile--wobble" : ""}`}>
               {level.slick[k] && <SlickArt />}
+              {level.mud[k] && <MudArt />}
+              {level.bridges[k] && <BridgeArt />}
+              {level.belts[k] && <BeltArt dir={level.belts[k]!} />}
               {bale && <BaleArt />}
               {level.paint[k] && <PaintArt color={level.paint[k]!} />}
               {level.plates[k] && <PlateArt down={open} />}
@@ -329,6 +336,12 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
 
         {level.fenceRight.map((f, k) => f && <span key={`fr${k}`} className={`fence fence--right${wobble?.kind === "fence" && ((wobble.dir === "right" && wobble.y * level.w + wobble.x === k) || (wobble.dir === "left" && wobble.y * level.w + wobble.x - 1 === k)) ? " fence--wobble" : ""}`} style={at(k % level.w, Math.floor(k / level.w))} aria-hidden="true" />)}
         {level.fenceDown.map((f, k) => f && <span key={`fd${k}`} className={`fence fence--down${wobble?.kind === "fence" && ((wobble.dir === "down" && wobble.y * level.w + wobble.x === k) || (wobble.dir === "up" && (wobble.y - 1) * level.w + wobble.x === k)) ? " fence--wobble" : ""}`} style={at(k % level.w, Math.floor(k / level.w))} aria-hidden="true" />)}
+
+        {game.fox >= 0 && (
+          <span className={`fox${game.lost ? " fox--fed" : ""}${wobble?.kind === "fox" ? " fox--wobble" : ""}`} style={place(game.fox % level.w, Math.floor(game.fox / level.w))}>
+            <FoxArt />
+          </span>
+        )}
 
         {game.crates.map((k, id) => (
           <span key={`crate-${id}`} className={`crate${k === bumpedCrate ? " crate--wobble" : ""}`} style={place(k % level.w, Math.floor(k / level.w))}>
@@ -404,7 +417,13 @@ export function Board({ level, game, cell, drops, shuts, hint, bump, demo, seen,
           if (game.hatches.some((t) => t.cells.some(([cx, cy]) => t.x + cx === c.x && t.y + cy === c.y))) return null;
           const below = c.under && game.chickens.some((o) => o !== c && o.x === c.x && o.y === c.y) ? " chicken--under" : "";
           const shake = (wobble?.kind === "chicken" || wobble?.kind === "order") && wobble.id === c.id ? " chicken--wobble" : "";
-          const order = c.order ? <span className="chicken__order">{c.order}</span> : null;
+          const order = (
+            <>
+              {c.order ? <span className="chicken__order">{c.order}</span> : null}
+              {c.curious && <span className="chicken__heart">♥</span>}
+              {c.alt && <span className="chicken__next" style={{ background: PAINT[c.alt].body }} />}
+            </>
+          );
           const jumpy = c.skittish ? " chicken--skittish" : "";
           if (c.hidden && !seen.has(c.id)) {
             return (

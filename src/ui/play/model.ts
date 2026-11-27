@@ -154,6 +154,14 @@ export function whyBlocked(level: Level, game: GameState, why: Blocker): string 
       return "No room to turn there. A hatch on a turntable swings a quarter turn clockwise, and needs bare floor to do it.";
     case "burrow":
       return why.why === "big" ? "Only a one-square hatch fits down a burrow." : "Something is sitting on the other end of the burrow.";
+    case "mud":
+      return "Stuck in the mud. It comes free once you’ve moved another hatch.";
+    case "bridge":
+      return "Too big for the narrow bridge: only hatches of one or two squares can cross.";
+    case "fox":
+      return "The fox is in the way.";
+    case "lost":
+      return "The fox has a chicken. Undo, or start over.";
     case "tired":
       return "That hatch is worn out: it can’t be picked up again.";
     case "door":

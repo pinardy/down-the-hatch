@@ -55,6 +55,10 @@ export interface Chicken {
   order?: number;
   /** Underneath another chicken on the same square: it waits until that one has gone and a hatch slides onto the square again. */
   under?: boolean;
+  /** Curious: when a hatch right in front of it slides away, it follows one square. */
+  curious?: boolean;
+  /** Changeable: the colour it turns at the start of the next move (and back the move after). */
+  alt?: Feather;
 }
 
 /** How a level is written down in levels.ts. */
@@ -74,7 +78,10 @@ export interface LevelDef {
    * `@` a crate (a hatch shoves it one square, onto plain empty floor),
    * `*` a turntable (a hatch that slides onto it turns a quarter, clockwise, about that square),
    * `(` and `)` the two ends of a burrow (a one-square hatch that goes in one comes out of the other),
-   * `%` a lever (a move that slides onto it flips every door), `+` a door that starts shut, `-` one that starts open.
+   * `%` a lever (a move that slides onto it flips every door), `+` a door that starts shut, `-` one that starts open,
+   * `m` mud (a hatch that slides onto it stops there until another hatch has moved),
+   * `:` a narrow bridge (only hatches of one or two squares can cross),
+   * `f` the fox (each new move it walks a square towards the nearest chicken; if it gets one, the level is lost).
    */
   rows: string[];
   /** Chickens that are skittish, by where they start: [x, y]. */
@@ -85,6 +92,12 @@ export interface LevelDef {
   under?: [number, number, string][];
   /** Fences on the right or bottom edge of a square: [x, y, "right" | "down"]. */
   fences?: [number, number, "right" | "down"][];
+  /** Curious chickens, by where they start: [x, y]. */
+  curious?: [number, number][];
+  /** Changeable chickens: [x, y, the other colour's letter]. */
+  fickle?: [number, number, string][];
+  /** Conveyor belts under squares: [x, y, the way they carry a chicken]. */
+  belts?: [number, number, Dir][];
   hatches: {
     color: Color;
     x: number;
@@ -151,6 +164,14 @@ export interface Level {
   fenceRight: boolean[];
   /** Row-major: a fence on the bottom edge of the square. */
   fenceDown: boolean[];
+  /** Row-major, true where there is mud. */
+  mud: boolean[];
+  /** Row-major, true where a narrow bridge is. */
+  bridges: boolean[];
+  /** Row-major: the way the belt under each square runs, or null. */
+  belts: (Dir | null)[];
+  /** Where the fox starts, as a row-major square, or -1 when there is none. */
+  fox: number;
   chickens: Chicken[];
   hatches: Hatch[];
   par: number;
@@ -167,6 +188,12 @@ export interface GameState {
   crates: readonly number[];
   /** The doors have been flipped an odd number of times: those that started shut are open, and the other way about. */
   flipped: boolean;
+  /** Where the fox is, as a row-major square, or -1 when there is none. */
+  fox: number;
+  /** The fox has caught a chicken: nothing more can be done. */
+  lost: boolean;
+  /** The hatch (or pair, by its lower id) stuck in mud until another hatch has moved, or null. */
+  bogged: number | null;
   /** True once the key has been picked up (and from the start when there is no key). */
   keyTaken: boolean;
   /** A move is one unbroken run of sliding the same hatch (or the same chained pair). */
@@ -203,4 +230,8 @@ export interface StepResult {
   hopped: Chicken[];
   /** The doors flipped on this step. */
   flipped: boolean;
+  /** The fox caught a chicken on this step. */
+  caught: boolean;
+  /** The hatch slid into mud on this step, and is stuck for now. */
+  bogged: boolean;
 }

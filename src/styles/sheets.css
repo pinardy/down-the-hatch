@@ -298,6 +298,24 @@
   right: 0;
   bottom: 0;
 }
+.guide__heart {
+  position: absolute;
+  left: 0;
+  top: -10%;
+  font-size: 0.9rem;
+  color: #ff8fa3;
+  text-shadow: 0 0 2px #3a2014, 0 0 2px #3a2014;
+}
+.guide__next {
+  position: absolute;
+  right: 0;
+  bottom: 4%;
+  width: 34%;
+  height: 34%;
+  border-radius: 50%;
+  background: #437fd2;
+  box-shadow: 0 0 0 2px #fff6e3, 0 0 0 3px #3a2014;
+}
 .guide__toggle {
   display: block;
   margin: 1rem auto 0;
