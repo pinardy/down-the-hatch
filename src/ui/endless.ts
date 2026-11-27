@@ -12,8 +12,20 @@ export type EndlessLevel = "easy" | "medium" | "hard";
 
 export const ENDLESS: Record<EndlessLevel, { name: string; about: string; tiers: string[]; target: number; budgetMs: number }> = {
   easy: { name: "Easy", about: "Small yards, a few moves.", tiers: ["tiny", "small"], target: 5, budgetMs: 2500 },
-  medium: { name: "Medium", about: "Bends, ice, padlocks, eggs and more.", tiers: ["medium", "shapes", "ice", "lock", "eggs", "crack", "wild", "link"], target: 8, budgetMs: 5000 },
-  hard: { name: "Hard", about: "Paint, gates, one-way floors and mixed pieces.", tiers: ["mix", "paint", "gate", "arrow", "crack-ice", "link-shapes", "shapes"], target: 12, budgetMs: 8000 },
+  medium: {
+    name: "Medium",
+    about: "One piece at a time: bends, ice, padlocks, eggs, crates, mud, fences and more.",
+    tiers: ["medium", "shapes", "ice", "lock", "eggs", "crack", "wild", "link", "slick", "crate", "burrow", "mirror", "order", "fence", "stack", "mud", "bridge", "asleep"],
+    target: 8,
+    budgetMs: 5000,
+  },
+  hard: {
+    name: "Hard",
+    about: "The trickier pieces: paint, gates, turntables, levers, a fox, belts, magnets and mixes.",
+    tiers: ["mix", "paint", "gate", "arrow", "crack-ice", "link-shapes", "shapes", "turn", "skittish", "lever", "fox", "belt", "curious", "fickle", "magnet", "blade", "bomb"],
+    target: 12,
+    budgetMs: 8000,
+  },
 };
 
 const FIRST = ["Busy", "Crowded", "Muddy", "Windy", "Sleepy", "Noisy", "Sunny", "Rainy", "Tangled", "Hidden", "Lucky", "Rickety", "Dusty", "Quiet", "Hungry", "Restless"];
@@ -61,7 +73,9 @@ async function growOne(level: EndlessLevel, quick = false): Promise<string> {
     const def = await ask({ tier, seed, budgetMs: quick ? plan.budgetMs / 2 : plan.budgetMs, target: plan.target });
     if (!def) continue;
     const name = `${FIRST[seed % FIRST.length]} ${SECOND[(seed >> 4) % SECOND.length]}`;
-    return encodeLevel({ name, rows: def.rows, hatches: def.hatches, par: def.par });
+    // Everything but the id: the pieces listed beside the rows (fences, skittish chickens...) too.
+    const { id: _id, tip: _tip, demo: _demo, ...coop } = def;
+    return encodeLevel({ ...coop, name });
   }
   throw new Error("no coop grew");
 }
