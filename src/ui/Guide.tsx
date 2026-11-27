@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Level } from "../game/types";
-import { ArrowArt, BurrowArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, LockArt, MirrorArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
+import { ArrowArt, BeltArt, BridgeArt, BurrowArt, FoxArt, MudArt, ChainArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, LockArt, MirrorArt, MysteryEggArt, PaintArt, PlateArt, SlickArt, SnowArt, StartleArt, TiredArt, TurnArt } from "./art";
 
 interface Piece {
   key: string;
@@ -256,6 +256,58 @@ const PIECES: Piece[] = [
       </span>
     ),
     on: (l) => l.chickens.some((c) => c.under),
+  },
+  {
+    key: "mud",
+    name: "Mud",
+    what: "A hatch that slides onto mud stops there, and stays stuck until you have moved another hatch.",
+    art: <MudArt />,
+    on: (l) => l.mud.some(Boolean),
+  },
+  {
+    key: "bridge",
+    name: "Narrow bridge",
+    what: "Only small hatches can cross: one or two squares. Anything bigger won’t fit.",
+    art: <BridgeArt />,
+    on: (l) => l.bridges.some(Boolean),
+  },
+  {
+    key: "fox",
+    name: "Fox",
+    what: "Each time you start a move with a different hatch, the fox walks one square towards the nearest chicken. If it gets one, the level is lost. Hatches, hay, crates and fences are in its way, so a hatch can stand guard.",
+    art: <FoxArt />,
+    on: (l) => l.fox >= 0,
+  },
+  {
+    key: "belt",
+    name: "Conveyor belt",
+    what: "Each time you start a move with a different hatch, every belt carries the chicken standing on it one square along, if the next square is free.",
+    art: <BeltArt dir="right" />,
+    on: (l) => l.belts.some(Boolean),
+  },
+  {
+    key: "curious",
+    name: "Curious chicken",
+    what: "A heart over its head. When a hatch right in front of it slides away, it follows one square. Lead it to where its own hatch can reach.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="teal" />
+        <span className="guide__heart">♥</span>
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.curious),
+  },
+  {
+    key: "fickle",
+    name: "Changeable chicken",
+    what: "The dot beside it is the colour it turns next. It swaps each time you start a move with a different hatch, just after the first square of that move.",
+    art: (
+      <span className="guide__skittish">
+        <ChickenArt color="red" />
+        <span className="guide__next" />
+      </span>
+    ),
+    on: (l) => l.chickens.some((c) => c.alt),
   },
 ];
 

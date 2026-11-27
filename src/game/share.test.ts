@@ -89,3 +89,27 @@ describe("sharing coops with the newest pieces", () => {
     expect(decodeLevel(encodeLevel({ ...ok, under: [[0, 0, "q"]] }))).toBeNull();
   });
 });
+
+describe("sharing coops with mud, bridges, a fox, belts, curious and changeable chickens", () => {
+  it("keeps them all", () => {
+    const code = encodeLevel({
+      name: "More",
+      rows: ["f.m:.", "r...b"],
+      hatches: [
+        { color: "red", x: 2, y: 1, cap: 1 },
+        { color: "blue", x: 3, y: 1, cap: 1 },
+      ],
+      par: 2,
+      curious: [[0, 1]],
+      fickle: [[4, 1, "r"]],
+      belts: [[4, 1, "up"]],
+    });
+    const l = decodeLevel(code)!;
+    expect([l.fox, l.mud[2], l.bridges[3], l.belts[9]]).toEqual([0, true, true, "up"]);
+    expect(l.chickens.map((c) => [c.curious, c.alt])).toEqual([[true, undefined], [undefined, "red"]]);
+  });
+  it("turns down a belt that points nowhere", () => {
+    const ok = { name: "x", rows: ["r.."], hatches: [{ color: "red" as const, x: 2, y: 0, cap: 1 }], par: 1 };
+    expect(decodeLevel(encodeLevel({ ...ok, belts: [[0, 0, "sideways" as "up"]] }))).toBeNull();
+  });
+});

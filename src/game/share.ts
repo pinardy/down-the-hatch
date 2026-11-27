@@ -1,6 +1,7 @@
 // Home-made levels, written as one line of text so they can be sent to anyone: "DTHL1." then
 // base64url of { n: name, r: rows, h: hatches, p: par }, and where there are any, s: skittish
-// chickens, o: the pecking order, u: chickens underneath, f: fences. The same text works on its own or at
+// chickens, o: the pecking order, u: chickens underneath, f: fences, c: curious chickens,
+// a: changeable chickens, v: belts. The same text works on its own or at
 // the end of a link to the game, after "#play=".
 
 import { parseLevel } from "./engine";
@@ -10,7 +11,7 @@ const PREFIX = "DTHL1.";
 /** Big enough for a real puzzle, small enough for the solver to check on a phone. */
 export const LIMITS = { minW: 3, maxW: 8, minH: 2, maxH: 8, hatches: 10, chickens: 40 } as const;
 
-export type SharedLevel = Pick<LevelDef, "name" | "rows" | "hatches" | "par" | "skittish" | "order" | "under" | "fences">;
+export type SharedLevel = Pick<LevelDef, "name" | "rows" | "hatches" | "par" | "skittish" | "order" | "under" | "fences" | "curious" | "fickle" | "belts">;
 
 function toBase64Url(text: string): string {
   const bytes = new TextEncoder().encode(text);
@@ -37,6 +38,9 @@ export function encodeLevel(level: SharedLevel): string {
         ...(level.order?.length ? { o: level.order } : {}),
         ...(level.under?.length ? { u: level.under } : {}),
         ...(level.fences?.length ? { f: level.fences } : {}),
+        ...(level.curious?.length ? { c: level.curious } : {}),
+        ...(level.fickle?.length ? { a: level.fickle } : {}),
+        ...(level.belts?.length ? { v: level.belts } : {}),
       }),
     )
   );
@@ -53,7 +57,7 @@ export function decodeLevel(text: string): Level | null {
   const code = findCode(text);
   if (!code) return null;
   try {
-    const raw = JSON.parse(fromBase64Url(code.slice(PREFIX.length))) as { n?: unknown; r?: unknown; h?: unknown; p?: unknown; s?: unknown; o?: unknown; u?: unknown; f?: unknown };
+    const raw = JSON.parse(fromBase64Url(code.slice(PREFIX.length))) as { n?: unknown; r?: unknown; h?: unknown; p?: unknown; s?: unknown; o?: unknown; u?: unknown; f?: unknown; c?: unknown; a?: unknown; v?: unknown };
     if (!Array.isArray(raw.r) || !Array.isArray(raw.h) || typeof raw.p !== "number" || !Number.isInteger(raw.p) || raw.p < 1 || raw.p > 200) return null;
     const rows = raw.r as string[];
     if (!rows.every((r) => typeof r === "string")) return null;
@@ -75,6 +79,18 @@ export function decodeLevel(text: string): Level | null {
     if (raw.u !== undefined) {
       if (!squares(raw.u, (c) => typeof c === "string" && /^[rytbpw]$/.test(c))) return null;
       extra.under = raw.u as [number, number, string][];
+    }
+    if (raw.c !== undefined) {
+      if (!squares(raw.c)) return null;
+      extra.curious = raw.c as [number, number][];
+    }
+    if (raw.a !== undefined) {
+      if (!squares(raw.a, (c) => typeof c === "string" && /^[rytbp]$/.test(c))) return null;
+      extra.fickle = raw.a as [number, number, string][];
+    }
+    if (raw.v !== undefined) {
+      if (!squares(raw.v, (c) => c === "up" || c === "down" || c === "left" || c === "right")) return null;
+      extra.belts = raw.v as LevelDef["belts"];
     }
     if (raw.f !== undefined) {
       if (!squares(raw.f, (c) => c === "right" || c === "down")) return null;

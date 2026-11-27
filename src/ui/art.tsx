@@ -459,3 +459,49 @@ export function DoorArt({ shut }: { shut: boolean }) {
     </svg>
   );
 }
+/** Mud: a dark, wet patch. */
+export function MudArt() {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M14 52 q-4 -26 22 -30 q10 -12 26 -4 q26 2 24 28 q6 24 -18 30 q-14 12 -30 4 q-26 0 -24 -28 z" fill="#4a2f1c" />
+      <path d="M30 44 q10 -8 20 0 M52 66 q10 -7 18 1" stroke="#7a553a" strokeWidth="5" strokeLinecap="round" fill="none" />
+      <circle cx="68" cy="40" r="5" fill="#7a553a" />
+    </svg>
+  );
+}
+/** A narrow bridge: planks with a rope along each side. */
+export function BridgeArt() {
+  return (
+    <svg className="floor-art" viewBox="0 0 100 100" aria-hidden="true">
+      <rect x="0" y="0" width="100" height="100" fill="#22140c" opacity="0.55" />
+      <rect x="24" y="0" width="52" height="100" fill="#c9995f" />
+      <path d="M24 20 h52 M24 40 h52 M24 60 h52 M24 80 h52" stroke="#8a5f3c" strokeWidth="4" />
+      <path d="M22 0 v100 M78 0 v100" stroke="#f3e2bf" strokeWidth="5" strokeDasharray="10 6" />
+    </svg>
+  );
+}
+/** A conveyor belt running one way. */
+export function BeltArt({ dir }: { dir: Dir }) {
+  return (
+    <svg className="floor-art belt-art" viewBox="0 0 100 100" aria-hidden="true">
+      <g transform={`rotate(${TURN[dir]} 50 50)`}>
+        <rect x="4" y="14" width="92" height="72" rx="10" fill="#56585f" />
+        <rect x="4" y="14" width="92" height="72" rx="10" fill="none" stroke="#2c2d31" strokeWidth="5" />
+        <path d="M22 32 L40 50 L22 68 M44 32 L62 50 L44 68 M66 32 L84 50 L66 68" fill="none" stroke="#f0c552" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </svg>
+  );
+}
+/** The fox. */
+export function FoxArt() {
+  return (
+    <svg className="fox-art" viewBox="0 0 100 100" aria-hidden="true">
+      <path d="M18 18 L40 40 L22 52 z M82 18 L60 40 L78 52 z" fill="#d9642a" />
+      <path d="M22 44 Q50 24 78 44 L62 76 Q50 90 38 76 z" fill="#ee7f3a" />
+      <path d="M38 76 Q50 90 62 76 L56 60 Q50 54 44 60 z" fill="#fff6e3" />
+      <circle cx="39" cy="50" r="5" fill="#1d100a" />
+      <circle cx="61" cy="50" r="5" fill="#1d100a" />
+      <circle cx="50" cy="80" r="5" fill="#1d100a" />
+    </svg>
+  );
+}

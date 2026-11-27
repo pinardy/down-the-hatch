@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
-import { step } from "../../game/engine";
+import { moverOf, step } from "../../game/engine";
 import { DELTA } from "../../game/types";
 import type { Dir, GameState, Level } from "../../game/types";
 import { unlockAudio } from "../../sfx";
@@ -60,6 +60,8 @@ export function useDrag({ level, gameRef, tryStep, refuse, fresh, bumped }: Args
         tryStep(hatchId, dir);
         const after = gameRef.current.hatches.find((t) => t.id === hatchId);
         if (!before || !after) return true;
+        // Into the mud, or the fox got a chicken: nothing more to drag.
+        if (gameRef.current.lost || gameRef.current.bogged === moverOf(after)) return false;
         const { dx, dy } = DELTA[dir];
         return after.x === before.x + dx && after.y === before.y + dy && after.cells === before.cells;
       };

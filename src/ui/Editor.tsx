@@ -7,7 +7,7 @@ import { encodeLevel, LIMITS } from "../game/share";
 import type { SharedLevel } from "../game/share";
 import { COLORS, DIRS } from "../game/types";
 import type { Axis, Color, Dir, Feather, Level, LevelDef } from "../game/types";
-import { ArrowArt, BaleArt, BurrowArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, Mark, PAINT, PaintArt, PlateArt, SlickArt, TurnArt } from "./art";
+import { ArrowArt, BaleArt, BeltArt, BridgeArt, BurrowArt, FoxArt, MudArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, Mark, PAINT, PaintArt, PlateArt, SlickArt, TurnArt } from "./art";
 import { Board } from "./Board";
 import { editorSearchLimit, solveInBackground } from "./solving";
 
@@ -45,6 +45,12 @@ export interface Draft {
   under?: { k: number; c: string }[];
   /** Fences on the right or bottom edge of a square. */
   fences?: { k: number; side: "right" | "down" }[];
+  /** Squares whose chicken is curious. */
+  curious?: number[];
+  /** Changeable chickens: the square, and the other colour's letter. */
+  fickle?: { k: number; c: string }[];
+  /** Belts under squares. */
+  belts?: { k: number; dir: Dir }[];
 }
 
 const DRAFT_KEY = "down-the-hatch:draft:v1";
@@ -112,6 +118,9 @@ export function draftToDef(d: Draft): LevelDef {
     ...(order.length ? { order } : {}),
     ...(under.length ? { under } : {}),
     ...(fences.length ? { fences } : {}),
+    ...((d.curious ?? []).filter(bird).length ? { curious: (d.curious ?? []).filter(bird).map(xy) } : {}),
+    ...((d.fickle ?? []).filter((f) => bird(f.k)).length ? { fickle: (d.fickle ?? []).filter((f) => bird(f.k)).map((f): [number, number, string] => [...xy(f.k), f.c]) } : {}),
+    ...(d.belts?.length ? { belts: d.belts.map((b): [number, number, Dir] => [...xy(b.k), b.dir]) } : {}),
   };
 }
 
@@ -124,7 +133,7 @@ function problems(d: Draft): string[] {
   if (birds.length > LIMITS.chickens) out.push(`At most ${LIMITS.chickens} chickens, please: there are ${birds.length}.`);
   if (d.hatches.length > LIMITS.hatches) out.push(`At most ${LIMITS.hatches} hatches, please.`);
   // Paint can change a hatch's colour, so then only the totals have to add up.
-  const painted = d.cells.some((c) => /[1-5]/.test(c));
+  const painted = d.cells.some((c) => /[1-5]/.test(c)) || (d.fickle ?? []).length > 0;
   for (const color of painted ? [] : COLORS) {
     const n = birds.filter((c) => FEATHER[c.toLowerCase()] === color).length;
     const room = d.hatches.filter((t) => t.color === color).reduce((s, t) => s + t.cap, 0);
@@ -142,7 +151,7 @@ function problems(d: Draft): string[] {
   return out;
 }
 
-type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow" | "slick" | "crate" | "turn" | "burrow" | "lever" | "door" | "fence";
+type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow" | "slick" | "crate" | "turn" | "burrow" | "lever" | "door" | "fence" | "mud" | "bridge" | "fox" | "belt";
 type Check = { status: "idle" | "checking" } | { status: "solved"; par: number } | { status: "stuck" | "unknown" };
 
 interface Props {
@@ -159,7 +168,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const [egg, setEgg] = useState(false);
   const [skittish, setSkittish] = useState(false);
   /** What a tap with the chicken tool does: place one, put it in the pecking order, or put one underneath. */
-  const [birdMode, setBirdMode] = useState<"place" | "order" | "under">("place");
+  const [birdMode, setBirdMode] = useState<"place" | "order" | "under" | "curious" | "fickle">("place");
   const [doorShut, setDoorShut] = useState(true);
   const [fenceSide, setFenceSide] = useState<"right" | "down">("right");
   const [hatchColor, setHatchColor] = useState<Color>("red");
@@ -177,7 +186,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const change = (next: Draft) => {
     // Skittish marks, places in the pecking order and chickens underneath only stay with a chicken.
     const bird = (k: number) => !!FEATHER[next.cells[k]?.toLowerCase()];
-    const d = { ...next, skittish: next.skittish?.filter(bird), order: next.order?.filter(bird), under: next.under?.filter((u) => bird(u.k)) };
+    const d = { ...next, skittish: next.skittish?.filter(bird), order: next.order?.filter(bird), under: next.under?.filter((u) => bird(u.k)), curious: next.curious?.filter(bird), fickle: next.fickle?.filter((f) => bird(f.k)) };
     saveDraft(d);
     onDraft(d);
     setCheck({ status: "idle" });
@@ -251,6 +260,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
         const order = draft.order ?? [];
         return change({ ...draft, order: order.includes(k) ? order.filter((o) => o !== k) : [...order, k] });
       }
+      if (birdMode === "curious") {
+        const curious = draft.curious ?? [];
+        return change({ ...draft, curious: curious.includes(k) ? curious.filter((o) => o !== k) : [...curious, k] });
+      }
+      if (birdMode === "fickle") {
+        const fickle = draft.fickle ?? [];
+        if (fickle.some((f) => f.k === k)) return change({ ...draft, fickle: fickle.filter((f) => f.k !== k) });
+        if (feather === "any" || draft.cells[k].toLowerCase() === CHAR[feather] || draft.cells[k].toLowerCase() === "w") return setSaid("Pick a colour above that the chicken isn’t already (white chickens don’t change).");
+        return change({ ...draft, fickle: [...fickle, { k, c: CHAR[feather] }] });
+      }
       const under = draft.under ?? [];
       return change({ ...draft, under: under.some((u) => u.k === k) ? under.filter((u) => u.k !== k) : [...under, { k, c: CHAR[feather] }] });
     }
@@ -258,6 +277,11 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       const fences = draft.fences ?? [];
       const has = fences.some((f) => f.k === k && f.side === fenceSide);
       return change({ ...draft, fences: has ? fences.filter((f) => !(f.k === k && f.side === fenceSide)) : [...fences, { k, side: fenceSide }] });
+    }
+    if (tool === "belt") {
+      const belts = draft.belts ?? [];
+      const has = belts.some((b) => b.k === k && b.dir === arrow);
+      return change({ ...draft, belts: [...belts.filter((b) => b.k !== k), ...(has ? [] : [{ k, dir: arrow }])] });
     }
     if (tool === "burrow") {
       // One burrow a board: the first tap is one end, the second the other.
@@ -272,6 +296,9 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       : tool === "crate" ? "@"
       : tool === "turn" ? "*"
       : tool === "lever" ? "%"
+      : tool === "mud" ? "m"
+      : tool === "bridge" ? ":"
+      : tool === "fox" ? "f"
       : tool === "door" ? (doorShut ? "+" : "-")
       : tool === "crack" ? "~"
       : tool === "key" ? "k"
@@ -281,7 +308,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       : tool === "arrow" ? ARROW[arrow]
       : egg ? CHAR[feather].toUpperCase()
       : CHAR[feather];
-    const cells = draft.cells.map((c, i) => (i === k ? (c === put ? "." : put) : tool === "key" && c === "k" ? "." : c));
+    const cells = draft.cells.map((c, i) => (i === k ? (c === put ? "." : put) : (tool === "key" && c === "k") || (tool === "fox" && c === "f") ? "." : c));
     const marks = (draft.skittish ?? []).filter((s) => s !== k);
     change({ ...draft, cells, skittish: tool === "chicken" && skittish && cells[k] !== "." ? [...marks, k] : marks });
   };
@@ -304,7 +331,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     const order = (draft.order ?? []).map(move).filter((k) => k >= 0);
     const under = (draft.under ?? []).map((u) => ({ ...u, k: move(u.k) })).filter((u) => u.k >= 0);
     const fences = (draft.fences ?? []).map((f) => ({ ...f, k: move(f.k) })).filter((f) => f.k >= 0);
-    change({ ...draft, w, h, cells, skittish, order, under, fences, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
+    const curious = (draft.curious ?? []).map(move).filter((k) => k >= 0);
+    const fickle = (draft.fickle ?? []).map((f) => ({ ...f, k: move(f.k) })).filter((f) => f.k >= 0);
+    const belts = (draft.belts ?? []).map((b) => ({ ...b, k: move(b.k) })).filter((b) => b.k >= 0);
+    change({ ...draft, w, h, cells, skittish, order, under, fences, curious, fickle, belts, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
   };
 
   const nudge = (dx: number, dy: number) => {
@@ -328,7 +358,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
 
   const shared = (): SharedLevel | null =>
     check.status === "solved"
-      ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par, ...(def.skittish ? { skittish: def.skittish } : {}), ...(def.order ? { order: def.order } : {}), ...(def.under ? { under: def.under } : {}), ...(def.fences ? { fences: def.fences } : {}) }
+      ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par, ...(def.skittish ? { skittish: def.skittish } : {}), ...(def.order ? { order: def.order } : {}), ...(def.under ? { under: def.under } : {}), ...(def.fences ? { fences: def.fences } : {}), ...(def.curious ? { curious: def.curious } : {}), ...(def.fickle ? { fickle: def.fickle } : {}), ...(def.belts ? { belts: def.belts } : {}) }
       : null;
 
   const share = async () => {
@@ -532,6 +562,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
               ["lever", "Lever"],
               ["door", "Door"],
               ["fence", "Fence"],
+              ["mud", "Mud"],
+              ["bridge", "Bridge"],
+              ["fox", "Fox"],
+              ["belt", "Belt"],
               ["select", "Select"],
               ["erase", "Erase"],
             ] as const
@@ -550,6 +584,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
                 : t === "turn" ? <span className="chip__floor"><TurnArt /></span>
                 : t === "burrow" ? <span className="chip__floor"><BurrowArt end={0} /></span>
                 : t === "lever" ? <span className="chip__floor"><LeverArt flipped={false} /></span>
+                : t === "mud" ? <span className="chip__floor"><MudArt /></span>
+                : t === "bridge" ? <span className="chip__floor"><BridgeArt /></span>
+                : t === "fox" ? <FoxArt />
+                : t === "belt" ? <span className="chip__floor"><BeltArt dir={arrow} /></span>
                 : t === "door" ? <span className="chip__floor"><DoorArt shut={doorShut} /></span>
                 : null}
               {label}
@@ -575,6 +613,12 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
             <button type="button" className={chip(birdMode === "under")} onClick={() => setBirdMode(birdMode === "under" ? "place" : "under")}>
               Underneath
             </button>
+            <button type="button" className={chip(birdMode === "curious")} onClick={() => setBirdMode(birdMode === "curious" ? "place" : "curious")}>
+              Curious
+            </button>
+            <button type="button" className={chip(birdMode === "fickle")} onClick={() => setBirdMode(birdMode === "fickle" ? "place" : "fickle")}>
+              Changes to…
+            </button>
           </div>
         )}
         {tool === "door" && (
@@ -598,7 +642,13 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
           </div>
         )}
         {tool === "chicken" && birdMode !== "place" && (
-          <p className="editor__hint">{birdMode === "order" ? "Tap chickens in the order they must be taken. Tap one again to take it out." : "Tap a chicken to put one of the colour chosen above underneath it."}</p>
+          <p className="editor__hint">{birdMode === "order"
+              ? "Tap chickens in the order they must be taken. Tap one again to take it out."
+              : birdMode === "curious"
+                ? "Tap a chicken to make it curious, or calm again."
+                : birdMode === "fickle"
+                  ? "Tap a chicken to make it change to the colour chosen above, and back, move by move."
+                  : "Tap a chicken to put one of the colour chosen above underneath it."}</p>
         )}
         {tool === "paint" && (
           <div className="editor__row">
@@ -611,7 +661,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
             ))}
           </div>
         )}
-        {tool === "arrow" && (
+        {(tool === "arrow" || tool === "belt") && (
           <div className="editor__row">
             {DIRS.map((d) => (
               <button key={d} type="button" className={chip(arrow === d)} onClick={() => setArrow(d)} aria-label={`One-way, ${d}`}>
