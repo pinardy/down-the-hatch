@@ -35,6 +35,9 @@ More grid squares:
 | `*` | a turntable: a hatch that slides onto it turns a quarter, clockwise, about that square, if there's bare floor to swing into (not one-square, railed or chained hatches) |
 | `( )` | the two ends of a burrow (one per board): a one-square hatch that goes in one end comes out of the other, if that end is clear |
 | `%` | a lever: a move that slides onto it flips every door on the board |
+| `m` | mud: a hatch that slides onto it is stuck until another hatch has moved |
+| `:` | a narrow bridge: only hatches of one or two squares can slide onto it |
+| `f` | the fox (one per board): right after the first square of each new move it walks one square towards the nearest chicken it can reach; hatches, hay, crates, fences and shut doors are in its way; if it reaches a chicken the level is lost |
 | `+` `-` | a door that starts shut, or open: a shut door can't be entered, but a hatch already in the doorway may stay |
 
 A hatch can also take:
@@ -58,6 +61,9 @@ Some pieces are listed next to `rows`, by where they start:
 | `order: [[4, 1], [0, 0]]` | the pecking order: the chicken at 4,1 is number 1, the one at 0,0 number 2; none can be taken before a lower number |
 | `under: [[0, 0, "r"]]` | a red chicken under the one at 0,0: a hatch takes the top one, and the one underneath waits for a hatch to slide onto the square again |
 | `fences: [[2, 1, "right"], [0, 3, "down"]]` | a fence on the right or bottom edge of a square: nothing crosses it |
+| `curious: [[1, 2]]` | curious chickens: when a hatch right in front of one slides away, it follows one square |
+| `fickle: [[3, 0, "b"]]` | a changeable chicken: it swaps between the colour in `rows` and this one right after the first square of each new move |
+| `belts: [[0, 4, "right"]]` | a belt under a square: right after the first square of each new move, it carries the chicken standing on it one square that way, if that square is free |
 
 Levels live in chapters in `src/game/levels.ts`; add a level to a chapter's list, or add a chapter to `BOOK`.
 
@@ -84,6 +90,7 @@ Once the par is right, run `npm run solutions`. It stores every level's best sol
 | `gate-link`, `arrow-crack`, `paint-eggs` | a newer piece with an older one (gates and a chain, arrows and cracked boards, paint and eggs), hard |
 | `frost-gate`, `locks-paint` | frozen and bent hatches with gates; padlocks with paint and eggs; expert |
 | `slick`, `crate`, `turn`, `burrow`, `skittish` | slippery floor, crates, turntables, a burrow, skittish chickens: one tier for each |
+| `mud`, `bridge`, `fox`, `belt`, `curious`, `fickle` | mud, narrow bridges, a fox, conveyor belts, curious chickens, changeable chickens: one tier for each (curate each by the replay test below) |
 | `mirror`, `lever`, `tired`, `order`, `fence`, `stack` | mirrored hatches, levers and doors, tired hatches, the pecking order, fences, stacked chickens: one tier for each |
 | `slick-crack`, `crate-lock`, `turn-hard`, `burrow-paint`, `skittish-slick` | one of those with an older piece, hard |
 | `funhouse` | all five of them on one board; boards where every piece matters are rare and short |
@@ -94,7 +101,7 @@ Skittish chickens rarely change the par: herding a chicken into a corner and cat
 
 Tired hatches rarely matter as grown: the best solution seldom picks a hatch up more often than its limit. Tighten instead: count how often the best solution of a board picks up each hatch, set one hatch's `uses` to one fewer, and solve again. If the board is still winnable but its par went up, the limit matters.
 
-Boards with slippery floor, crates, turntables, a burrow, skittish chickens, mirrors, levers, tired hatches, the pecking order, fences or stacked chickens are searched by the game's own rules (`solveByRules` in `src/game/solver.ts`) rather than the faster search the other pieces use, so the solver can never disagree with the game about them.
+Boards with slippery floor, crates, turntables, a burrow, skittish chickens, mirrors, levers, tired hatches, the pecking order, fences, stacked chickens, mud, bridges, a fox, belts, or curious or changeable chickens are searched by the game's own rules (`solveByRules` in `src/game/solver.ts`) rather than the faster search the other pieces use, so the solver can never disagree with the game about them.
 
 The hard tiers take about two minutes a board, so give them several minutes.
 

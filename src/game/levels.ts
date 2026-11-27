@@ -4585,6 +4585,595 @@ const STACKS: LevelDef[] = [
   },
 ];
 
+const MUDDY: LevelDef[] = [
+  {
+    id: "stick-in-the-mud",
+    name: "Stick in the mud",
+    tip: "A hatch that slides onto mud is stuck until you move another hatch.",
+    rows: ["....t", ".m..t", "...b.", ".mtb.", "..#bm", "..mmm"],
+    hatches: [
+      { color: "teal", x: 2, y: 1, h: 2, cap: 2 },
+      { color: "blue", x: 0, y: 4, w: 2, h: 2, cap: 3 },
+      { color: "teal", x: 0, y: 0, h: 3, cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "bogged-down",
+    name: "Bogged down",
+    rows: ["..y...", "....m.", "m#...#", ".m....", "..m..t", ".rtm#m"],
+    hatches: [
+      { color: "red", x: 2, y: 2, w: 2, cap: 1 },
+      { color: "gold", x: 5, y: 0, h: 2, cap: 1 },
+      { color: "teal", x: 0, y: 0, w: 2, cap: 2 },
+    ],
+    par: 6,
+  },
+  {
+    id: "mud-pie",
+    name: "Mud pie",
+    rows: ["....#.", "..r.#.", "m.b.y.", "....m.", ".m...b"],
+    hatches: [
+      { color: "blue", x: 3, y: 1, h: 3, cap: 2 },
+      { color: "red", x: 1, y: 1, h: 3, cap: 1 },
+      { color: "gold", x: 2, y: 3, h: 2, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "quagmire",
+    name: "Quagmire",
+    rows: ["#....", ".my.t", "#....", ".m..y", ".mttt", "ym..."],
+    hatches: [
+      { color: "teal", x: 1, y: 2, w: 3, cap: 2 },
+      { color: "gold", x: 2, y: 0, w: 3, cap: 3 },
+      { color: "teal", x: 3, y: 5, w: 2, cap: 2 },
+    ],
+    par: 8,
+  },
+  {
+    id: "wellies",
+    name: "Wellies",
+    rows: ["...r.", ".....", "..m.m", "rb.m.", "...br", "b#.m."],
+    hatches: [
+      { color: "blue", x: 3, y: 1, w: 2, cap: 2 },
+      { color: "red", x: 1, y: 0, h: 3, cap: 2 },
+      { color: "red", x: 2, y: 3, h: 3, cap: 1 },
+      { color: "blue", x: 0, y: 0, h: 2, cap: 1 },
+    ],
+    par: 10,
+  },
+  {
+    id: "clear-as-mud",
+    name: "Clear as mud",
+    rows: [".b...m", "m.p#bm", "....mp", ".pm..m", ".p...m"],
+    hatches: [
+      { color: "blue", x: 4, y: 3, h: 2, cap: 2 },
+      { color: "plum", x: 3, y: 3, h: 2, cap: 2 },
+      { color: "plum", x: 2, y: 0, w: 3, cap: 2 },
+    ],
+    par: 11,
+  },
+  {
+    id: "mudlark",
+    name: "Mudlark",
+    rows: ["m#...b", ".m.m.m", "m.#.m.", "t.m.tt", "t....m"],
+    hatches: [
+      { color: "blue", x: 3, y: 2, h: 3, cap: 1 },
+      { color: "teal", x: 4, y: 1, cap: 2 },
+      { color: "teal", x: 2, y: 0, w: 3, cap: 1 },
+      { color: "teal", x: 1, y: 2, h: 3, cap: 1 },
+    ],
+    par: 12,
+  },
+  {
+    id: "slough-of-despond",
+    name: "Slough of despond",
+    rows: [".....m", "m....#", "m.m.mm", "..bt.p", "t...mb"],
+    hatches: [
+      { color: "blue", x: 3, y: 0, h: 2, cap: 2 },
+      { color: "teal", x: 1, y: 0, w: 2, h: 2, cap: 2 },
+      { color: "plum", x: 1, y: 2, h: 2, cap: 1 },
+    ],
+    par: 13,
+  },
+];
+
+const BRIDGES_NARROW: LevelDef[] = [
+  {
+    id: "rope-bridge",
+    name: "Rope bridge",
+    tip: "Only hatches of one or two squares can cross a narrow bridge.",
+    rows: [".:.::.", ".t.p..", "......", "......", "#....:", ".p...."],
+    hatches: [
+      { color: "plum", x: 2, y: 4, shape: ["xxx", "..x"], cap: 1 },
+      { color: "teal", x: 0, y: 0, h: 3, cap: 1 },
+      { color: "plum", x: 3, y: 2, shape: ["..x", "xxx"], cap: 1 },
+    ],
+    par: 4,
+  },
+  {
+    id: "single-file",
+    name: "Single file",
+    rows: ["#..y..", "......", "yyyt.:", "......", "t.:.t."],
+    hatches: [
+      { color: "gold", x: 4, y: 3, w: 2, cap: 2 },
+      { color: "teal", x: 3, y: 0, shape: [".x.", "xxx"], cap: 2 },
+      { color: "gold", x: 0, y: 3, w: 2, cap: 2 },
+      { color: "teal", x: 1, y: 0, shape: ["x.", "xx"], cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "one-at-a-time-please",
+    name: "One at a time, please",
+    rows: [".yy:..", "...:.:", "....b.", "y....y", "......", "y....."],
+    hatches: [
+      { color: "blue", x: 1, y: 1, shape: ["xx", ".x"], cap: 1 },
+      { color: "gold", x: 3, y: 3, shape: ["x.", "xx", "x."], cap: 3 },
+      { color: "gold", x: 0, y: 4, w: 2, cap: 2 },
+    ],
+    par: 6,
+  },
+  {
+    id: "footbridge",
+    name: "Footbridge",
+    rows: ["p:.#p#", ".:.pr:", "....r:", "p.....", "..r.p."],
+    hatches: [
+      { color: "red", x: 1, y: 3, h: 2, cap: 3 },
+      { color: "plum", x: 1, y: 2, w: 2, cap: 3 },
+      { color: "plum", x: 2, y: 2, shape: [".x", "xx", ".x"], cap: 2 },
+    ],
+    par: 7,
+  },
+  {
+    id: "squeeze-through",
+    name: "Squeeze through",
+    rows: ["y...y", "#...r", "....:", "...#r", ".....", ":..yy"],
+    hatches: [
+      { color: "red", x: 1, y: 1, h: 2, cap: 2 },
+      { color: "gold", x: 0, y: 3, shape: ["xx", ".x"], cap: 2 },
+      { color: "gold", x: 2, y: 1, w: 2, h: 2, cap: 2 },
+    ],
+    par: 8,
+  },
+  {
+    id: "narrow-escape",
+    name: "Narrow escape",
+    rows: ["...y:", ".....", "ry.::", "r..#.", "#yr.y"],
+    hatches: [
+      { color: "red", x: 2, y: 1, w: 2, cap: 3 },
+      { color: "gold", x: 1, y: 3, w: 2, cap: 2 },
+      { color: "gold", x: 0, y: 0, shape: ["xxx", ".x."], cap: 2 },
+    ],
+    par: 9,
+  },
+  {
+    id: "gangplank",
+    name: "Gangplank",
+    rows: ["..b.:.", ":.brb:", ".....:", "r.b:..", ".b##:."],
+    hatches: [
+      { color: "red", x: 5, y: 3, h: 2, cap: 2 },
+      { color: "blue", x: 2, y: 2, w: 3, cap: 3 },
+      { color: "blue", x: 0, y: 0, shape: ["xx", ".x"], cap: 2 },
+    ],
+    par: 10,
+  },
+  {
+    id: "eye-of-the-needle",
+    name: "Eye of the needle",
+    rows: ["#:.:.:", "..b...", ".....r", "#....#", "....r:", ":rb.#."],
+    hatches: [
+      { color: "blue", x: 4, y: 1, shape: ["xx", "x."], cap: 2 },
+      { color: "red", x: 3, y: 1, h: 3, cap: 2 },
+      { color: "red", x: 1, y: 4, w: 3, cap: 1 },
+    ],
+    par: 11,
+  },
+];
+
+const FOXES: LevelDef[] = [
+  {
+    id: "fox-in-the-coop",
+    name: "Fox in the coop",
+    tip: "The fox walks towards a chicken each time you move a different hatch. Don’t let it get one.",
+    rows: [".b....", "......", "....f.", "..y...", "..yy.."],
+    hatches: [
+      { color: "blue", x: 2, y: 1, h: 2, cap: 1 },
+      { color: "gold", x: 5, y: 0, h: 3, cap: 2 },
+      { color: "gold", x: 1, y: 2, cap: 1 },
+    ],
+    par: 4,
+  },
+  {
+    id: "sly-one",
+    name: "Sly one",
+    rows: ["....#", "f.y.#", "..r..", ".....", ".r..y", "..y#."],
+    hatches: [
+      { color: "red", x: 1, y: 3, w: 3, cap: 2 },
+      { color: "gold", x: 2, y: 4, w: 2, cap: 2 },
+      { color: "gold", x: 1, y: 0, w: 3, cap: 1 },
+    ],
+    par: 5,
+  },
+  {
+    id: "outfoxed",
+    name: "Outfoxed",
+    rows: ["f#pb..", "......", "b.....", "......", "b...#."],
+    hatches: [
+      { color: "plum", x: 2, y: 4, w: 2, cap: 1 },
+      { color: "blue", x: 5, y: 0, h: 3, cap: 2 },
+      { color: "blue", x: 3, y: 3, w: 2, cap: 1 },
+    ],
+    par: 6,
+  },
+  {
+    id: "night-watchman",
+    name: "Night watchman",
+    rows: ["#....", "p.y..", ".....", "f...#", ".....", "y...."],
+    hatches: [
+      { color: "plum", x: 3, y: 4, w: 2, h: 2, cap: 1 },
+      { color: "gold", x: 1, y: 2, w: 2, cap: 1 },
+      { color: "gold", x: 3, y: 0, w: 2, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "brush-with-danger",
+    name: "Brush with danger",
+    rows: ["..f..", "#....", ".#..#", "y...t", ".b..t"],
+    hatches: [
+      { color: "teal", x: 3, y: 0, w: 2, cap: 2 },
+      { color: "blue", x: 3, y: 1, w: 2, cap: 1 },
+      { color: "gold", x: 0, y: 0, w: 2, cap: 1 },
+    ],
+    par: 7,
+  },
+  {
+    id: "crying-wolf",
+    name: "Crying wolf",
+    rows: ["yy..y", "r.yyr", ".y..r", ".y.rr", "f....", "....."],
+    hatches: [
+      { color: "red", x: 3, y: 4, w: 2, h: 2, cap: 5 },
+      { color: "gold", x: 1, y: 4, w: 2, h: 2, cap: 4 },
+      { color: "gold", x: 2, y: 2, w: 2, cap: 3 },
+    ],
+    par: 8,
+  },
+  {
+    id: "quick-brown-fox",
+    name: "Quick brown fox",
+    rows: ["p...p", "t.p#.", "....t", "..f..", "....."],
+    hatches: [
+      { color: "plum", x: 1, y: 2, w: 3, cap: 2 },
+      { color: "teal", x: 3, y: 4, w: 2, cap: 2 },
+      { color: "plum", x: 1, y: 4, w: 2, cap: 1 },
+    ],
+    par: 9,
+  },
+  {
+    id: "earth-to-earth",
+    name: "Earth to earth",
+    rows: ["...yb.", "...t#.", "..b.y.", "f.....", "#.b#.."],
+    hatches: [
+      { color: "blue", x: 4, y: 3, w: 2, cap: 3 },
+      { color: "teal", x: 2, y: 3, w: 2, cap: 1 },
+      { color: "gold", x: 0, y: 0, w: 3, cap: 2 },
+    ],
+    par: 10,
+  },
+];
+
+const BELTS: LevelDef[] = [
+  {
+    id: "carried-away",
+    name: "Carried away",
+    tip: "Belts carry the chicken on them one square each time you move a different hatch.",
+    rows: ["b.y..", ".....", ".y...", "b#...", ".y...", "..b.."],
+    hatches: [
+      { color: "gold", x: 2, y: 4, w: 3, cap: 3 },
+      { color: "blue", x: 2, y: 2, w: 2, h: 2, cap: 2 },
+      { color: "blue", x: 3, y: 1, cap: 1 },
+    ],
+    belts: [[1, 0, "right"], [3, 3, "up"], [0, 1, "right"], [2, 0, "down"], [0, 0, "right"], [1, 1, "right"]],
+    par: 4,
+  },
+  {
+    id: "moving-walkway",
+    name: "Moving walkway",
+    rows: ["y..rr", "....#", "..ry.", "....#", ".#...", "....."],
+    hatches: [
+      { color: "red", x: 3, y: 4, w: 2, h: 2, cap: 2 },
+      { color: "gold", x: 0, y: 3, w: 2, cap: 2 },
+      { color: "red", x: 1, y: 1, w: 2, cap: 1 },
+    ],
+    belts: [[3, 2, "down"], [1, 4, "right"], [4, 3, "down"], [4, 0, "up"], [2, 2, "up"]],
+    par: 5,
+  },
+  {
+    id: "assembly-required",
+    name: "Assembly required",
+    rows: ["#y.by.", "..tt..", "....yb", "...yt.", ".....#", "#...t."],
+    hatches: [
+      { color: "teal", x: 5, y: 0, h: 2, cap: 4 },
+      { color: "gold", x: 1, y: 5, w: 2, cap: 4 },
+      { color: "blue", x: 1, y: 3, w: 2, h: 2, cap: 2 },
+    ],
+    belts: [[3, 5, "up"], [0, 4, "up"], [4, 0, "left"], [5, 2, "left"], [4, 2, "down"], [4, 3, "left"]],
+    par: 6,
+  },
+  {
+    id: "baggage-reclaim",
+    name: "Baggage reclaim",
+    rows: ["...#.", "..y..", "r...r", "....r", "y....", "y#r.r"],
+    hatches: [
+      { color: "gold", x: 3, y: 1, h: 3, cap: 3 },
+      { color: "red", x: 2, y: 4, w: 3, cap: 3 },
+      { color: "red", x: 1, y: 1, h: 3, cap: 2 },
+    ],
+    belts: [[2, 5, "right"], [0, 1, "right"], [3, 4, "left"]],
+    par: 7,
+  },
+  {
+    id: "on-a-roll",
+    name: "On a roll",
+    rows: [".....", ".p..#", "....y", ".r#..", "#pyrr", "rp..."],
+    hatches: [
+      { color: "red", x: 2, y: 5, w: 2, cap: 4 },
+      { color: "gold", x: 0, y: 1, h: 2, cap: 2 },
+      { color: "plum", x: 3, y: 1, h: 2, cap: 3 },
+    ],
+    belts: [[2, 4, "right"], [1, 2, "down"], [4, 2, "up"], [1, 3, "right"], [0, 5, "right"]],
+    par: 8,
+  },
+  {
+    id: "production-line",
+    name: "Production line",
+    rows: ["b..#.#", "...b..", "....p.", ".#....", ".p.bb.", "......"],
+    hatches: [
+      { color: "plum", x: 3, y: 3, w: 2, cap: 1 },
+      { color: "blue", x: 2, y: 2, h: 3, cap: 4 },
+      { color: "plum", x: 5, y: 2, h: 3, cap: 1 },
+    ],
+    belts: [[4, 2, "left"], [0, 4, "right"], [4, 4, "left"]],
+    par: 9,
+  },
+  {
+    id: "sushi-train",
+    name: "Sushi train",
+    rows: [".p...", ".....", ".#.pp", "..ppb", ".....", "...b."],
+    hatches: [
+      { color: "plum", x: 0, y: 5, w: 3, cap: 2 },
+      { color: "blue", x: 0, y: 1, w: 3, cap: 2 },
+      { color: "plum", x: 0, y: 2, h: 3, cap: 2 },
+      { color: "plum", x: 3, y: 0, h: 2, cap: 1 },
+    ],
+    belts: [[1, 2, "up"], [2, 1, "left"], [3, 2, "right"], [4, 2, "up"], [3, 3, "up"], [4, 1, "up"]],
+    par: 10,
+  },
+  {
+    id: "travelator",
+    name: "Travelator",
+    rows: ["#b.yb", ".y...", "....#", "....r", "b....", "#...."],
+    hatches: [
+      { color: "blue", x: 3, y: 2, h: 3, cap: 2 },
+      { color: "red", x: 0, y: 3, w: 2, cap: 1 },
+      { color: "gold", x: 2, y: 1, w: 3, cap: 2 },
+      { color: "blue", x: 2, y: 2, h: 2, cap: 1 },
+    ],
+    belts: [[4, 0, "down"], [0, 4, "right"], [4, 2, "left"], [1, 2, "up"], [0, 2, "down"], [1, 1, "left"]],
+    par: 11,
+  },
+];
+
+const CURIOUS: LevelDef[] = [
+  {
+    id: "follow-my-leader",
+    name: "Follow my leader",
+    tip: "A curious chicken follows a hatch that slides away from right in front of it.",
+    rows: ["..y#.", "...yt", ".t..y", "..y..", "...t."],
+    hatches: [
+      { color: "gold", x: 1, y: 4, w: 2, cap: 2 },
+      { color: "teal", x: 0, y: 3, h: 2, cap: 3 },
+      { color: "gold", x: 2, y: 2, w: 2, cap: 2 },
+    ],
+    curious: [[2, 0], [4, 2], [1, 2]],
+    par: 3,
+  },
+  {
+    id: "duckling",
+    name: "Duckling",
+    rows: ["t.b..", "..b..", "b..bt", "..#..", ".b.tt"],
+    hatches: [
+      { color: "blue", x: 3, y: 3, w: 2, cap: 3 },
+      { color: "teal", x: 1, y: 0, cap: 4 },
+      { color: "blue", x: 3, y: 0, h: 2, cap: 2 },
+    ],
+    curious: [[3, 4], [2, 0]],
+    par: 4,
+  },
+  {
+    id: "tagalong",
+    name: "Tagalong",
+    rows: ["......", "b.t...", ".#y...", ".....#", "#...yt", "....b."],
+    hatches: [
+      { color: "blue", x: 2, y: 3, w: 2, h: 2, cap: 2 },
+      { color: "teal", x: 3, y: 0, w: 2, h: 2, cap: 1 },
+      { color: "gold", x: 1, y: 3, h: 2, cap: 2 },
+      { color: "teal", x: 3, y: 2, w: 2, cap: 1 },
+    ],
+    curious: [[2, 2], [2, 1]],
+    par: 6,
+  },
+  {
+    id: "pied-piper",
+    name: "Pied piper",
+    rows: ["..tb.", "...t.", "...b.", "..#t.", "ttb..", "#...."],
+    hatches: [
+      { color: "blue", x: 0, y: 2, w: 3, cap: 3 },
+      { color: "teal", x: 3, y: 5, w: 2, cap: 3 },
+      { color: "teal", x: 4, y: 1, h: 3, cap: 2 },
+    ],
+    curious: [[2, 4], [3, 1], [3, 3], [1, 4]],
+    par: 7,
+  },
+  {
+    id: "little-shadow",
+    name: "Little shadow",
+    rows: ["p....", "yp..#", "pp.y.", "p.p..", "p#yp."],
+    hatches: [
+      { color: "gold", x: 2, y: 0, h: 3, cap: 3 },
+      { color: "plum", x: 4, y: 3, h: 2, cap: 3 },
+      { color: "plum", x: 3, y: 0, h: 2, cap: 3 },
+      { color: "plum", x: 1, y: 0, cap: 2 },
+    ],
+    curious: [[0, 0], [1, 2], [0, 2], [3, 2], [2, 4]],
+    par: 8,
+  },
+  {
+    id: "close-behind",
+    name: "Close behind",
+    rows: ["y#.r#", "rr.yy", ".r#..", "..y..", "...r."],
+    hatches: [
+      { color: "red", x: 2, y: 4, cap: 3 },
+      { color: "gold", x: 0, y: 3, w: 2, h: 2, cap: 2 },
+      { color: "red", x: 2, y: 0, h: 2, cap: 2 },
+      { color: "gold", x: 4, y: 2, h: 2, cap: 2 },
+    ],
+    curious: [[3, 4], [3, 0]],
+    par: 9,
+  },
+  {
+    id: "lead-the-way",
+    name: "Lead the way",
+    rows: [".b..yp", "#b..b.", ".p.y.b", "......", ".#...."],
+    hatches: [
+      { color: "gold", x: 2, y: 0, h: 3, cap: 2 },
+      { color: "blue", x: 3, y: 0, h: 2, cap: 2 },
+      { color: "plum", x: 4, y: 3, w: 2, cap: 2 },
+      { color: "blue", x: 1, y: 3, w: 3, cap: 2 },
+    ],
+    curious: [[1, 2], [5, 2], [1, 0]],
+    par: 11,
+  },
+  {
+    id: "conga-line",
+    name: "Conga line",
+    rows: ["#b#..", "...bp", "#..pb", "b....", "...bp"],
+    hatches: [
+      { color: "plum", x: 0, y: 4, w: 3, cap: 3 },
+      { color: "blue", x: 1, y: 2, w: 2, h: 2, cap: 2 },
+      { color: "blue", x: 3, y: 3, w: 2, cap: 2 },
+      { color: "blue", x: 1, y: 1, w: 2, cap: 1 },
+    ],
+    curious: [[1, 0], [0, 3]],
+    par: 12,
+  },
+];
+
+const FICKLE: LevelDef[] = [
+  {
+    id: "chameleon",
+    name: "Chameleon",
+    tip: "The dot is the colour this chicken turns next, each time you move a different hatch.",
+    rows: ["yy.#..", "......", "......", "t.....", "y.y..."],
+    hatches: [
+      { color: "teal", x: 1, y: 4, cap: 1 },
+      { color: "gold", x: 5, y: 3, h: 2, cap: 2 },
+      { color: "gold", x: 2, y: 2, w: 2, cap: 2 },
+    ],
+    fickle: [[0, 3, "y"], [0, 4, "t"], [0, 0, "t"]],
+    par: 3,
+  },
+  {
+    id: "turncoat",
+    name: "Turncoat",
+    rows: [".#.b#.", "..b..t", ".....p", "..t.p.", ".#...p"],
+    hatches: [
+      { color: "plum", x: 5, y: 0, cap: 3 },
+      { color: "teal", x: 2, y: 4, w: 2, cap: 2 },
+      { color: "blue", x: 2, y: 2, w: 2, cap: 1 },
+      { color: "blue", x: 0, y: 2, w: 2, h: 2, cap: 1 },
+    ],
+    fickle: [[4, 3, "t"]],
+    par: 4,
+  },
+  {
+    id: "second-thoughts",
+    name: "Second thoughts",
+    rows: ["p##.#", ".pppb", ".....", "..ppb", "b...."],
+    hatches: [
+      { color: "plum", x: 1, y: 3, h: 2, cap: 3 },
+      { color: "blue", x: 0, y: 2, w: 2, cap: 3 },
+      { color: "plum", x: 3, y: 4, w: 2, cap: 3 },
+    ],
+    fickle: [[3, 3, "b"], [4, 3, "p"], [0, 0, "b"]],
+    par: 5,
+  },
+  {
+    id: "mood-swings",
+    name: "Mood swings",
+    rows: ["....y", "....y", "...#p", "b...p", "....#"],
+    hatches: [
+      { color: "plum", x: 3, y: 0, h: 2, cap: 2 },
+      { color: "gold", x: 3, y: 4, cap: 1 },
+      { color: "blue", x: 1, y: 1, w: 2, h: 2, cap: 1 },
+      { color: "gold", x: 0, y: 0, w: 2, cap: 1 },
+    ],
+    fickle: [[4, 3, "y"], [4, 0, "b"], [4, 2, "y"]],
+    par: 6,
+  },
+  {
+    id: "two-tone",
+    name: "Two-tone",
+    rows: [".bb..#", "...b.y", "..t...", "#.#...", "b...y."],
+    hatches: [
+      { color: "teal", x: 3, y: 2, h: 2, cap: 1 },
+      { color: "gold", x: 0, y: 0, h: 2, cap: 2 },
+      { color: "blue", x: 4, y: 2, w: 2, cap: 2 },
+      { color: "blue", x: 0, y: 2, w: 2, cap: 2 },
+    ],
+    fickle: [[2, 2, "y"], [1, 0, "y"], [3, 1, "t"]],
+    par: 8,
+  },
+  {
+    id: "flip-flop",
+    name: "Flip-flop",
+    rows: ["t...t.", "...bty", "..y..#", ".b#.#.", "b..b..", "...y.y"],
+    hatches: [
+      { color: "teal", x: 1, y: 4, w: 2, h: 2, cap: 3 },
+      { color: "blue", x: 2, y: 0, h: 2, cap: 4 },
+      { color: "gold", x: 3, y: 2, h: 2, cap: 4 },
+    ],
+    fickle: [[4, 0, "y"], [1, 3, "t"], [0, 0, "b"]],
+    par: 9,
+  },
+  {
+    id: "now-you-see-it",
+    name: "Now you see it",
+    rows: ["....rb", "......", "..b..#", "..rp..", "..b..r", "...#.."],
+    hatches: [
+      { color: "blue", x: 1, y: 0, w: 2, h: 2, cap: 3 },
+      { color: "red", x: 0, y: 4, w: 2, h: 2, cap: 3 },
+      { color: "plum", x: 0, y: 2, w: 2, h: 2, cap: 1 },
+    ],
+    fickle: [[2, 3, "b"], [3, 3, "r"], [2, 4, "r"]],
+    par: 10,
+  },
+  {
+    id: "show-your-colours",
+    name: "Show your colours",
+    rows: ["b..r.", "r....", "b....", ".#..b", ".r..#", ".#..."],
+    hatches: [
+      { color: "red", x: 2, y: 5, w: 2, cap: 3 },
+      { color: "blue", x: 2, y: 3, w: 2, h: 2, cap: 2 },
+      { color: "blue", x: 1, y: 0, w: 2, h: 2, cap: 1 },
+    ],
+    fickle: [[4, 3, "r"], [0, 2, "r"]],
+    par: 12,
+  },
+];
+
 export type Difficulty = "Easy" | "Medium" | "Hard" | "Expert";
 
 export interface Chapter {
@@ -4620,6 +5209,12 @@ const BOOK: { name: string; difficulty: Difficulty; blurb: string; levels: Level
   { name: "Mind your manners", difficulty: "Medium", blurb: "Numbered chickens go in turn. Leave number 3 for later, even when it’s right there.", levels: ORDERLY },
   { name: "Over the fence", difficulty: "Medium", blurb: "Fences run along the edges of squares, and nothing gets over them.", levels: FENCES },
   { name: "Two up", difficulty: "Medium", blurb: "Chickens sitting on chickens. Take the top one, and come back for the other.", levels: STACKS },
+  { name: "Stuck in the mud", difficulty: "Medium", blurb: "Slide onto mud and that hatch is stuck until another has moved. Choose where to stop.", levels: MUDDY },
+  { name: "Small enough", difficulty: "Medium", blurb: "Narrow bridges only take hatches of one or two squares. The big ones go the long way round.", levels: BRIDGES_NARROW },
+  { name: "Fox watch", difficulty: "Medium", blurb: "A fox closes in on the chickens, a square every move. Be quick, or stand a hatch in its way.", levels: FOXES },
+  { name: "Belt up", difficulty: "Medium", blurb: "Conveyor belts carry chickens along a square every move, into reach or out of it.", levels: BELTS },
+  { name: "Follow me", difficulty: "Medium", blurb: "Curious chickens follow a hatch that slides away from them. Lead them where they need to be.", levels: CURIOUS },
+  { name: "Changing colours", difficulty: "Medium", blurb: "Some chickens swap colour every move. Arrive when they’re the right one.", levels: FICKLE },
   { name: "The whole flock", difficulty: "Hard", blurb: "Bends, ice, padlocks and eggs, all at once.", levels: FLOCK },
   { name: "Free range", difficulty: "Hard", blurb: "No tricks. Plain hatches, crowded yards, and a long way round.", levels: RANGE },
   { name: "Bent double", difficulty: "Hard", blurb: "More corners than floor. Every turn has to be planned.", levels: TWISTS },

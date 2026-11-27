@@ -7,7 +7,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ### [▶️ Play it here](https://pinardy.github.io/down-the-hatch/)
 
-📲 Installable · ✈️ Works offline · 🧩 361 levels
+📲 Installable · ✈️ Works offline · 🧩 409 levels
 
 <img src="docs/screenshot.png" alt="A level of Down the Hatch: coloured hatches, chickens, paint puddles, gates and one-way arrows on a wooden board" width="320">
 
@@ -23,7 +23,7 @@ Slide the hatches, drop the chickens, clear the coop.
 
 ## 🗺️ Chapters and pieces
 
-361 levels in 42 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
+409 levels in 48 chapters, each tagged Easy, Medium, Hard or Expert. After the tutorial, each chapter adds one new piece and works up to it gently:
 
 | | Piece | What it does |
 |:-:|---|---|
@@ -48,6 +48,12 @@ Slide the hatches, drop the chickens, clear the coop.
 | 🔢 | **Pecking order** | numbered chickens must be taken in turn |
 | 🚧 | **Fences** | thin walls along square edges that nothing crosses |
 | 🐔 | **Stacked chickens** | take the top one, then come back for the one underneath |
+| 🟤 | **Mud** | a hatch that slides onto it is stuck until another hatch has moved |
+| 🌉 | **Narrow bridges** | only hatches of one or two squares can cross |
+| 🦊 | **Fox** | walks a square towards the chickens every move; lose one and the level is lost |
+| ⏩ | **Conveyor belts** | carry the chicken on them one square every move |
+| 💗 | **Curious chickens** | follow a hatch that slides away from right in front of them |
+| 🎭 | **Changeable chickens** | swap between two colours every move |
 
 Four more chapters (*Thin ice*, *Mystery guests*, *Chain of custody*, *Tangled*) pair a newer piece with an older one. The hard chapters combine them, at up to 34 moves a level.
 
@@ -58,6 +64,8 @@ Five more chapters pair the newest pieces with older ones: *Hold the line* (gate
 Five Medium chapters bring in the newest pieces, one each: *Skid row* (slippery floor), *Shove off* (crates), *Spin doctor* (turntables), *Down the rabbit hole* (burrows) and *Flight risk* (skittish chickens). Three Hard chapters take them further: *Turning point* (turntables among bent hatches, up to 21 moves), *Goods in* (crates and padlocks) and *Pick and mix* (the newest pieces in twos, and twice all five at once).
 
 Six more Medium chapters bring in the newest pieces, one each: *Opposite numbers* (mirrored hatches), *Doorkeepers* (levers and doors), *Running ragged* (tired hatches), *Mind your manners* (the pecking order), *Over the fence* (fences) and *Two up* (stacked chickens).
+
+And six more: *Stuck in the mud* (mud), *Small enough* (narrow bridges), *Fox watch* (a fox), *Belt up* (conveyor belts), *Follow me* (curious chickens) and *Changing colours* (changeable chickens). "Every move" for the fox, belts and changeable chickens means each time you move a different hatch from the last one.
 
 ## 🛟 Help when you need it
 
