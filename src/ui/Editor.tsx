@@ -7,7 +7,7 @@ import { encodeLevel, LIMITS } from "../game/share";
 import type { SharedLevel } from "../game/share";
 import { COLORS, DIRS } from "../game/types";
 import type { Axis, Color, Dir, Feather, Level, LevelDef } from "../game/types";
-import { ArrowArt, BaleArt, BurrowArt, ChickenArt, CrackArt, CrateArt, GateArt, KeyArt, Mark, PAINT, PaintArt, PlateArt, SlickArt, TurnArt } from "./art";
+import { ArrowArt, BaleArt, BurrowArt, ChickenArt, CrackArt, CrateArt, DoorArt, GateArt, KeyArt, LeverArt, Mark, PAINT, PaintArt, PlateArt, SlickArt, TurnArt } from "./art";
 import { Board } from "./Board";
 import { editorSearchLimit, solveInBackground } from "./solving";
 
@@ -24,6 +24,10 @@ interface DraftHatch {
   locked?: boolean;
   /** The uid of the hatch this one is chained to. */
   link?: number;
+  /** The uid of the hatch this one is mirrored with. */
+  mirror?: number;
+  /** Tired: how many times it can be picked up. */
+  uses?: number;
 }
 
 export interface Draft {
@@ -35,6 +39,12 @@ export interface Draft {
   hatches: DraftHatch[];
   /** Squares whose chicken is skittish. */
   skittish?: number[];
+  /** Squares whose chicken is in the pecking order, first to last. */
+  order?: number[];
+  /** Chickens underneath others: the square, and the colour letter. */
+  under?: { k: number; c: string }[];
+  /** Fences on the right or bottom edge of a square. */
+  fences?: { k: number; side: "right" | "down" }[];
 }
 
 const DRAFT_KEY = "down-the-hatch:draft:v1";
@@ -82,16 +92,33 @@ export function draftToDef(d: Draft): LevelDef {
       ...(t.ice ? { ice: t.ice } : {}),
       ...(t.locked ? { locked: true } : {}),
       ...(partner ? { link: `c${Math.min(t.uid, partner.uid)}` } : {}),
+      ...(t.mirror !== undefined && d.hatches.some((o) => o.uid === t.mirror) ? { mirror: `m${Math.min(t.uid, t.mirror)}` } : {}),
+      ...(t.uses ? { uses: t.uses } : {}),
     };
   });
   const skittish = (d.skittish ?? []).filter((k) => FEATHER[d.cells[k]?.toLowerCase()]).map((k): [number, number] => [k % d.w, Math.floor(k / d.w)]);
-  return { id: "draft", name: d.name.trim() || "My coop", rows, hatches, par: 0, ...(skittish.length ? { skittish } : {}) };
+  const xy = (k: number): [number, number] => [k % d.w, Math.floor(k / d.w)];
+  const bird = (k: number) => !!FEATHER[d.cells[k]?.toLowerCase()];
+  const order = (d.order ?? []).filter(bird).map(xy);
+  const under = (d.under ?? []).filter((u) => bird(u.k)).map((u): [number, number, string] => [...xy(u.k), u.c]);
+  const fences = (d.fences ?? []).map((f): [number, number, "right" | "down"] => [...xy(f.k), f.side]);
+  return {
+    id: "draft",
+    name: d.name.trim() || "My coop",
+    rows,
+    hatches,
+    par: 0,
+    ...(skittish.length ? { skittish } : {}),
+    ...(order.length ? { order } : {}),
+    ...(under.length ? { under } : {}),
+    ...(fences.length ? { fences } : {}),
+  };
 }
 
 /** Plain-words reasons the draft is not a fair level yet. Empty when it is. */
 function problems(d: Draft): string[] {
   const out: string[] = [];
-  const birds = d.cells.filter((c) => FEATHER[c.toLowerCase()]);
+  const birds = [...d.cells.filter((c) => FEATHER[c.toLowerCase()]), ...(d.under ?? []).filter((u) => FEATHER[d.cells[u.k]?.toLowerCase()]).map((u) => u.c)];
   if (!d.hatches.length) out.push("Add at least one hatch.");
   if (!birds.length) out.push("Add some chickens.");
   if (birds.length > LIMITS.chickens) out.push(`At most ${LIMITS.chickens} chickens, please: there are ${birds.length}.`);
@@ -110,11 +137,12 @@ function problems(d: Draft): string[] {
   if (d.cells.includes("=") && !d.cells.includes("o")) out.push("A gate needs a pressure plate to open it.");
   if (d.cells.includes("o") && !d.cells.includes("=")) out.push("A pressure plate needs a gate to open.");
   if (d.cells.includes("(") !== d.cells.includes(")")) out.push("A burrow needs both ends.");
+  if (d.cells.includes("%") !== (d.cells.includes("+") || d.cells.includes("-"))) out.push(d.cells.includes("%") ? "A lever needs a door to work." : "A door needs a lever to open it.");
   for (const t of d.hatches) if (t.ice && t.ice > birds.length - t.cap) out.push(`A frozen ${PAINT[t.color].name} hatch needs ${t.ice} other chickens to drop first, and there aren’t that many.`);
   return out;
 }
 
-type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow" | "slick" | "crate" | "turn" | "burrow";
+type Tool = "select" | "erase" | "bale" | "crack" | "key" | "chicken" | "hatch" | "paint" | "plate" | "gate" | "arrow" | "slick" | "crate" | "turn" | "burrow" | "lever" | "door" | "fence";
 type Check = { status: "idle" | "checking" } | { status: "solved"; par: number } | { status: "stuck" | "unknown" };
 
 interface Props {
@@ -130,12 +158,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const [feather, setFeather] = useState<Feather>("red");
   const [egg, setEgg] = useState(false);
   const [skittish, setSkittish] = useState(false);
+  /** What a tap with the chicken tool does: place one, put it in the pecking order, or put one underneath. */
+  const [birdMode, setBirdMode] = useState<"place" | "order" | "under">("place");
+  const [doorShut, setDoorShut] = useState(true);
+  const [fenceSide, setFenceSide] = useState<"right" | "down">("right");
   const [hatchColor, setHatchColor] = useState<Color>("red");
   const [paintColor, setPaintColor] = useState<Color>("blue");
   const [arrow, setArrow] = useState<Dir>("right");
   const [shape, setShape] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
-  const [linking, setLinking] = useState(false);
+  const [linking, setLinking] = useState<null | "chain" | "mirror">(null);
   const [check, setCheck] = useState<Check>({ status: "idle" });
   const [said, setSaid] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
@@ -143,8 +175,9 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
   const [sure, setSure] = useState(false);
 
   const change = (next: Draft) => {
-    // A skittish mark only stays with a chicken.
-    const d = next.skittish ? { ...next, skittish: next.skittish.filter((k) => FEATHER[next.cells[k]?.toLowerCase()]) } : next;
+    // Skittish marks, places in the pecking order and chickens underneath only stay with a chicken.
+    const bird = (k: number) => !!FEATHER[next.cells[k]?.toLowerCase()];
+    const d = { ...next, skittish: next.skittish?.filter(bird), order: next.order?.filter(bird), under: next.under?.filter((u) => bird(u.k)) };
     saveDraft(d);
     onDraft(d);
     setCheck({ status: "idle" });
@@ -182,13 +215,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     const k = y * draft.w + x;
     const here = hatchAt(x, y);
     if (linking && sel) {
-      setLinking(false);
+      const how = linking;
+      setLinking(null);
       if (!here || here.uid === sel.uid) return;
-      // Chain the two, unchaining whatever either was chained to before.
-      const old = [sel.link, here.link];
+      // Chain (or mirror) the two, undoing whatever either was chained or mirrored to before:
+      // a hatch can be one or the other, with one partner.
+      const old = [sel.link, here.link, sel.mirror, here.mirror];
+      const pair = (t: DraftHatch, other: number) => ({ ...t, link: how === "chain" ? other : undefined, mirror: how === "mirror" ? other : undefined });
       change({
         ...draft,
-        hatches: draft.hatches.map((t) => (t.uid === sel.uid ? { ...t, link: here.uid } : t.uid === here.uid ? { ...t, link: sel.uid } : old.includes(t.uid) ? { ...t, link: undefined } : t)),
+        hatches: draft.hatches.map((t) => (t.uid === sel.uid ? pair(t, here.uid) : t.uid === here.uid ? pair(t, sel.uid) : old.includes(t.uid) ? { ...t, link: undefined, mirror: undefined } : t)),
       });
       return;
     }
@@ -209,6 +245,20 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       setSelected(t.uid);
       return;
     }
+    if (tool === "chicken" && birdMode !== "place") {
+      if (!FEATHER[draft.cells[k].toLowerCase()]) return setSaid("Tap a chicken.");
+      if (birdMode === "order") {
+        const order = draft.order ?? [];
+        return change({ ...draft, order: order.includes(k) ? order.filter((o) => o !== k) : [...order, k] });
+      }
+      const under = draft.under ?? [];
+      return change({ ...draft, under: under.some((u) => u.k === k) ? under.filter((u) => u.k !== k) : [...under, { k, c: CHAR[feather] }] });
+    }
+    if (tool === "fence") {
+      const fences = draft.fences ?? [];
+      const has = fences.some((f) => f.k === k && f.side === fenceSide);
+      return change({ ...draft, fences: has ? fences.filter((f) => !(f.k === k && f.side === fenceSide)) : [...fences, { k, side: fenceSide }] });
+    }
     if (tool === "burrow") {
       // One burrow a board: the first tap is one end, the second the other.
       const ends = ["(", ")"].filter((e) => draft.cells.includes(e));
@@ -221,6 +271,8 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       : tool === "slick" ? "_"
       : tool === "crate" ? "@"
       : tool === "turn" ? "*"
+      : tool === "lever" ? "%"
+      : tool === "door" ? (doorShut ? "+" : "-")
       : tool === "crack" ? "~"
       : tool === "key" ? "k"
       : tool === "paint" ? paintChar(paintColor)
@@ -243,12 +295,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     });
     const keep = draft.hatches.filter((t) => cellsOf(t).every(([x, y]) => x < w && y < h));
     const kept = new Set(keep.map((t) => t.uid));
-    const skittish = (draft.skittish ?? []).flatMap((k) => {
+    const move = (k: number) => {
       const x = k % draft.w;
       const y = Math.floor(k / draft.w);
-      return x < w && y < h ? [y * w + x] : [];
-    });
-    change({ ...draft, w, h, cells, skittish, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
+      return x < w && y < h ? y * w + x : -1;
+    };
+    const skittish = (draft.skittish ?? []).map(move).filter((k) => k >= 0);
+    const order = (draft.order ?? []).map(move).filter((k) => k >= 0);
+    const under = (draft.under ?? []).map((u) => ({ ...u, k: move(u.k) })).filter((u) => u.k >= 0);
+    const fences = (draft.fences ?? []).map((f) => ({ ...f, k: move(f.k) })).filter((f) => f.k >= 0);
+    change({ ...draft, w, h, cells, skittish, order, under, fences, hatches: keep.map((t) => (t.link !== undefined && !kept.has(t.link) ? { ...t, link: undefined } : t)) });
   };
 
   const nudge = (dx: number, dy: number) => {
@@ -270,7 +326,10 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
     }
   };
 
-  const shared = (): SharedLevel | null => (check.status === "solved" ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par, ...(def.skittish ? { skittish: def.skittish } : {}) } : null);
+  const shared = (): SharedLevel | null =>
+    check.status === "solved"
+      ? { name: def.name, rows: def.rows, hatches: def.hatches, par: check.par, ...(def.skittish ? { skittish: def.skittish } : {}), ...(def.order ? { order: def.order } : {}), ...(def.under ? { under: def.under } : {}), ...(def.fences ? { fences: def.fences } : {}) }
+      : null;
 
   const share = async () => {
     const s = shared();
@@ -347,7 +406,7 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
       </div>
 
       {linking ? (
-        <p className="editor__hint">Tap the hatch to chain it to.</p>
+        <p className="editor__hint">Tap the hatch to {linking === "chain" ? "chain it to" : "mirror it with"}.</p>
       ) : (
         sel && (
           <section className="editor__panel" aria-label="Selected hatch">
@@ -379,6 +438,16 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
               </button>
             </div>
             <div className="editor__row">
+              <span className="editor__label">Tired</span>
+              <button type="button" className="btn btn--small" onClick={() => updateHatch(sel.uid, { uses: Math.max(0, (sel.uses ?? 0) - 1) || undefined })} aria-label="Fewer uses">
+                −
+              </button>
+              <b>{sel.uses ?? "–"}</b>
+              <button type="button" className="btn btn--small" onClick={() => updateHatch(sel.uid, { uses: Math.min(9, (sel.uses ?? 0) + 1) })} aria-label="More uses">
+                +
+              </button>
+            </div>
+            <div className="editor__row">
               <button type="button" className={chip(!!sel.locked)} onClick={() => updateHatch(sel.uid, { locked: !sel.locked || undefined })}>
                 Padlock
               </button>
@@ -396,10 +465,19 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
                 <button type="button" className="chip chip--on" onClick={() => change({ ...draft, hatches: draft.hatches.map((t) => (t.uid === sel.uid || t.uid === sel.link ? { ...t, link: undefined } : t)) })}>
                   Unchain
                 </button>
-              ) : (
-                <button type="button" className="chip" onClick={() => setLinking(true)} disabled={draft.hatches.length < 2}>
-                  Chain to…
+              ) : sel.mirror !== undefined ? (
+                <button type="button" className="chip chip--on" onClick={() => change({ ...draft, hatches: draft.hatches.map((t) => (t.uid === sel.uid || t.uid === sel.mirror ? { ...t, mirror: undefined } : t)) })}>
+                  Unmirror
                 </button>
+              ) : (
+                <>
+                  <button type="button" className="chip" onClick={() => setLinking("chain")} disabled={draft.hatches.length < 2}>
+                    Chain to…
+                  </button>
+                  <button type="button" className="chip" onClick={() => setLinking("mirror")} disabled={draft.hatches.length < 2}>
+                    Mirror to…
+                  </button>
+                </>
               )}
             </div>
             <div className="editor__row">
@@ -451,6 +529,9 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
               ["crate", "Crate"],
               ["turn", "Turntable"],
               ["burrow", "Burrow"],
+              ["lever", "Lever"],
+              ["door", "Door"],
+              ["fence", "Fence"],
               ["select", "Select"],
               ["erase", "Erase"],
             ] as const
@@ -468,6 +549,8 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
                 : t === "crate" ? <CrateArt />
                 : t === "turn" ? <span className="chip__floor"><TurnArt /></span>
                 : t === "burrow" ? <span className="chip__floor"><BurrowArt end={0} /></span>
+                : t === "lever" ? <span className="chip__floor"><LeverArt flipped={false} /></span>
+                : t === "door" ? <span className="chip__floor"><DoorArt shut={doorShut} /></span>
                 : null}
               {label}
             </button>
@@ -486,7 +569,36 @@ export function Editor({ draft, onDraft, onBack, onPlay }: Props) {
             <button type="button" className={chip(skittish)} onClick={() => setSkittish(!skittish)}>
               Skittish
             </button>
+            <button type="button" className={chip(birdMode === "order")} onClick={() => setBirdMode(birdMode === "order" ? "place" : "order")}>
+              Pecking order
+            </button>
+            <button type="button" className={chip(birdMode === "under")} onClick={() => setBirdMode(birdMode === "under" ? "place" : "under")}>
+              Underneath
+            </button>
           </div>
+        )}
+        {tool === "door" && (
+          <div className="editor__row">
+            <button type="button" className={chip(doorShut)} onClick={() => setDoorShut(true)}>
+              Starts shut
+            </button>
+            <button type="button" className={chip(!doorShut)} onClick={() => setDoorShut(false)}>
+              Starts open
+            </button>
+          </div>
+        )}
+        {tool === "fence" && (
+          <div className="editor__row">
+            <button type="button" className={chip(fenceSide === "right")} onClick={() => setFenceSide("right")}>
+              Right edge
+            </button>
+            <button type="button" className={chip(fenceSide === "down")} onClick={() => setFenceSide("down")}>
+              Bottom edge
+            </button>
+          </div>
+        )}
+        {tool === "chicken" && birdMode !== "place" && (
+          <p className="editor__hint">{birdMode === "order" ? "Tap chickens in the order they must be taken. Tap one again to take it out." : "Tap a chicken to put one of the colour chosen above underneath it."}</p>
         )}
         {tool === "paint" && (
           <div className="editor__row">

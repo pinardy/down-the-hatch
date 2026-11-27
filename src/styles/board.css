@@ -55,6 +55,7 @@
 .chicken,
 .key,
 .crate,
+.fence,
 .hint-dot,
 .hint-ghost {
   position: absolute;
@@ -615,4 +616,69 @@
   95% {
     transform: translateX(5%) rotate(6deg);
   }
+}
+
+/* ── Fences, stacked chickens, the pecking order, tired hatches ── */
+
+.fence {
+  width: var(--cell);
+  height: var(--cell);
+  pointer-events: none;
+  z-index: 4;
+}
+.fence::after {
+  content: "";
+  position: absolute;
+  background: repeating-linear-gradient(var(--fence-dir, 0deg), #f3e2bf 0 calc(var(--cell) * 0.12), #8a5a2b 0 calc(var(--cell) * 0.16));
+  border-radius: calc(var(--cell) * 0.05);
+  box-shadow: 0 0 0 calc(var(--cell) * 0.02) #3a2014;
+}
+.fence--right::after {
+  right: calc(var(--cell) * -0.045);
+  top: 4%;
+  bottom: 4%;
+  width: calc(var(--cell) * 0.09);
+}
+.fence--down::after {
+  bottom: calc(var(--cell) * -0.045);
+  left: 4%;
+  right: 4%;
+  height: calc(var(--cell) * 0.09);
+  --fence-dir: 90deg;
+}
+.fence--wobble::after {
+  animation: shake 380ms ease-in-out;
+}
+/* The chicken underneath peeks out from behind the one on top. */
+.chicken--under {
+  z-index: 2;
+  transform-origin: 30% 20%;
+}
+.chicken--under .chicken__art,
+.chicken--under > svg:first-child {
+  transform: translate(-22%, -20%) scale(0.72);
+  filter: brightness(0.92);
+}
+.chicken--under::before {
+  display: none;
+}
+.chicken__order {
+  position: absolute;
+  right: 6%;
+  top: 4%;
+  min-width: calc(var(--cell) * 0.3);
+  height: calc(var(--cell) * 0.3);
+  padding: 0 calc(var(--cell) * 0.05);
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--cell) * 0.2);
+  font-weight: 700;
+  line-height: 1;
+  color: #3a2014;
+  background: #fff6e3;
+  border-radius: calc(var(--cell) * 0.15);
+  box-shadow: 0 0 0 calc(var(--cell) * 0.025) #3a2014;
+}
+.hatch__hold--spent {
+  opacity: 0.55;
 }

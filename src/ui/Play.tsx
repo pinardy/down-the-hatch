@@ -210,6 +210,7 @@ export function Play({ level, where, best, saveId, daily = false, late = false, 
       if (out.turned.length) window.setTimeout(() => sfx.swivel(), 60);
       if (out.burrowed) sfx.pop();
       if (out.hopped.length) window.setTimeout(() => sfx.flap(), 80);
+      if (out.flipped) sfx.clunk();
       if (out.painted.length) sfx.splash();
       if (out.gate) window.setTimeout(() => sfx.gate(out.gate === "opened"), 60);
       // Anything that was frozen or padlocked and now is not has just come free.

@@ -47,6 +47,8 @@ export function boardKey(state: GameState): string {
     state.broken,
     state.keyTaken,
     [...state.crates].sort((a, b) => a - b),
+    state.flipped,
+    state.hatches.map((t) => t.uses ?? null),
   ]);
 }
 

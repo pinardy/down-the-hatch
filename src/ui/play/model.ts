@@ -154,6 +154,16 @@ export function whyBlocked(level: Level, game: GameState, why: Blocker): string 
       return "No room to turn there. A hatch on a turntable swings a quarter turn clockwise, and needs bare floor to do it.";
     case "burrow":
       return why.why === "big" ? "Only a one-square hatch fits down a burrow." : "Something is sitting on the other end of the burrow.";
+    case "tired":
+      return "That hatch is worn out: it can’t be picked up again.";
+    case "door":
+      return "The door is shut. A move onto a lever flips every door.";
+    case "fence":
+      return "There’s a fence in the way.";
+    case "order": {
+      const bird = game.chickens.find((c) => c.id === why.id);
+      return bird ? `Not yet: that’s number ${bird.order} in the pecking order, and number ${why.need} goes first.` : null;
+    }
     default:
       return null;
   }
